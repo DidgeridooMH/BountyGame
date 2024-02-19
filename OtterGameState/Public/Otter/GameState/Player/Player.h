@@ -2,7 +2,7 @@
 
 #include "Otter/GameState/export.h"
 
-#define PLAYER_SPEED 50.0
+#define PLAYER_SPEED 50.0f
 #define MAX_PLAYERS 16
 
 typedef struct Player

@@ -1,9 +1,9 @@
-#include "GameServer.h"
+#include "Otter/Networking/Server/TcpGameServer.h"
 
 #include "Otter/Networking/Messages/ControlMessages.h"
 #include "Otter/Networking/Shared/GameNetworking.h"
 
-static SOCKET game_server_accept_client(GameServer* server)
+static SOCKET game_server_accept_client(TcpGameServer* server)
 {
   struct sockaddr clientAddress = {0};
   int addressLength             = sizeof(struct sockaddr);
@@ -34,7 +34,7 @@ static SOCKET game_server_accept_client(GameServer* server)
   return client;
 }
 
-static int game_server_get_free_client_slot(GameServer* server)
+static int game_server_get_free_client_slot(TcpGameServer* server)
 {
   for (int i = 0; i < MAX_CLIENTS; i++)
   {
@@ -52,7 +52,7 @@ static void game_server_disconnect_client_socket(SOCKET socket)
   closesocket(socket);
 }
 
-void game_server_disconnect_client(GameServer* server, int clientId)
+void tcp_game_server_disconnect_client(TcpGameServer* server, int clientId)
 {
   printf("Client disconnected\n");
   game_server_disconnect_client_socket(server->clients[clientId]);
@@ -61,7 +61,7 @@ void game_server_disconnect_client(GameServer* server, int clientId)
 
 static int WINAPI game_server_accept_thread(void* _server)
 {
-  GameServer* server = _server;
+  TcpGameServer* server = _server;
 
   server->running = true;
 
@@ -90,7 +90,7 @@ static int WINAPI game_server_accept_thread(void* _server)
   {
     if (server->clients[i] != INVALID_SOCKET)
     {
-      game_server_disconnect_client(server, i);
+      tcp_game_server_disconnect_client(server, i);
     }
   }
 
@@ -99,8 +99,8 @@ static int WINAPI game_server_accept_thread(void* _server)
   return 0;
 }
 
-bool game_server_create(GameServer* server, const char* host, const char* port,
-    GameServerDisconnectCb disconnectCb)
+bool tcp_game_server_create(TcpGameServer* server, const char* host,
+    const char* port, GameServerDisconnectCb disconnectCb)
 {
   struct addrinfo serverAddress = {.ai_family = AF_INET,
       .ai_socktype                            = SOCK_STREAM,
@@ -155,7 +155,7 @@ bool game_server_create(GameServer* server, const char* host, const char* port,
   return true;
 }
 
-Message* game_server_get_message(GameServer* server, int* clientId)
+Message* tcp_game_server_get_message(TcpGameServer* server, int* clientId)
 {
   int fdsId[MAX_CLIENTS]     = {0};
   WSAPOLLFD fds[MAX_CLIENTS] = {0};
@@ -178,7 +178,7 @@ Message* game_server_get_message(GameServer* server, int* clientId)
     {
       if (fds[i].revents > 0)
       {
-        Message* message = game_networking_recv_message(fds[i].fd);
+        Message* message = game_networking_recv_message_tcp(fds[i].fd);
         if (message != NULL)
         {
           *clientId = fdsId[i];
@@ -186,7 +186,7 @@ Message* game_server_get_message(GameServer* server, int* clientId)
         }
 
         // Could not read from client. Assume connection is dead.
-        game_server_disconnect_client(server, fdsId[i]);
+        tcp_game_server_disconnect_client(server, fdsId[i]);
       }
     }
   }
@@ -194,12 +194,12 @@ Message* game_server_get_message(GameServer* server, int* clientId)
   return NULL;
 }
 
-void game_server_send_message(
-    GameServer* server, int clientId, Message* message)
+void tcp_game_server_send_message(
+    TcpGameServer* server, int clientId, const Message* message)
 {
   if (clientId != ALL_CLIENT_ID)
   {
-    game_networking_send_message(server->clients[clientId], message);
+    game_networking_send_message_tcp(server->clients[clientId], message);
   }
   else
   {
@@ -207,13 +207,13 @@ void game_server_send_message(
     {
       if (server->clients[i] != INVALID_SOCKET)
       {
-        game_networking_send_message(server->clients[i], message);
+        game_networking_send_message_tcp(server->clients[i], message);
       }
     }
   }
 }
 
-void game_server_destroy(GameServer* server)
+void tcp_game_server_destroy(TcpGameServer* server)
 {
   server->running = false;
   WaitForSingleObject(server->acceptThread, 60000);

@@ -18,23 +18,29 @@
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Otter\Networking\Messages\Message.h">
+    <ClInclude Include="Public\Otter\Networking\Messages\Message.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Otter\Networking\Messages\ControlMessages.h">
+    <ClInclude Include="Public\Otter\Networking\Messages\ControlMessages.h">
       <Filter>Source Files</Filter>
     </ClInclude>
-    <ClInclude Include="Otter\Networking\Client\GameClient.h">
+    <ClInclude Include="Public\Otter\Networking\Client\TcpGameClient.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Otter\Networking\Shared\GameNetworking.h">
+    <ClInclude Include="Public\Otter\Networking\Shared\GameNetworking.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Otter\Networking\Messages\EntityMessages.h">
+    <ClInclude Include="Public\Otter\Networking\Messages\EntityMessages.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Otter\Networking\export.h">
+    <ClInclude Include="Public\Otter\Networking\export.h">
       <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Networking\Server\UdpGameServer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Networking\Client\UdpGameClient.h">
+      <Filter>Source Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
@@ -44,14 +50,29 @@
     <ClCompile Include="pch.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Otter\Networking\Server\GameServer.c">
+    <ClCompile Include="Private\Otter\Networking\Client\TcpGameClient.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Otter\Networking\Client\GameClient.c">
+    <ClCompile Include="Private\Otter\Networking\Server\TcpGameServer.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Otter\Networking\Shared\GameNetworking.c">
+    <ClCompile Include="Private\Otter\Networking\Server\UdpGameServer.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Private\Otter\Networking\Shared\GameNetworking.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Networking\Messages\ControlMessages.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Networking\Messages\Message.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Networking\Client\UdpGameClient.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

@@ -18,16 +18,16 @@
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Otter\GameState\Player\Player.h">
+    <ClInclude Include="Public\Otter\GameState\Player\Player.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Otter\GameState\GameState.h">
+    <ClInclude Include="Public\Otter\GameState\GameState.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Otter\GameState\Player\PlayerInput.h">
+    <ClInclude Include="Public\Otter\GameState\Player\PlayerInput.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Otter\GameState\export.h">
+    <ClInclude Include="Public\Otter\GameState\export.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -35,11 +35,14 @@
     <ClCompile Include="pch.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Otter\GameState\Player\Player.c">
+    <ClCompile Include="Private\Otter\GameState\Player\Player.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Otter\GameState\GameState.c">
+    <ClCompile Include="Private\Otter\GameState\GameState.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

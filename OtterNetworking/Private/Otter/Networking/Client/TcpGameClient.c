@@ -1,9 +1,9 @@
-#include "GameClient.h"
+#include "Otter/Networking/Client/TcpGameClient.h"
 
 #include "Otter/Networking/Shared/GameNetworking.h"
 
-// TODO: Fix this to be a client thingy.
-bool game_client_connect(GameClient* client, const char* host, const char* port)
+bool tcp_game_client_connect(
+    TcpGameClient* client, const char* host, const char* port)
 {
   struct addrinfo serverAddress = {.ai_family = AF_INET,
       .ai_socktype                            = SOCK_STREAM,
@@ -45,17 +45,17 @@ bool game_client_connect(GameClient* client, const char* host, const char* port)
   return true;
 }
 
-Message* game_client_get_message(GameClient* client)
+Message* tcp_game_client_get_message(TcpGameClient* client)
 {
-  return game_networking_recv_message(client->socket);
+  return game_networking_recv_message_tcp(client->socket);
 }
 
-void game_client_send_message(GameClient* client, Message* message)
+void tcp_game_client_send_message(TcpGameClient* client, const Message* message)
 {
-  game_networking_send_message(client->socket, message);
+  game_networking_send_message_tcp(client->socket, message);
 }
 
-void game_client_destroy(GameClient* client)
+void tcp_game_client_destroy(TcpGameClient* client)
 {
   shutdown(client->socket, SD_BOTH);
   closesocket(client->socket);

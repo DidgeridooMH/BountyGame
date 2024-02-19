@@ -1,25 +1,22 @@
+#include "Server.h"
+
 #include "Otter/GameState/GameState.h"
 #include "Otter/GameState/Player/Player.h"
 #include "Otter/GameState/Player/PlayerInput.h"
 #include "Otter/Networking/Messages/ControlMessages.h"
 #include "Otter/Networking/Messages/EntityMessages.h"
-#include "Otter/Networking/Server/GameServer.h"
+#include "Otter/Networking/Server/UdpGameServer.h"
 
-typedef struct Client
-{
-  GUID id;
-  int networkId;
-  bool connected;
-} Client;
+GUID g_serverGuid = {0, 0, 0, 0};
 
 static bool g_running = true;
 
-static Client g_clientList[MAX_PLAYERS];
+static LARGE_INTEGER g_playerHeartbeat[MAX_PLAYERS];
 static PlayerInput g_playerInput[MAX_PLAYERS];
 
 static void handle_client_disconnected(int clientId)
 {
-  for (int i = 0; i < 16; i++)
+  /*for (int i = 0; i < 16; i++)
   {
     if (g_clientList[i].connected && g_clientList[i].networkId == clientId)
     {
@@ -35,33 +32,20 @@ static void handle_client_disconnected(int clientId)
       g_clientList[i].connected = false;
       g_listOfPlayers[i].active = false;
     }
-  }
+  }*/
 }
 
-static void handle_message(
-    GameServer* server, Message* requestMessage, int clientId)
+static void handle_message(UdpGameServer* server, Message* requestMessage)
 {
   switch (requestMessage->header.type)
   {
   case MT_JOIN_REQUEST:
     {
-      Message responseMessage = {0};
-      memset(&responseMessage.header.entity, 0, sizeof(GUID));
-      responseMessage.header.type        = MT_JOIN_RESPONSE;
-      responseMessage.header.payloadSize = sizeof(JoinResponseMessage);
-
-      JoinResponseMessage payload = {0};
-      responseMessage.payload     = &payload;
-
       int playerJoined = false;
       for (int i = 0; i < MAX_PLAYERS; i++)
       {
-        if (!g_clientList[i].connected)
+        if (!g_listOfPlayers[i].active)
         {
-          g_clientList[i].connected = true;
-          g_clientList[i].networkId = clientId;
-          g_clientList[i].id        = requestMessage->header.entity;
-
           g_listOfPlayers[i].active = true;
           g_listOfPlayers[i].id     = requestMessage->header.entity;
           g_listOfPlayers[i].x      = 50.0f;
@@ -69,15 +53,20 @@ static void handle_message(
 
           wchar_t guid[128];
           if (StringFromGUID2(
-                  &g_clientList[i].id, guid, sizeof(guid) / sizeof(guid[0]))
+                  &g_listOfPlayers[i].id, guid, sizeof(guid) / sizeof(guid[0]))
               == 0)
           {
             wcscpy_s(guid, sizeof(guid) / sizeof(guid[0]), L"(unknown)");
           }
           wprintf(L"Player %s joined the game\n", guid);
 
-          payload.code = JOIN_STATUS_SUCCESS;
-          game_server_send_message(server, clientId, &responseMessage);
+          Message* responseMessage =
+              message_create_join_response(&g_serverGuid, JOIN_STATUS_SUCCESS);
+          udp_game_server_send_message(
+              server, &g_listOfPlayers[i].id, responseMessage);
+          message_destroy(responseMessage);
+
+          QueryPerformanceCounter(&g_playerHeartbeat[i]);
           playerJoined = true;
           break;
         }
@@ -85,9 +74,11 @@ static void handle_message(
 
       if (!playerJoined)
       {
-        payload.code = JOIN_STATUS_FAILED_TOO_MANY_PLAYERS;
-        game_server_send_message(server, clientId, &responseMessage);
-        game_server_disconnect_client(server, clientId);
+        Message* responseMessage = message_create_join_response(
+            &g_serverGuid, JOIN_STATUS_FAILED_TOO_MANY_PLAYERS);
+        udp_game_server_send_message(
+            server, &requestMessage->header.entity, responseMessage);
+        message_destroy(responseMessage);
       }
     }
     break;
@@ -107,6 +98,19 @@ static void handle_message(
       }
     }
     break;
+  case MT_HEARTBEAT:
+    for (int i = 0; i < MAX_PLAYERS; i++)
+    {
+      if (g_listOfPlayers[i].active
+          && memcmp(&g_listOfPlayers[i].id, &requestMessage->header.entity,
+                 sizeof(GUID))
+                 == 0)
+      {
+        QueryPerformanceCounter(&g_playerHeartbeat[i]);
+        break;
+      }
+    }
+    break;
   default:
     break;
   }
@@ -114,9 +118,8 @@ static void handle_message(
 
 int main(int argc, char** argv)
 {
-  GameServer server;
-  if (!game_server_create(
-          &server, "0.0.0.0", "42003", handle_client_disconnected))
+  UdpGameServer server;
+  if (!udp_game_server_create(&server, "0.0.0.0", "42003"))
   {
     return 1;
   }
@@ -133,10 +136,9 @@ int main(int argc, char** argv)
   while (g_running)
   {
     Message* requestMessage = NULL;
-    int clientId            = 0;
-    if ((requestMessage = game_server_get_message(&server, &clientId)) != NULL)
+    if ((requestMessage = udp_game_server_get_message(&server)) != NULL)
     {
-      handle_message(&server, requestMessage, clientId);
+      handle_message(&server, requestMessage);
       free(requestMessage->payload);
       free(requestMessage);
     }
@@ -155,6 +157,27 @@ int main(int argc, char** argv)
             / timerFrequency.QuadPart)
         > (1000.0f / 64.0f))
     {
+      for (int i = 0; i < MAX_PLAYERS; i++)
+      {
+        if (g_listOfPlayers[i].active
+            && (float) (clientSendEndTime.QuadPart
+                        - g_playerHeartbeat->QuadPart)
+                       / timerFrequency.QuadPart
+                   > 3.0f)
+        {
+          g_listOfPlayers[i].active = false;
+          udp_game_server_disconnect_client(&server, &g_listOfPlayers[i].id);
+          wchar_t guid[128];
+          if (StringFromGUID2(
+                  &g_listOfPlayers[i].id, guid, sizeof(guid) / sizeof(guid[0]))
+              == 0)
+          {
+            wcscpy_s(guid, sizeof(guid) / sizeof(guid[0]), L"(unknown)");
+          }
+          wprintf(L"Player %s left the game\n", guid);
+        }
+      }
+
       Message playerUpdate = {0};
       memset(&playerUpdate.header.entity, 0, sizeof(GUID));
       playerUpdate.header.type        = MT_PLAYER_POSITION;
@@ -171,14 +194,14 @@ int main(int argc, char** argv)
           payload.x        = g_listOfPlayers[i].x;
           payload.y        = g_listOfPlayers[i].y;
 
-          game_server_send_message(&server, ALL_CLIENT_ID, &playerUpdate);
+          udp_game_server_broadcast_message(&server, &playerUpdate);
         }
       }
       QueryPerformanceCounter(&clientSendTime);
     }
   }
 
-  game_server_destroy(&server);
+  udp_game_server_destroy(&server);
 
   return 0;
 }

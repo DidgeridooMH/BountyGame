@@ -124,11 +124,12 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)\OtterGameState;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\OtterGameState\Public;$(ProjectDir);$(ProjectDir)\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <LanguageStandard>stdcpp14</LanguageStandard>
       <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -147,11 +148,12 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(SolutionDir)\OtterGameState;$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(SolutionDir)\OtterGameState\Public;$(ProjectDir);$(ProjectDir)\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <LanguageStandard>stdcpp14</LanguageStandard>
       <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <CompileAs>CompileAsC</CompileAs>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -163,30 +165,39 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="Otter\Networking\Client\GameClient.h" />
-    <ClInclude Include="Otter\Networking\export.h" />
-    <ClInclude Include="Otter\Networking\Messages\EntityMessages.h" />
-    <ClInclude Include="Otter\Networking\Messages\Message.h" />
-    <ClInclude Include="Otter\Networking\Shared\GameNetworking.h" />
+    <ClInclude Include="Public\Otter\Networking\Client\TcpGameClient.h" />
+    <ClInclude Include="Public\Otter\Networking\export.h" />
+    <ClInclude Include="Public\Otter\Networking\Messages\EntityMessages.h" />
+    <ClInclude Include="Public\Otter\Networking\Messages\Message.h" />
+    <ClInclude Include="Public\Otter\Networking\Server\UdpGameServer.h" />
+    <ClInclude Include="Public\Otter\Networking\Shared\GameNetworking.h" />
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="dllmain.c" />
-    <ClInclude Include="Otter\Networking\Messages\ControlMessages.h" />
-    <ClCompile Include="Otter\Networking\Client\GameClient.c" />
-    <ClCompile Include="Otter\Networking\Shared\GameNetworking.c" />
+    <ClInclude Include="Public\Otter\Networking\Client\UdpGameClient.h" />
+    <ClInclude Include="Public\Otter\Networking\Messages\ControlMessages.h" />
+    <ClCompile Include="Private\Otter\Networking\Client\TcpGameClient.c" />
+    <ClCompile Include="Private\Otter\Networking\Client\UdpGameClient.c" />
+    <ClCompile Include="Private\Otter\Networking\Messages\ControlMessages.c" />
+    <ClCompile Include="Private\Otter\Networking\Messages\Message.c" />
+    <ClCompile Include="Private\Otter\Networking\Server\TcpGameServer.c" />
+    <ClCompile Include="Private\Otter\Networking\Server\UdpGameServer.c" />
+    <ClCompile Include="Private\Otter\Networking\Shared\GameNetworking.c" />
     <ClCompile Include="pch.c">
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Otter\Networking\Server\GameServer.c" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OtterGameState\OtterGameState.vcxproj">
       <Project>{d70f673c-d082-4ecc-a9cb-fae152c09105}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
