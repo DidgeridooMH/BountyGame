@@ -62,7 +62,7 @@ Message* udp_game_server_get_message(UdpGameServer* server)
       if (server->clients[i].connected)
       {
         if (memcmp(
-                &server->clients[i].id, &message->header.entity, sizeof(GUID))
+                &server->clients[i].id, &message->header->entity, sizeof(GUID))
             == 0)
         {
           return message;
@@ -73,7 +73,7 @@ Message* udp_game_server_get_message(UdpGameServer* server)
         freeSpace = i;
       }
     }
-    server->clients[freeSpace].id        = message->header.entity;
+    server->clients[freeSpace].id        = message->header->entity;
     server->clients[freeSpace].address   = address;
     server->clients[freeSpace].connected = true;
   }

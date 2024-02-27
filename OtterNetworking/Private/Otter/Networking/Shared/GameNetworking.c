@@ -62,7 +62,7 @@ Message* game_networking_recv_message_tcp(SOCKET socket)
     return NULL;
   }
 
-  message->payload = malloc(message->header.payloadSize);
+  message->payload = malloc(message->header->payloadSize);
   if (message->payload == NULL)
   {
     fprintf(stderr, "Out of memory\n");
@@ -71,7 +71,7 @@ Message* game_networking_recv_message_tcp(SOCKET socket)
   }
 
   if (!game_networking_recv_packet(
-          socket, (char*) message->payload, message->header.payloadSize))
+          socket, (char*) message->payload, message->header->payloadSize))
   {
     fprintf(stderr, "Unable to receive payload of message.\n");
     free(message->payload);
@@ -85,38 +85,39 @@ Message* game_networking_recv_message_tcp(SOCKET socket)
 Message* game_networking_recv_message_udp(
     SOCKET socket, struct sockaddr_in* address)
 {
-  char buffer[2048] = {0};
-  int bufferLength  = sizeof(buffer);
-  if (game_networking_recv_datagram(socket, address, buffer, &bufferLength))
+  Message* message = malloc(2048);
+  if (message == NULL)
   {
-    Message* message = malloc(sizeof(Message));
-    if (message == NULL)
-    {
-      fprintf(stderr, "Out of memory");
-      return NULL;
-    }
-    memcpy(&message->header, buffer, sizeof(MessageHeader));
+    fprintf(stderr, "Out of memory");
+    return NULL;
+  }
 
-    if (bufferLength != message->header.payloadSize + sizeof(MessageHeader))
+  int bufferLength = 2048 - sizeof(Message);
+  if (game_networking_recv_datagram(
+          socket, address, (char*) message + sizeof(Message), &bufferLength))
+  {
+    message->header = (MessageHeader*) ((char*) message + sizeof(Message));
+    if (bufferLength != message->header->payloadSize + sizeof(MessageHeader))
     {
       fprintf(stderr, "Datagram did not contain a valid message.");
-      free(message);
+      message_destroy(message);
       return NULL;
     }
 
-    void* payload = malloc(message->header.payloadSize);
-    if (payload == NULL)
+    if (message->header->payloadSize > 0)
     {
-      fprintf(stderr, "Out of memory");
-      return NULL;
+      message->payload = (char*) message->header + sizeof(MessageHeader);
     }
-    memcpy(
-        payload, buffer + sizeof(MessageHeader), message->header.payloadSize);
-
-    message->payload = payload;
+    else
+    {
+      message->payload = NULL;
+    }
 
     return message;
   }
+
+  message_destroy(message);
+
   return NULL;
 }
 
@@ -150,22 +151,13 @@ void game_networking_send_message_tcp(SOCKET socket, const Message* message)
   if (message->payload != NULL)
   {
     game_networking_send_tcp(
-        socket, message->payload, message->header.payloadSize);
+        socket, message->payload, message->header->payloadSize);
   }
 }
 
 void game_networking_send_message_udp(
     SOCKET socket, const struct sockaddr_in* target, const Message* message)
 {
-  char buffer[2048] = {0};
-  assert(message->header.payloadSize + sizeof(MessageHeader) <= 2048);
-
-  memcpy(buffer, &message->header, sizeof(MessageHeader));
-  if (message->payload != NULL)
-  {
-    memcpy(buffer + sizeof(MessageHeader), message->payload,
-        message->header.payloadSize);
-  }
-  game_networking_send_udp(socket, target, buffer,
-      sizeof(MessageHeader) + message->header.payloadSize);
+  game_networking_send_udp(socket, target, message->header,
+      sizeof(MessageHeader) + message->header->payloadSize);
 }

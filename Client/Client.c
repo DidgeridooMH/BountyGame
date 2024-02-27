@@ -9,7 +9,7 @@ static uint32_t g_serverTickId = 0;
 
 static void handle_message(Message* message)
 {
-  switch (message->header.type)
+  switch (message->header->type)
   {
   case MT_PLAYER_POSITION:
     {
@@ -40,11 +40,12 @@ static void handle_message(Message* message)
     }
     break;
   default:
+    printf("Warning: Unknown message type %d\n", message->header->type);
     break;
   }
 
   int64_t ticksMissed =
-      (int64_t) message->header.tickId - (int64_t) g_serverTickId;
+      (int64_t) message->header->tickId - (int64_t) g_serverTickId;
   if (ticksMissed > 1)
   {
     printf("Missed %lld server ticks!!!\n", ticksMissed - 1);
@@ -53,7 +54,7 @@ static void handle_message(Message* message)
   {
     printf("Went backwards in time %lld server ticks!!!\n", ticksMissed);
   }
-  g_serverTickId = message->header.tickId;
+  g_serverTickId = message->header->tickId;
 }
 
 GUID g_clientGuid;
@@ -109,7 +110,7 @@ int WINAPI wWinMain(
     return -1;
   }
 
-  if (reply->header.type != MT_JOIN_RESPONSE
+  if (reply->header->type != MT_JOIN_RESPONSE
       || ((JoinResponseMessage*) reply->payload)->status != JOIN_STATUS_SUCCESS)
   {
     MessageBox(window, L"Server full.", L"Unable to join server", MB_ICONERROR);
@@ -120,7 +121,7 @@ int WINAPI wWinMain(
   }
 
   printf("Game joined!\n");
-  g_serverTickId = reply->header.tickId;
+  g_serverTickId = reply->header->tickId;
 
   message_destroy(reply);
 
@@ -134,8 +135,7 @@ int WINAPI wWinMain(
     while ((message = udp_game_client_get_message(&client)) != NULL)
     {
       handle_message(message);
-      free(message->payload);
-      free(message);
+      message_destroy(message);
     }
 
     LARGE_INTEGER frameStartTime;
@@ -159,15 +159,9 @@ int WINAPI wWinMain(
 
     if (lastInput.actions != g_input.actions)
     {
-      Message moveMessage            = {0};
-      moveMessage.header.entity      = g_clientGuid;
-      moveMessage.header.payloadSize = sizeof(PlayerMoveMessage);
-      moveMessage.header.type        = MT_PLAYER_MOVE;
-      moveMessage.header.tickId      = g_serverTickId;
-      PlayerMoveMessage payload      = {
-               .playerId = g_clientGuid, .direction = g_input};
-      moveMessage.payload = &payload;
-      udp_game_client_send_message(&client, &moveMessage);
+      Message* moveMessage = message_create_player_move(
+          &g_clientGuid, &g_clientGuid, g_input, g_serverTickId);
+      udp_game_client_send_message(&client, moveMessage);
 
       lastInput = g_input;
     }

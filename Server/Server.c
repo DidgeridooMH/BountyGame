@@ -18,7 +18,7 @@ static PlayerInput g_playerInput[MAX_PLAYERS];
 
 static void handle_message(UdpGameServer* server, Message* requestMessage)
 {
-  switch (requestMessage->header.type)
+  switch (requestMessage->header->type)
   {
   case MT_JOIN_REQUEST:
     {
@@ -28,7 +28,7 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
         if (!g_listOfPlayers[i].active)
         {
           g_listOfPlayers[i].active = true;
-          g_listOfPlayers[i].id     = requestMessage->header.entity;
+          g_listOfPlayers[i].id     = requestMessage->header->entity;
           g_listOfPlayers[i].x      = 50.0f;
           g_listOfPlayers[i].y      = 50.0f;
 
@@ -58,7 +58,7 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
         Message* responseMessage = message_create_join_response(
             &g_serverGuid, JOIN_STATUS_FAILED_TOO_MANY_PLAYERS, g_serverTickId);
         udp_game_server_send_message(
-            server, &requestMessage->header.entity, responseMessage);
+            server, &requestMessage->header->entity, responseMessage);
         message_destroy(responseMessage);
       }
     }
@@ -83,7 +83,7 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
     for (int i = 0; i < MAX_PLAYERS; i++)
     {
       if (g_listOfPlayers[i].active
-          && memcmp(&g_listOfPlayers[i].id, &requestMessage->header.entity,
+          && memcmp(&g_listOfPlayers[i].id, &requestMessage->header->entity,
                  sizeof(GUID))
                  == 0)
       {
@@ -99,24 +99,19 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
 
 static void broadcast_game_state(UdpGameServer* server)
 {
-  Message playerUpdate = {0};
-  memset(&playerUpdate.header.entity, 0, sizeof(GUID));
-  playerUpdate.header.type        = MT_PLAYER_POSITION;
-  playerUpdate.header.tickId      = g_serverTickId;
-  playerUpdate.header.payloadSize = sizeof(PlayerPositionMessage);
-
-  PlayerPositionMessage payload = {0};
-  playerUpdate.payload          = &payload;
+  Message* playerUpdate =
+      message_create_player_position(&g_serverGuid, g_serverTickId);
+  PlayerPositionMessage* payload = playerUpdate->payload;
 
   for (int i = 0; i < MAX_PLAYERS; i++)
   {
     if (g_listOfPlayers[i].active)
     {
-      payload.playerId = g_listOfPlayers[i].id;
-      payload.x        = g_listOfPlayers[i].x;
-      payload.y        = g_listOfPlayers[i].y;
+      payload->playerId = g_listOfPlayers[i].id;
+      payload->x        = g_listOfPlayers[i].x;
+      payload->y        = g_listOfPlayers[i].y;
 
-      udp_game_server_broadcast_message(server, &playerUpdate);
+      udp_game_server_broadcast_message(server, playerUpdate);
     }
   }
 }
@@ -167,8 +162,7 @@ int main(int argc, char** argv)
     while ((requestMessage = udp_game_server_get_message(&server)) != NULL)
     {
       handle_message(&server, requestMessage);
-      free(requestMessage->payload);
-      free(requestMessage);
+      message_destroy(requestMessage);
     }
 
     LARGE_INTEGER frameStartTime;

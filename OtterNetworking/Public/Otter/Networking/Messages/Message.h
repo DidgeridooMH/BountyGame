@@ -21,7 +21,7 @@ typedef struct MessageHeader
 
 typedef struct Message
 {
-  MessageHeader header;
+  MessageHeader* header;
   void* payload;
 } Message;
 

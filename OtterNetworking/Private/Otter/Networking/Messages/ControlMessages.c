@@ -15,12 +15,6 @@ Message* message_create_join_response(
     return NULL;
   }
 
-  message->payload = malloc(sizeof(JoinResponseMessage));
-  if (message->payload == NULL)
-  {
-    free(message);
-    return NULL;
-  }
   ((JoinResponseMessage*) message->payload)->status = status;
 
   return message;
