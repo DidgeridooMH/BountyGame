@@ -19,16 +19,18 @@ static PlayerInput g_playerInput[MAX_PLAYERS];
 static void broadcast_game_state(UdpGameServer* server)
 {
   Message* playerUpdate =
-      message_create_player_position(&g_serverGuid, g_serverTickId);
-  PlayerPositionMessage* payload = playerUpdate->payload;
+      message_create_player_attributes(&g_serverGuid, g_serverTickId);
+  PlayerAttributesMessage* payload = playerUpdate->payload;
 
   for (int i = 0; i < MAX_PLAYERS; i++)
   {
     if (g_listOfPlayers[i].active)
     {
-      payload->playerId = g_listOfPlayers[i].id;
-      payload->x        = g_listOfPlayers[i].x;
-      payload->y        = g_listOfPlayers[i].y;
+      payload->playerId  = g_listOfPlayers[i].id;
+      payload->positionX = g_listOfPlayers[i].positionX;
+      payload->positionY = g_listOfPlayers[i].positionY;
+      payload->velocityX = g_listOfPlayers[i].velocityX;
+      payload->velocityY = g_listOfPlayers[i].velocityY;
 
       udp_game_server_broadcast_message(server, playerUpdate);
     }
@@ -72,10 +74,10 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
       {
         if (!g_listOfPlayers[i].active)
         {
-          g_listOfPlayers[i].active = true;
-          g_listOfPlayers[i].x      = 50.0f;
-          g_listOfPlayers[i].y      = 50.0f;
-          g_listOfPlayers[i].id     = requestMessage->header->entity;
+          g_listOfPlayers[i].active    = true;
+          g_listOfPlayers[i].positionX = 50.0f;
+          g_listOfPlayers[i].positionY = 50.0f;
+          g_listOfPlayers[i].id        = requestMessage->header->entity;
 
           wchar_t guid[128];
           if (StringFromGUID2(
@@ -207,7 +209,7 @@ int main(int argc, char** argv)
     float timeSinceLastBroadcastSec =
         (float) (clientSendEndTime.QuadPart - clientSendTime.QuadPart)
         / timerFrequency.QuadPart;
-    if (timeSinceLastBroadcastSec > 1.0f / 8.0f)
+    if (timeSinceLastBroadcastSec > 1.0f / 64.0f)
     {
       handle_player_disconnect(
           &server, clientSendTime.QuadPart, timerFrequency.QuadPart);

@@ -6,13 +6,26 @@ void game_state_update(PlayerInput* playerInputs, float deltaTime)
 {
   for (int i = 0; i < MAX_PLAYERS; i++)
   {
-    if (g_listOfPlayers[i].active && playerInputs[i].actions > 0)
+    if (g_listOfPlayers[i].active)
     {
-      float deltaX = (float)(playerInputs[i].left * -1 + playerInputs[i].right);
-      float deltaY = (float)(playerInputs[i].up * -1 + playerInputs[i].down);
+      if (playerInputs != NULL)
+      {
+        float vx = (float) (playerInputs[i].left * -1 + playerInputs[i].right);
+        float vy = (float) (playerInputs[i].up * -1 + playerInputs[i].down);
 
-      g_listOfPlayers[i].x += deltaX * deltaTime * PLAYER_SPEED;
-      g_listOfPlayers[i].y += deltaY * deltaTime * PLAYER_SPEED;
+        if (vx != 0 && vy != 0)
+        {
+          float w = sqrtf(vx * vx + vy * vy);
+          vx /= w;
+          vy /= w;
+        }
+
+        g_listOfPlayers[i].velocityX = PLAYER_SPEED * vx;
+        g_listOfPlayers[i].velocityY = PLAYER_SPEED * vy;
+      }
+
+      g_listOfPlayers[i].positionX += g_listOfPlayers[i].velocityX * deltaTime;
+      g_listOfPlayers[i].positionY += g_listOfPlayers[i].velocityY * deltaTime;
     }
   }
 }

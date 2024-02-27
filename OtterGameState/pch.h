@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <time.h>
+#include <math.h>
 
 #define WIN32_LEAN_AND_MEAN
 // WinSock2 headers must be ordered in a specific way.

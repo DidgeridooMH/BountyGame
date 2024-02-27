@@ -33,10 +33,10 @@ static void game_window_draw(HWND window)
       {
         SelectObject(hdc, otherPlayers);
       }
-      Rectangle(hdc, (int) g_listOfPlayers[i].x - PLAYER_RECT_SIZE / 2,
-          (int) g_listOfPlayers[i].y - PLAYER_RECT_SIZE / 2,
-          (int) g_listOfPlayers[i].x + PLAYER_RECT_SIZE / 2,
-          (int) g_listOfPlayers[i].y + PLAYER_RECT_SIZE / 2);
+      Rectangle(hdc, (int) g_listOfPlayers[i].positionX - PLAYER_RECT_SIZE / 2,
+          (int) g_listOfPlayers[i].positionY - PLAYER_RECT_SIZE / 2,
+          (int) g_listOfPlayers[i].positionX + PLAYER_RECT_SIZE / 2,
+          (int) g_listOfPlayers[i].positionY + PLAYER_RECT_SIZE / 2);
     }
   }
 

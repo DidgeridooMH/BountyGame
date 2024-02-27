@@ -17,17 +17,17 @@ Message* message_create_player_move(
   return message;
 }
 
-Message* message_create_player_position(GUID* id, uint32_t tickId)
+Message* message_create_player_attributes(GUID* id, uint32_t tickId)
 {
   Message* message = message_create(
-      MT_PLAYER_POSITION, id, sizeof(PlayerPositionMessage), tickId);
+      MT_PLAYER_ATTRIBUTES, id, sizeof(PlayerAttributesMessage), tickId);
   if (message == NULL)
   {
     return NULL;
   }
 
-  PlayerPositionMessage* payload = message->payload;
-  memset(payload, 0, sizeof(PlayerPositionMessage));
+  PlayerAttributesMessage* payload = message->payload;
+  memset(payload, 0, sizeof(PlayerAttributesMessage));
 
   return message;
 }

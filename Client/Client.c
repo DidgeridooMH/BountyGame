@@ -1,4 +1,5 @@
 #include "Input/Input.h"
+#include "Otter/GameState/GameState.h"
 #include "Otter/GameState/Player/Player.h"
 #include "Otter/Networking/Client/UdpGameClient.h"
 #include "Otter/Networking/Messages/ControlMessages.h"
@@ -30,9 +31,9 @@ static void handle_message(Message* message)
 {
   switch (message->header->type)
   {
-  case MT_PLAYER_POSITION:
+  case MT_PLAYER_ATTRIBUTES:
     {
-      PlayerPositionMessage* payload = message->payload;
+      PlayerAttributesMessage* payload = message->payload;
 
       int playerPosition = -1;
       for (int i = 0; i < MAX_PLAYERS; i++)
@@ -52,10 +53,12 @@ static void handle_message(Message* message)
         }
       }
 
-      g_listOfPlayers[playerPosition].active = true;
-      g_listOfPlayers[playerPosition].id     = payload->playerId;
-      g_listOfPlayers[playerPosition].x      = payload->x;
-      g_listOfPlayers[playerPosition].y      = payload->y;
+      g_listOfPlayers[playerPosition].active    = true;
+      g_listOfPlayers[playerPosition].id        = payload->playerId;
+      g_listOfPlayers[playerPosition].positionX = payload->positionX;
+      g_listOfPlayers[playerPosition].positionY = payload->positionY;
+      g_listOfPlayers[playerPosition].velocityX = payload->velocityX;
+      g_listOfPlayers[playerPosition].velocityY = payload->velocityY;
     }
     break;
   case MT_PLAYER_LEFT:
@@ -250,10 +253,18 @@ int WINAPI wWinMain(
       .lastStateTime              = 0};
 
   QueryPerformanceCounter(&connection.lastHeartbeatTime);
-  connection.lastStateTime = connection.lastHeartbeatTime;
+  connection.lastStateTime    = connection.lastHeartbeatTime;
+  LARGE_INTEGER lastFrameTime = connection.lastStateTime;
   while (!game_window_process_message())
   {
     handle_connection(&connection, &client);
+
+    LARGE_INTEGER currentTime;
+    QueryPerformanceCounter(&currentTime);
+    float deltaTime = ((float) (currentTime.QuadPart - lastFrameTime.QuadPart)
+                       / g_timerFrequency.QuadPart);
+    game_state_update(NULL, deltaTime);
+    lastFrameTime = currentTime;
   }
 
   if (connection.state == CS_JOINED)

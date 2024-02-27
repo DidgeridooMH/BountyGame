@@ -10,12 +10,14 @@ typedef struct PlayerMoveMessage
   PlayerInput direction;
 } PlayerMoveMessage;
 
-typedef struct PlayerPositionMessage
+typedef struct PlayerAttributesMessage
 {
   GUID playerId;
-  float x;
-  float y;
-} PlayerPositionMessage;
+  float positionX;
+  float positionY;
+  float velocityX;
+  float velocityY;
+} PlayerAttributesMessage;
 
 typedef struct PlayerLeftMessage
 {
@@ -24,6 +26,6 @@ typedef struct PlayerLeftMessage
 
 OTTER_API Message* message_create_player_move(
     GUID* id, GUID* playerId, PlayerInput direction, uint32_t tickId);
-OTTER_API Message* message_create_player_position(GUID* id, uint32_t tickId);
+OTTER_API Message* message_create_player_attributes(GUID* id, uint32_t tickId);
 OTTER_API Message* message_create_player_left(
     GUID* id, GUID* playerId, uint32_t tickId);

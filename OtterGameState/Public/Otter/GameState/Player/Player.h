@@ -8,10 +8,12 @@
 // TODO: Make struct of lists for better cache utilization.
 typedef struct Player
 {
-  GUID id;
-  float x;
-  float y;
   bool active;
+  GUID id;
+  float positionX;
+  float positionY;
+  float velocityX;
+  float velocityY;
 } Player;
 
 OTTER_API extern Player g_listOfPlayers[MAX_PLAYERS];
