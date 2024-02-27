@@ -42,6 +42,11 @@ bool udp_game_server_create(
 
   freeaddrinfo(resolvedAddress);
 
+  for (int i = 0; i < MAX_CLIENTS; i++)
+  {
+    server->clients[i].connected = false;
+  }
+
   return true;
 }
 
@@ -98,7 +103,6 @@ void udp_game_server_broadcast_message(UdpGameServer* server, Message* message)
     {
       game_networking_send_message_udp(
           server->socket, &server->clients[i].address, message);
-      break;
     }
   }
 }

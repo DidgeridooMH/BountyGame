@@ -158,6 +158,8 @@ void game_networking_send_message_udp(
     SOCKET socket, const struct sockaddr_in* target, const Message* message)
 {
   char buffer[2048] = {0};
+  assert(message->header.payloadSize + sizeof(MessageHeader) <= 2048);
+
   memcpy(buffer, &message->header, sizeof(MessageHeader));
   if (message->payload != NULL)
   {

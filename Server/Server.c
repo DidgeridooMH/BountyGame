@@ -9,31 +9,12 @@
 
 GUID g_serverGuid = {0, 0, 0, 0};
 
+static uint32_t g_serverTickId = 0;
+
 static bool g_running = true;
 
 static LARGE_INTEGER g_playerHeartbeat[MAX_PLAYERS];
 static PlayerInput g_playerInput[MAX_PLAYERS];
-
-static void handle_client_disconnected(int clientId)
-{
-  /*for (int i = 0; i < 16; i++)
-  {
-    if (g_clientList[i].connected && g_clientList[i].networkId == clientId)
-    {
-      wchar_t guid[128];
-      if (StringFromGUID2(
-              &g_clientList[i].id, guid, sizeof(guid) / sizeof(guid[0]))
-          == 0)
-      {
-        wcscpy_s(guid, sizeof(guid) / sizeof(guid[0]), L"(unknown)");
-      }
-      wprintf(L"Player %s left the game\n", guid);
-
-      g_clientList[i].connected = false;
-      g_listOfPlayers[i].active = false;
-    }
-  }*/
-}
 
 static void handle_message(UdpGameServer* server, Message* requestMessage)
 {
@@ -60,8 +41,8 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
           }
           wprintf(L"Player %s joined the game\n", guid);
 
-          Message* responseMessage =
-              message_create_join_response(&g_serverGuid, JOIN_STATUS_SUCCESS);
+          Message* responseMessage = message_create_join_response(
+              &g_serverGuid, JOIN_STATUS_SUCCESS, g_serverTickId);
           udp_game_server_send_message(
               server, &g_listOfPlayers[i].id, responseMessage);
           message_destroy(responseMessage);
@@ -75,7 +56,7 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
       if (!playerJoined)
       {
         Message* responseMessage = message_create_join_response(
-            &g_serverGuid, JOIN_STATUS_FAILED_TOO_MANY_PLAYERS);
+            &g_serverGuid, JOIN_STATUS_FAILED_TOO_MANY_PLAYERS, g_serverTickId);
         udp_game_server_send_message(
             server, &requestMessage->header.entity, responseMessage);
         message_destroy(responseMessage);
@@ -116,6 +97,53 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
   }
 }
 
+static void broadcast_game_state(UdpGameServer* server)
+{
+  Message playerUpdate = {0};
+  memset(&playerUpdate.header.entity, 0, sizeof(GUID));
+  playerUpdate.header.type        = MT_PLAYER_POSITION;
+  playerUpdate.header.tickId      = g_serverTickId;
+  playerUpdate.header.payloadSize = sizeof(PlayerPositionMessage);
+
+  PlayerPositionMessage payload = {0};
+  playerUpdate.payload          = &payload;
+
+  for (int i = 0; i < MAX_PLAYERS; i++)
+  {
+    if (g_listOfPlayers[i].active)
+    {
+      payload.playerId = g_listOfPlayers[i].id;
+      payload.x        = g_listOfPlayers[i].x;
+      payload.y        = g_listOfPlayers[i].y;
+
+      udp_game_server_broadcast_message(server, &playerUpdate);
+    }
+  }
+}
+
+static void handle_player_disconnect(
+    UdpGameServer* server, LONGLONG currentTime, LONGLONG timerFrequency)
+{
+  for (int i = 0; i < MAX_PLAYERS; i++)
+  {
+    if (g_listOfPlayers[i].active
+        && (float) (currentTime - g_playerHeartbeat->QuadPart) / timerFrequency
+               > 3.0f)
+    {
+      g_listOfPlayers[i].active = false;
+      udp_game_server_disconnect_client(server, &g_listOfPlayers[i].id);
+      wchar_t guid[128];
+      if (StringFromGUID2(
+              &g_listOfPlayers[i].id, guid, sizeof(guid) / sizeof(guid[0]))
+          == 0)
+      {
+        wcscpy_s(guid, sizeof(guid) / sizeof(guid[0]), L"(unknown)");
+      }
+      wprintf(L"Player %s left the game\n", guid);
+    }
+  }
+}
+
 int main(int argc, char** argv)
 {
   UdpGameServer server;
@@ -136,7 +164,7 @@ int main(int argc, char** argv)
   while (g_running)
   {
     Message* requestMessage = NULL;
-    if ((requestMessage = udp_game_server_get_message(&server)) != NULL)
+    while ((requestMessage = udp_game_server_get_message(&server)) != NULL)
     {
       handle_message(&server, requestMessage);
       free(requestMessage->payload);
@@ -153,51 +181,20 @@ int main(int argc, char** argv)
 
     LARGE_INTEGER clientSendEndTime;
     QueryPerformanceCounter(&clientSendEndTime);
-    if (((clientSendEndTime.QuadPart - clientSendTime.QuadPart) * 1000.0f
-            / timerFrequency.QuadPart)
-        > (1000.0f / 64.0f))
+
+    float timeSinceLastBroadcastSec =
+        (float) (clientSendEndTime.QuadPart - clientSendTime.QuadPart)
+        / timerFrequency.QuadPart;
+    if (timeSinceLastBroadcastSec > 1.0f / 128.0f)
     {
-      for (int i = 0; i < MAX_PLAYERS; i++)
-      {
-        if (g_listOfPlayers[i].active
-            && (float) (clientSendEndTime.QuadPart
-                        - g_playerHeartbeat->QuadPart)
-                       / timerFrequency.QuadPart
-                   > 3.0f)
-        {
-          g_listOfPlayers[i].active = false;
-          udp_game_server_disconnect_client(&server, &g_listOfPlayers[i].id);
-          wchar_t guid[128];
-          if (StringFromGUID2(
-                  &g_listOfPlayers[i].id, guid, sizeof(guid) / sizeof(guid[0]))
-              == 0)
-          {
-            wcscpy_s(guid, sizeof(guid) / sizeof(guid[0]), L"(unknown)");
-          }
-          wprintf(L"Player %s left the game\n", guid);
-        }
-      }
+      handle_player_disconnect(
+          &server, clientSendTime.QuadPart, timerFrequency.QuadPart);
 
-      Message playerUpdate = {0};
-      memset(&playerUpdate.header.entity, 0, sizeof(GUID));
-      playerUpdate.header.type        = MT_PLAYER_POSITION;
-      playerUpdate.header.payloadSize = sizeof(PlayerPositionMessage);
+      broadcast_game_state(&server);
 
-      PlayerPositionMessage payload = {0};
-      playerUpdate.payload          = &payload;
+      clientSendTime = clientSendEndTime;
 
-      for (int i = 0; i < MAX_PLAYERS; i++)
-      {
-        if (g_listOfPlayers[i].active)
-        {
-          payload.playerId = g_listOfPlayers[i].id;
-          payload.x        = g_listOfPlayers[i].x;
-          payload.y        = g_listOfPlayers[i].y;
-
-          udp_game_server_broadcast_message(&server, &playerUpdate);
-        }
-      }
-      QueryPerformanceCounter(&clientSendTime);
+      g_serverTickId += 1;
     }
   }
 

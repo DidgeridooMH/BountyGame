@@ -5,6 +5,8 @@
 #include "Otter/Networking/Messages/EntityMessages.h"
 #include "Window/GameWindow.h"
 
+static uint32_t g_serverTickId = 0;
+
 static void handle_message(Message* message)
 {
   switch (message->header.type)
@@ -40,9 +42,26 @@ static void handle_message(Message* message)
   default:
     break;
   }
+
+  int64_t ticksMissed =
+      (int64_t) message->header.tickId - (int64_t) g_serverTickId;
+  if (ticksMissed > 1)
+  {
+    printf("Missed %lld server ticks!!!\n", ticksMissed - 1);
+  }
+  else if (ticksMissed < 0)
+  {
+    printf("Went backwards in time %lld server ticks!!!\n", ticksMissed);
+  }
+  g_serverTickId = message->header.tickId;
 }
 
 GUID g_clientGuid;
+
+int main()
+{
+  wWinMain(GetModuleHandle(NULL), NULL, L"", 1);
+}
 
 int WINAPI wWinMain(
     HINSTANCE instance, HINSTANCE prevInstance, LPWSTR cmdLine, int cmdShow)
@@ -84,33 +103,35 @@ int WINAPI wWinMain(
   if (reply == NULL)
   {
     printf("No join response found. Oops\n");
+    message_destroy(reply);
     udp_game_client_destroy(&client);
     game_window_destroy(window);
     return -1;
   }
 
-  if (reply->header.type == MT_JOIN_RESPONSE
-      && ((JoinResponseMessage*) reply->payload)->status == JOIN_STATUS_SUCCESS)
-  {
-    printf("Game joined!");
-  }
-  else
+  if (reply->header.type != MT_JOIN_RESPONSE
+      || ((JoinResponseMessage*) reply->payload)->status != JOIN_STATUS_SUCCESS)
   {
     MessageBox(window, L"Server full.", L"Unable to join server", MB_ICONERROR);
+    message_destroy(reply);
+    udp_game_client_destroy(&client);
+    game_window_destroy(window);
     return -1;
   }
 
-  PlayerInput lastInput = {0};
-  LARGE_INTEGER startTime;
-  QueryPerformanceCounter(&startTime);
+  printf("Game joined!\n");
+  g_serverTickId = reply->header.tickId;
 
+  message_destroy(reply);
+
+  PlayerInput lastInput = {0};
   LARGE_INTEGER lastHeartBeatTime;
   QueryPerformanceCounter(&lastHeartBeatTime);
   while (!game_window_process_message())
   {
     Message* message;
     // TODO: This needs to split to a separate thread.
-    if ((message = udp_game_client_get_message(&client)) != NULL)
+    while ((message = udp_game_client_get_message(&client)) != NULL)
     {
       handle_message(message);
       free(message->payload);
@@ -124,8 +145,9 @@ int WINAPI wWinMain(
             / timerFrequency.QuadPart
         > 0.5f)
     {
-      lastHeartBeatTime  = frameStartTime;
-      Message* heartbeat = message_create_heartbeat(&g_clientGuid);
+      lastHeartBeatTime = frameStartTime;
+      Message* heartbeat =
+          message_create_heartbeat(&g_clientGuid, g_serverTickId);
       if (heartbeat == NULL)
       {
         // TODO: handle this.
@@ -135,15 +157,13 @@ int WINAPI wWinMain(
       udp_game_client_send_message(&client, heartbeat);
     }
 
-    float deltaTime = (float) (frameStartTime.QuadPart - startTime.QuadPart)
-                    / timerFrequency.QuadPart;
-
     if (lastInput.actions != g_input.actions)
     {
       Message moveMessage            = {0};
       moveMessage.header.entity      = g_clientGuid;
       moveMessage.header.payloadSize = sizeof(PlayerMoveMessage);
       moveMessage.header.type        = MT_PLAYER_MOVE;
+      moveMessage.header.tickId      = g_serverTickId;
       PlayerMoveMessage payload      = {
                .playerId = g_clientGuid, .direction = g_input};
       moveMessage.payload = &payload;
@@ -151,8 +171,6 @@ int WINAPI wWinMain(
 
       lastInput = g_input;
     }
-
-    startTime = frameStartTime;
   }
 
   udp_game_client_destroy(&client);

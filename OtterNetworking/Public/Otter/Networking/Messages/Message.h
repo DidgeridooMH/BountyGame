@@ -15,6 +15,7 @@ typedef struct MessageHeader
 {
   GUID entity;
   enum MessageType type;
+  uint32_t tickId;
   int payloadSize;
 } MessageHeader;
 
@@ -25,5 +26,5 @@ typedef struct Message
 } Message;
 
 OTTER_API Message* message_create(
-    enum MessageType type, GUID* guid, int payloadSize);
+    enum MessageType type, GUID* guid, int payloadSize, uint32_t tickId);
 OTTER_API void message_destroy(Message* message);
