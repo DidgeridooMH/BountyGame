@@ -16,6 +16,51 @@ static bool g_running = true;
 static LARGE_INTEGER g_playerHeartbeat[MAX_PLAYERS];
 static PlayerInput g_playerInput[MAX_PLAYERS];
 
+static void broadcast_game_state(UdpGameServer* server)
+{
+  Message* playerUpdate =
+      message_create_player_position(&g_serverGuid, g_serverTickId);
+  PlayerPositionMessage* payload = playerUpdate->payload;
+
+  for (int i = 0; i < MAX_PLAYERS; i++)
+  {
+    if (g_listOfPlayers[i].active)
+    {
+      payload->playerId = g_listOfPlayers[i].id;
+      payload->x        = g_listOfPlayers[i].x;
+      payload->y        = g_listOfPlayers[i].y;
+
+      udp_game_server_broadcast_message(server, playerUpdate);
+    }
+  }
+}
+
+static void disconnect_player(UdpGameServer* server, Player* player)
+{
+  player->active = false;
+  udp_game_server_disconnect_client(server, &player->id);
+  wchar_t guid[128];
+  if (StringFromGUID2(&player->id, guid, sizeof(guid) / sizeof(guid[0])) == 0)
+  {
+    wcscpy_s(guid, sizeof(guid) / sizeof(guid[0]), L"(unknown)");
+  }
+  wprintf(L"Player %s left the game\n", guid);
+}
+
+static void handle_player_disconnect(
+    UdpGameServer* server, LONGLONG currentTime, LONGLONG timerFrequency)
+{
+  for (int i = 0; i < MAX_PLAYERS; i++)
+  {
+    if (g_listOfPlayers[i].active
+        && (float) (currentTime - g_playerHeartbeat->QuadPart) / timerFrequency
+               > 3.0f)
+    {
+      disconnect_player(server, &g_listOfPlayers[i]);
+    }
+  }
+}
+
 static void handle_message(UdpGameServer* server, Message* requestMessage)
 {
   switch (requestMessage->header->type)
@@ -63,6 +108,30 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
       }
     }
     break;
+  case MT_LEAVE_REQUEST:
+    for (int i = 0; i < MAX_PLAYERS; i++)
+    {
+      if (g_listOfPlayers[i].active
+          && memcmp(&g_listOfPlayers[i].id, &requestMessage->header->entity,
+                 sizeof(GUID))
+                 == 0)
+      {
+        disconnect_player(server, &g_listOfPlayers[i]);
+
+        Message* disconnectMessage = message_create_player_left(
+            &g_serverGuid, &requestMessage->header->entity, g_serverTickId);
+        if (disconnectMessage != NULL)
+        {
+          udp_game_server_broadcast_message(server, disconnectMessage);
+          message_destroy(disconnectMessage);
+        }
+        else
+        {
+          MessageBox(NULL, L"Out of memory", L"Internal error", MB_ICONERROR);
+        }
+      }
+    }
+    break;
   case MT_PLAYER_MOVE:
     {
       PlayerMoveMessage* moveMessage = requestMessage->payload;
@@ -94,48 +163,6 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
     break;
   default:
     break;
-  }
-}
-
-static void broadcast_game_state(UdpGameServer* server)
-{
-  Message* playerUpdate =
-      message_create_player_position(&g_serverGuid, g_serverTickId);
-  PlayerPositionMessage* payload = playerUpdate->payload;
-
-  for (int i = 0; i < MAX_PLAYERS; i++)
-  {
-    if (g_listOfPlayers[i].active)
-    {
-      payload->playerId = g_listOfPlayers[i].id;
-      payload->x        = g_listOfPlayers[i].x;
-      payload->y        = g_listOfPlayers[i].y;
-
-      udp_game_server_broadcast_message(server, playerUpdate);
-    }
-  }
-}
-
-static void handle_player_disconnect(
-    UdpGameServer* server, LONGLONG currentTime, LONGLONG timerFrequency)
-{
-  for (int i = 0; i < MAX_PLAYERS; i++)
-  {
-    if (g_listOfPlayers[i].active
-        && (float) (currentTime - g_playerHeartbeat->QuadPart) / timerFrequency
-               > 3.0f)
-    {
-      g_listOfPlayers[i].active = false;
-      udp_game_server_disconnect_client(server, &g_listOfPlayers[i].id);
-      wchar_t guid[128];
-      if (StringFromGUID2(
-              &g_listOfPlayers[i].id, guid, sizeof(guid) / sizeof(guid[0]))
-          == 0)
-      {
-        wcscpy_s(guid, sizeof(guid) / sizeof(guid[0]), L"(unknown)");
-      }
-      wprintf(L"Player %s left the game\n", guid);
-    }
   }
 }
 

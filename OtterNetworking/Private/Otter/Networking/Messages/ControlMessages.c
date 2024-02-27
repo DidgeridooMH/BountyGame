@@ -24,3 +24,8 @@ Message* message_create_heartbeat(GUID* id, uint32_t tickId)
 {
   return message_create(MT_HEARTBEAT, id, 0, tickId);
 }
+
+Message* message_create_leave_request(GUID* id)
+{
+  return message_create(MT_LEAVE_REQUEST, id, 0, 0);
+}

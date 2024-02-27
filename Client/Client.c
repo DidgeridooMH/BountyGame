@@ -12,9 +12,19 @@ enum ConnectionState
   CS_JOINED
 };
 
+typedef struct Connection
+{
+  enum ConnectionState state;
+  PlayerInput lastInput;
+  LARGE_INTEGER lastHeartbeatTime;
+  LARGE_INTEGER lastStateTime;
+} Connection;
+
 GUID g_clientGuid;
 
-static uint32_t g_serverTickId = 0;
+static uint32_t g_serverTickId;
+
+static LARGE_INTEGER g_timerFrequency;
 
 static void handle_message(Message* message)
 {
@@ -46,6 +56,20 @@ static void handle_message(Message* message)
       g_listOfPlayers[playerPosition].id     = payload->playerId;
       g_listOfPlayers[playerPosition].x      = payload->x;
       g_listOfPlayers[playerPosition].y      = payload->y;
+    }
+    break;
+  case MT_PLAYER_LEFT:
+    {
+      PlayerLeftMessage* payload = message->payload;
+      for (int i = 0; i < MAX_PLAYERS; i++)
+      {
+        if (g_listOfPlayers[i].active
+            && memcmp(&g_listOfPlayers[i].id, &payload->playerId, sizeof(GUID))
+                   == 0)
+        {
+          g_listOfPlayers[i].active = false;
+        }
+      }
     }
     break;
   default:
@@ -94,16 +118,13 @@ static bool send_heartbeat(UdpGameClient* client)
   return true;
 }
 
-static void handle_connection(enum ConnectionState connectionState,
-    PlayerInput* lastInput, LARGE_INTEGER lastHeartbeatTime,
-    LARGE_INTEGER lastStateTime, LARGE_INTEGER timerFrequency,
-    UdpGameClient* client)
+static void handle_connection(Connection* connection, UdpGameClient* client)
 {
-  switch (connectionState)
+  switch (connection->state)
   {
   case CS_NOT_JOINED:
     {
-      QueryPerformanceCounter(&lastStateTime);
+      QueryPerformanceCounter(&connection->lastStateTime);
 
       for (int i = 0; i < MAX_PLAYERS; i++)
       {
@@ -116,7 +137,7 @@ static void handle_connection(enum ConnectionState connectionState,
       udp_game_client_send_message(client, joinMessage);
       message_destroy(joinMessage);
 
-      connectionState = CS_JOINING;
+      connection->state = CS_JOINING;
 
       break;
     }
@@ -125,8 +146,8 @@ static void handle_connection(enum ConnectionState connectionState,
       LARGE_INTEGER currentTime;
       QueryPerformanceCounter(&currentTime);
 
-      if (((float) (currentTime.QuadPart - lastStateTime.QuadPart)
-              / timerFrequency.QuadPart)
+      if (((float) (currentTime.QuadPart - connection->lastStateTime.QuadPart)
+              / g_timerFrequency.QuadPart)
           < 3.0f)
       {
         Message* reply = NULL;
@@ -139,9 +160,9 @@ static void handle_connection(enum ConnectionState connectionState,
             printf("Game joined!\n");
             g_serverTickId = reply->header->tickId;
 
-            connectionState = CS_JOINED;
+            connection->state = CS_JOINED;
 
-            QueryPerformanceCounter(&lastStateTime);
+            QueryPerformanceCounter(&connection->lastStateTime);
           }
 
           message_destroy(reply);
@@ -149,7 +170,7 @@ static void handle_connection(enum ConnectionState connectionState,
       }
       else
       {
-        connectionState = CS_NOT_JOINED;
+        connection->state = CS_NOT_JOINED;
       }
 
       break;
@@ -160,36 +181,36 @@ static void handle_connection(enum ConnectionState connectionState,
       QueryPerformanceCounter(&frameStartTime);
 
       float stateDeltaTime =
-          (float) (frameStartTime.QuadPart - lastStateTime.QuadPart)
-          / timerFrequency.QuadPart;
+          (float) (frameStartTime.QuadPart - connection->lastStateTime.QuadPart)
+          / g_timerFrequency.QuadPart;
       if (processMessages(client))
       {
-        lastStateTime = frameStartTime;
+        connection->lastStateTime = frameStartTime;
       }
       else if (stateDeltaTime > 5.0f)
       {
-        connectionState = CS_NOT_JOINED;
+        connection->state = CS_NOT_JOINED;
       }
 
-      float deltaTime =
-          (float) (frameStartTime.QuadPart - lastHeartbeatTime.QuadPart)
-          / timerFrequency.QuadPart;
+      float deltaTime = (float) (frameStartTime.QuadPart
+                                 - connection->lastHeartbeatTime.QuadPart)
+                      / g_timerFrequency.QuadPart;
       if (deltaTime > 0.5f)
       {
         if (!send_heartbeat(client))
         {
           break;
         }
-        lastHeartbeatTime = frameStartTime;
+        connection->lastHeartbeatTime = frameStartTime;
       }
 
-      if (lastInput->actions != g_input.actions)
+      if (connection->lastInput.actions != g_input.actions)
       {
         Message* moveMessage = message_create_player_move(
             &g_clientGuid, &g_clientGuid, g_input, g_serverTickId);
         udp_game_client_send_message(client, moveMessage);
 
-        *lastInput = g_input;
+        connection->lastInput = g_input;
       }
       break;
     }
@@ -209,8 +230,7 @@ int WINAPI wWinMain(
   (void) cmdLine;
   (void) cmdShow;
 
-  LARGE_INTEGER timerFrequency;
-  QueryPerformanceFrequency(&timerFrequency);
+  QueryPerformanceFrequency(&g_timerFrequency);
 
   HWND window = game_window_create();
 
@@ -231,17 +251,26 @@ int WINAPI wWinMain(
     return -1;
   }
 
-  enum ConnectionState connectionState = CS_NOT_JOINED;
+  Connection connection = {.state = CS_NOT_JOINED,
+      .lastInput                  = {0},
+      .lastHeartbeatTime          = 0,
+      .lastStateTime              = 0};
 
-  PlayerInput lastInput = {0};
-  LARGE_INTEGER lastHeartbeatTime;
-  LARGE_INTEGER lastStateTime;
-  QueryPerformanceCounter(&lastHeartbeatTime);
-  lastStateTime = lastHeartbeatTime;
+  QueryPerformanceCounter(&connection.lastHeartbeatTime);
+  connection.lastStateTime = connection.lastHeartbeatTime;
   while (!game_window_process_message())
   {
-    handle_connection(connectionState, &lastInput, lastHeartbeatTime,
-        lastStateTime, timerFrequency, &client);
+    handle_connection(&connection, &client);
+  }
+
+  if (connection.state == CS_JOINED)
+  {
+    Message* disconnectMessage = message_create_leave_request(&g_clientGuid);
+    if (disconnectMessage != NULL)
+    {
+      udp_game_client_send_message(&client, disconnectMessage);
+      message_destroy(disconnectMessage);
+    }
   }
 
   udp_game_client_destroy(&client);

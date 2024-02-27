@@ -31,3 +31,18 @@ Message* message_create_player_position(GUID* id, uint32_t tickId)
 
   return message;
 }
+
+Message* message_create_player_left(GUID* id, GUID* playerId, uint32_t tickId)
+{
+  Message* message =
+      message_create(MT_PLAYER_LEFT, id, sizeof(PlayerLeftMessage), tickId);
+  if (message == NULL)
+  {
+    return NULL;
+  }
+
+  PlayerLeftMessage* payload = message->payload;
+  payload->playerId          = *playerId;
+
+  return message;
+}
