@@ -5,6 +5,15 @@
 #include "Otter/Networking/Messages/EntityMessages.h"
 #include "Window/GameWindow.h"
 
+enum ConnectionState
+{
+  CS_NOT_JOINED,
+  CS_JOINING,
+  CS_JOINED
+};
+
+GUID g_clientGuid;
+
 static uint32_t g_serverTickId = 0;
 
 static void handle_message(Message* message)
@@ -57,7 +66,135 @@ static void handle_message(Message* message)
   g_serverTickId = message->header->tickId;
 }
 
-GUID g_clientGuid;
+static bool processMessages(UdpGameClient* client)
+{
+  bool messageReceived = false;
+  Message* message;
+  while ((message = udp_game_client_get_message(client)) != NULL)
+  {
+    messageReceived = true;
+    handle_message(message);
+    message_destroy(message);
+  }
+  return messageReceived;
+}
+
+static bool send_heartbeat(UdpGameClient* client)
+{
+  Message* heartbeat = message_create_heartbeat(&g_clientGuid, g_serverTickId);
+  if (heartbeat != NULL)
+  {
+    udp_game_client_send_message(client, heartbeat);
+  }
+  else
+  {
+    MessageBox(NULL, L"Out of memory", L"Internal error", MB_ICONERROR);
+    return false;
+  }
+  return true;
+}
+
+static void handle_connection(enum ConnectionState connectionState,
+    PlayerInput* lastInput, LARGE_INTEGER lastHeartbeatTime,
+    LARGE_INTEGER lastStateTime, LARGE_INTEGER timerFrequency,
+    UdpGameClient* client)
+{
+  switch (connectionState)
+  {
+  case CS_NOT_JOINED:
+    {
+      QueryPerformanceCounter(&lastStateTime);
+
+      for (int i = 0; i < MAX_PLAYERS; i++)
+      {
+        g_listOfPlayers[i].active = false;
+      }
+
+      printf("Connecting to game...\n");
+
+      Message* joinMessage = message_create_join_request(&g_clientGuid);
+      udp_game_client_send_message(client, joinMessage);
+      message_destroy(joinMessage);
+
+      connectionState = CS_JOINING;
+
+      break;
+    }
+  case CS_JOINING:
+    {
+      LARGE_INTEGER currentTime;
+      QueryPerformanceCounter(&currentTime);
+
+      if (((float) (currentTime.QuadPart - lastStateTime.QuadPart)
+              / timerFrequency.QuadPart)
+          < 3.0f)
+      {
+        Message* reply = NULL;
+        while ((reply = udp_game_client_get_message(client)) != NULL)
+        {
+          if (reply->header->type == MT_JOIN_RESPONSE
+              && ((JoinResponseMessage*) reply->payload)->status
+                     == JOIN_STATUS_SUCCESS)
+          {
+            printf("Game joined!\n");
+            g_serverTickId = reply->header->tickId;
+
+            connectionState = CS_JOINED;
+
+            QueryPerformanceCounter(&lastStateTime);
+          }
+
+          message_destroy(reply);
+        }
+      }
+      else
+      {
+        connectionState = CS_NOT_JOINED;
+      }
+
+      break;
+    }
+  case CS_JOINED:
+    {
+      LARGE_INTEGER frameStartTime;
+      QueryPerformanceCounter(&frameStartTime);
+
+      float stateDeltaTime =
+          (float) (frameStartTime.QuadPart - lastStateTime.QuadPart)
+          / timerFrequency.QuadPart;
+      if (processMessages(client))
+      {
+        lastStateTime = frameStartTime;
+      }
+      else if (stateDeltaTime > 5.0f)
+      {
+        connectionState = CS_NOT_JOINED;
+      }
+
+      float deltaTime =
+          (float) (frameStartTime.QuadPart - lastHeartbeatTime.QuadPart)
+          / timerFrequency.QuadPart;
+      if (deltaTime > 0.5f)
+      {
+        if (!send_heartbeat(client))
+        {
+          break;
+        }
+        lastHeartbeatTime = frameStartTime;
+      }
+
+      if (lastInput->actions != g_input.actions)
+      {
+        Message* moveMessage = message_create_player_move(
+            &g_clientGuid, &g_clientGuid, g_input, g_serverTickId);
+        udp_game_client_send_message(client, moveMessage);
+
+        *lastInput = g_input;
+      }
+      break;
+    }
+  }
+}
 
 int main()
 {
@@ -86,85 +223,25 @@ int WINAPI wWinMain(
     return -1;
   }
 
-  CoCreateGuid(&g_clientGuid);
-
-  Message* joinMessage = message_create_join_request(&g_clientGuid);
-  udp_game_client_send_message(&client, joinMessage);
-  message_destroy(joinMessage);
-
-  // TODO: This should async and have a couple seconds of wait time.
-  Message* reply = NULL;
-  int timeout    = 0;
-  while ((reply = udp_game_client_get_message(&client)) == NULL && timeout < 3)
+  if (FAILED(CoCreateGuid(&g_clientGuid)))
   {
-    Sleep(1000);
-    timeout += 1;
-  }
-
-  if (reply == NULL)
-  {
-    printf("No join response found. Oops\n");
-    message_destroy(reply);
-    udp_game_client_destroy(&client);
+    MessageBox(window, L"Unable to create GUID for client.", L"Internal Error!",
+        MB_ICONERROR);
     game_window_destroy(window);
     return -1;
   }
 
-  if (reply->header->type != MT_JOIN_RESPONSE
-      || ((JoinResponseMessage*) reply->payload)->status != JOIN_STATUS_SUCCESS)
-  {
-    MessageBox(window, L"Server full.", L"Unable to join server", MB_ICONERROR);
-    message_destroy(reply);
-    udp_game_client_destroy(&client);
-    game_window_destroy(window);
-    return -1;
-  }
-
-  printf("Game joined!\n");
-  g_serverTickId = reply->header->tickId;
-
-  message_destroy(reply);
+  enum ConnectionState connectionState = CS_NOT_JOINED;
 
   PlayerInput lastInput = {0};
-  LARGE_INTEGER lastHeartBeatTime;
-  QueryPerformanceCounter(&lastHeartBeatTime);
+  LARGE_INTEGER lastHeartbeatTime;
+  LARGE_INTEGER lastStateTime;
+  QueryPerformanceCounter(&lastHeartbeatTime);
+  lastStateTime = lastHeartbeatTime;
   while (!game_window_process_message())
   {
-    Message* message;
-    // TODO: This needs to split to a separate thread.
-    while ((message = udp_game_client_get_message(&client)) != NULL)
-    {
-      handle_message(message);
-      message_destroy(message);
-    }
-
-    LARGE_INTEGER frameStartTime;
-    QueryPerformanceCounter(&frameStartTime);
-
-    if ((float) (frameStartTime.QuadPart - lastHeartBeatTime.QuadPart)
-            / timerFrequency.QuadPart
-        > 0.5f)
-    {
-      lastHeartBeatTime = frameStartTime;
-      Message* heartbeat =
-          message_create_heartbeat(&g_clientGuid, g_serverTickId);
-      if (heartbeat == NULL)
-      {
-        // TODO: handle this.
-        return -1;
-      }
-
-      udp_game_client_send_message(&client, heartbeat);
-    }
-
-    if (lastInput.actions != g_input.actions)
-    {
-      Message* moveMessage = message_create_player_move(
-          &g_clientGuid, &g_clientGuid, g_input, g_serverTickId);
-      udp_game_client_send_message(&client, moveMessage);
-
-      lastInput = g_input;
-    }
+    handle_connection(connectionState, &lastInput, lastHeartbeatTime,
+        lastStateTime, timerFrequency, &client);
   }
 
   udp_game_client_destroy(&client);
