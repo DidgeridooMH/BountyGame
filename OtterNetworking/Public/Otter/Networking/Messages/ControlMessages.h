@@ -12,10 +12,11 @@ enum JoinStatus
 typedef struct JoinResponseMessage
 {
   enum JoinStatus status;
+  GUID clientId;
 } JoinResponseMessage;
 
-OTTER_API Message* message_create_join_request(GUID* id);
+OTTER_API Message* message_create_join_request();
 OTTER_API Message* message_create_join_response(
-    GUID* id, enum JoinStatus status, uint32_t tickId);
+    GUID* id, enum JoinStatus status, GUID* clientId, uint32_t tickId);
 OTTER_API Message* message_create_heartbeat(GUID* id, uint32_t tickId);
 OTTER_API Message* message_create_leave_request(GUID* id);

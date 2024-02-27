@@ -56,26 +56,40 @@ Message* udp_game_server_get_message(UdpGameServer* server)
   Message* message = game_networking_recv_message_udp(server->socket, &address);
   if (message != NULL)
   {
-    int freeSpace = 0;
+    int freeSpace = -1;
     for (int i = 0; i < MAX_CLIENTS; i++)
     {
       if (server->clients[i].connected)
       {
-        if (memcmp(
-                &server->clients[i].id, &message->header->entity, sizeof(GUID))
-            == 0)
+        if (memcmp(&server->clients[i].address, &address,
+                sizeof(struct sockaddr_in))
+                == 0
+            && memcmp(&server->clients[i].id, &message->header->entity,
+                   sizeof(GUID))
+                   == 0)
         {
           return message;
         }
       }
-      else
+      else if (message->header->type == MT_JOIN_REQUEST)
       {
         freeSpace = i;
       }
     }
-    server->clients[freeSpace].id        = message->header->entity;
-    server->clients[freeSpace].address   = address;
-    server->clients[freeSpace].connected = true;
+
+    // TODO: Look at a matchmaking list to make sure that the client actually
+    // has permission to join. We could probably use a token returned from the
+    // matchmaker to each client that gives permission and client information.
+    if (freeSpace >= 0)
+    {
+      if (FAILED(CoCreateGuid(&server->clients[freeSpace].id)))
+      {
+        return NULL;
+      }
+      message->header->entity              = server->clients[freeSpace].id;
+      server->clients[freeSpace].address   = address;
+      server->clients[freeSpace].connected = true;
+    }
   }
   return message;
 }
@@ -83,8 +97,14 @@ Message* udp_game_server_get_message(UdpGameServer* server)
 void udp_game_server_send_message(
     UdpGameServer* server, GUID* clientId, Message* message)
 {
-  for (int i = 0; i < MAX_CLIENTS; i++)
+  for (int i = 0; i <= MAX_CLIENTS; i++)
   {
+    if (i == MAX_CLIENTS)
+    {
+      printf("WARN: Failed to send to player.\n");
+      break;
+    }
+
     if (server->clients[i].connected
         && memcmp(&server->clients[i].id, clientId, sizeof(GUID)) == 0)
     {

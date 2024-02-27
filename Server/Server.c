@@ -73,9 +73,9 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
         if (!g_listOfPlayers[i].active)
         {
           g_listOfPlayers[i].active = true;
-          g_listOfPlayers[i].id     = requestMessage->header->entity;
           g_listOfPlayers[i].x      = 50.0f;
           g_listOfPlayers[i].y      = 50.0f;
+          g_listOfPlayers[i].id     = requestMessage->header->entity;
 
           wchar_t guid[128];
           if (StringFromGUID2(
@@ -86,8 +86,8 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
           }
           wprintf(L"Player %s joined the game\n", guid);
 
-          Message* responseMessage = message_create_join_response(
-              &g_serverGuid, JOIN_STATUS_SUCCESS, g_serverTickId);
+          Message* responseMessage = message_create_join_response(&g_serverGuid,
+              JOIN_STATUS_SUCCESS, &g_listOfPlayers[i].id, g_serverTickId);
           udp_game_server_send_message(
               server, &g_listOfPlayers[i].id, responseMessage);
           message_destroy(responseMessage);
@@ -100,8 +100,9 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
 
       if (!playerJoined)
       {
-        Message* responseMessage = message_create_join_response(
-            &g_serverGuid, JOIN_STATUS_FAILED_TOO_MANY_PLAYERS, g_serverTickId);
+        GUID id                  = {0};
+        Message* responseMessage = message_create_join_response(&g_serverGuid,
+            JOIN_STATUS_FAILED_TOO_MANY_PLAYERS, &id, g_serverTickId);
         udp_game_server_send_message(
             server, &requestMessage->header->entity, responseMessage);
         message_destroy(responseMessage);
@@ -206,7 +207,7 @@ int main(int argc, char** argv)
     float timeSinceLastBroadcastSec =
         (float) (clientSendEndTime.QuadPart - clientSendTime.QuadPart)
         / timerFrequency.QuadPart;
-    if (timeSinceLastBroadcastSec > 1.0f / 128.0f)
+    if (timeSinceLastBroadcastSec > 1.0f / 8.0f)
     {
       handle_player_disconnect(
           &server, clientSendTime.QuadPart, timerFrequency.QuadPart);

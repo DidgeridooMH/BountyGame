@@ -1,12 +1,13 @@
 #include "Otter/Networking/Messages/ControlMessages.h"
 
-Message* message_create_join_request(GUID* id)
+Message* message_create_join_request()
 {
-  return message_create(MT_JOIN_REQUEST, id, 0, 0);
+  GUID id = {0};
+  return message_create(MT_JOIN_REQUEST, &id, 0, 0);
 }
 
 Message* message_create_join_response(
-    GUID* id, enum JoinStatus status, uint32_t tickId)
+    GUID* id, enum JoinStatus status, GUID* clientId, uint32_t tickId)
 {
   Message* message =
       message_create(MT_JOIN_RESPONSE, id, sizeof(JoinResponseMessage), tickId);
@@ -15,7 +16,9 @@ Message* message_create_join_response(
     return NULL;
   }
 
-  ((JoinResponseMessage*) message->payload)->status = status;
+  JoinResponseMessage* payload = message->payload;
+  payload->status              = status;
+  payload->clientId            = *clientId;
 
   return message;
 }

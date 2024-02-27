@@ -133,7 +133,7 @@ static void handle_connection(Connection* connection, UdpGameClient* client)
 
       printf("Connecting to game...\n");
 
-      Message* joinMessage = message_create_join_request(&g_clientGuid);
+      Message* joinMessage = message_create_join_request();
       udp_game_client_send_message(client, joinMessage);
       message_destroy(joinMessage);
 
@@ -157,8 +157,9 @@ static void handle_connection(Connection* connection, UdpGameClient* client)
               && ((JoinResponseMessage*) reply->payload)->status
                      == JOIN_STATUS_SUCCESS)
           {
-            printf("Game joined!\n");
+            g_clientGuid   = ((JoinResponseMessage*) reply->payload)->clientId;
             g_serverTickId = reply->header->tickId;
+            printf("Game joined!\n");
 
             connection->state = CS_JOINED;
 
@@ -239,14 +240,6 @@ int WINAPI wWinMain(
   {
     MessageBox(window, L"Unable to connect to server at 42003.",
         L"Connection Issue!", MB_ICONERROR);
-    game_window_destroy(window);
-    return -1;
-  }
-
-  if (FAILED(CoCreateGuid(&g_clientGuid)))
-  {
-    MessageBox(window, L"Unable to create GUID for client.", L"Internal Error!",
-        MB_ICONERROR);
     game_window_destroy(window);
     return -1;
   }
