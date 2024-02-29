@@ -1,0 +1,19 @@
+trigger:
+- main
+
+pool:
+  vmImage: windows-latest
+
+steps:
+- task: MSBuild@1
+  inputs:
+    solution: '**/*.sln'
+    msbuildArchitecture: 'x64'
+    platform: 'x64'
+    configuration: 'Release'
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)\x64\Release\'
+    ArtifactName: 'otterbuild'
+    publishLocation: 'Container'
+    StoreAsTar: true
