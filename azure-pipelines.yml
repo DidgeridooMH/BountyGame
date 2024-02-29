@@ -26,14 +26,14 @@ jobs:
       - task: CopyFiles@2
         displayName: 'Stage Binaries'
         inputs:
-          contents: 'x64\Release\**\?(*.exe|*.dll)'
+          contents: 'x64\Release\?(*.exe|*.dll)'
           targetFolder: '$(Build.BinariesDirectory)'
       - task: ArchiveFiles@2
         displayName: 'Packaging Binaries'
         inputs:
           rootFolderOrFile: '$(Build.BinariesDirectory)'
           archiveType: 'zip'
-          archiveFile: '$(BuildArtifactStagingDirectory)/otterbuild-$(Build.BuildId.zip)'
+          archiveFile: '$(Build.ArtifactStagingDirectory)/otterbuild-$(Build.BuildId).zip'
       - task: PublishBuildArtifacts@1
         inputs:
           pathtoPublish: '$(Build.ArtifactStagingDirectory)'
