@@ -110,7 +110,7 @@ static LRESULT CALLBACK game_window_process(
   return 0;
 }
 
-HWND game_window_create()
+HWND game_window_create(int width, int height, enum WindowMode windowMode)
 {
   static const wchar_t CLASS_NAME[] = L"SampleWindowClass";
 
@@ -125,9 +125,24 @@ HWND game_window_create()
   wc.hCursor       = LoadCursor(NULL, IDC_ARROW);
   RegisterClass(&wc);
 
-  HWND window =
-      CreateWindowEx(0, CLASS_NAME, L"Networked Game", WS_OVERLAPPEDWINDOW,
-          CW_USEDEFAULT, CW_USEDEFAULT, 1280, 720, NULL, NULL, instance, NULL);
+  int windowFlags     = WS_OVERLAPPED;
+  int windowPositionX = 0;
+  int windowPositionY = 0;
+  switch (windowMode)
+  {
+  case WM_WINDOWED:
+    windowFlags |= WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX;
+    windowPositionX = CW_USEDEFAULT;
+    windowPositionY = CW_USEDEFAULT;
+    break;
+  case WM_BORDERLESS_WINDOWED:
+    windowFlags |= WS_POPUP;
+    break;
+  }
+
+  HWND window = CreateWindowEx(0, CLASS_NAME, L"Networked Game", windowFlags,
+      windowPositionX, windowPositionY, width, height, NULL, NULL, instance,
+      NULL);
   if (window == NULL)
   {
     return 0;

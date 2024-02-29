@@ -209,7 +209,7 @@ int main(int argc, char** argv)
     float timeSinceLastBroadcastSec =
         (float) (clientSendEndTime.QuadPart - clientSendTime.QuadPart)
         / timerFrequency.QuadPart;
-    if (timeSinceLastBroadcastSec > 1.0f / 64.0f)
+    if (timeSinceLastBroadcastSec > 1.0f / 128.0f)
     {
       handle_player_disconnect(
           &server, clientSendTime.QuadPart, timerFrequency.QuadPart);

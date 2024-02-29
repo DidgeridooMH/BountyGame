@@ -4,6 +4,7 @@
 #include "Otter/Networking/Client/UdpGameClient.h"
 #include "Otter/Networking/Messages/ControlMessages.h"
 #include "Otter/Networking/Messages/EntityMessages.h"
+#include "Otter/Render/RenderInstance.h"
 #include "Window/GameWindow.h"
 
 enum ConnectionState
@@ -236,13 +237,21 @@ int WINAPI wWinMain(
 
   QueryPerformanceFrequency(&g_timerFrequency);
 
-  HWND window = game_window_create();
+  HWND window                    = game_window_create(1280, 720, WM_WINDOWED);
+  RenderInstance* renderInstance = render_instance_create(window);
+  if (renderInstance == NULL)
+  {
+    fprintf(stderr, "Failed to initialize render instance.\n");
+    game_window_destroy(window);
+    return -1;
+  }
 
   UdpGameClient client;
-  if (!udp_game_client_connect(&client, "192.168.1.29", "42003"))
+  if (!udp_game_client_connect(&client, "127.0.0.1", "42003"))
   {
     MessageBox(window, L"Unable to connect to server at 42003.",
         L"Connection Issue!", MB_ICONERROR);
+    render_instance_destroy(renderInstance);
     game_window_destroy(window);
     return -1;
   }
@@ -278,6 +287,7 @@ int WINAPI wWinMain(
   }
 
   udp_game_client_destroy(&client);
+  render_instance_destroy(renderInstance);
   game_window_destroy(window);
 
   return 0;
