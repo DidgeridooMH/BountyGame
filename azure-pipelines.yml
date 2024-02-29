@@ -33,7 +33,6 @@ jobs:
           configuration: 'Release'
       - task: PublishBuildArtifacts@1
         inputs:
-          PathtoPublish: '$(Build.ArtifactStagingDirectory)\x64\Release\'
+          PathtoPublish: '.\x64\Release\'
           ArtifactName: 'otterbuild'
           publishLocation: 'Container'
-          StoreAsTar: true
