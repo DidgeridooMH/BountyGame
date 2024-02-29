@@ -17,11 +17,11 @@ jobs:
           restoreKeys: vulkansdk
           path: ${{ variables.sdk }}
           cacheHitVar: SDK_CACHE_RESTORED
+        displayName: Check For Cached VulkanSDK
       - powershell: |
-          Invoke-WebRequest -Uri "${{ variables.sdkSource }}" -OutFile VulkanSDK.exe
-          $installer = Start-Process -FilePath VulkanSDK.exe -Wait -PassThru -ArgumentList @("/S");
-          $installer.WaitForExit();
-        displayName: Setup Vulkan
+          Invoke-WebRequest -Uri 'https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-sdk.exe' -OutFile 'vulkan-sdk.exe'
+          .\vulkan-sdk.exe --accept-licenses --default-answer --confirm-command install
+        displayName: 'Install Vulkan SDK'
         condition: ne(variables.SDK_CACHE_RESTORED, 'true')
       - task: MSBuild@1
         env:
