@@ -31,7 +31,7 @@ jobs:
       - task: ArchiveFiles@2
         displayName: 'Packaging Binaries'
         inputs:
-          rootFolderOrFile: '$(Build.BinariesDirectory)'
+          rootFolderOrFile: '$(Build.BinariesDirectory)\x64\Release\*'
           archiveType: 'zip'
           archiveFile: '$(Build.ArtifactStagingDirectory)/otterbuild-$(Build.BuildId).zip'
       - task: PublishBuildArtifacts@1
