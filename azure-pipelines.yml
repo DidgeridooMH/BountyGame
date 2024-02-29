@@ -23,13 +23,12 @@ jobs:
           .\vulkan-sdk.exe --accept-licenses --default-answer --confirm-command install
         displayName: 'Install Vulkan SDK'
         condition: ne(variables.SDK_CACHE_RESTORED, 'true')
-      - task: MSBuild@1
+      - task: VSBuild@1
         env:
           VULKAN_SDK: ${{ variables.sdk }}
         inputs:
-          environmentVariables: 
+          vsVersion: 'latest'
           solution: '**/*.sln'
-          msbuildArchitecture: 'x64'
           platform: 'x64'
           configuration: 'Release'
       - task: PublishBuildArtifacts@1
