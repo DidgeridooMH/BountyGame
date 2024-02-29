@@ -23,8 +23,15 @@ jobs:
           solution: '**/*.sln'
           platform: 'x64'
           configuration: 'Release'
+      - task: CopyFiles@2
+        displayName: 'Stage Binaries'
+        inputs:
+          contents:
+            'x64\Release\*.exe'
+            'x64\Release\*.dll'
+          targetFolder: $(Build.ArtifactStagingDirectory)
       - task: PublishBuildArtifacts@1
         inputs:
-          PathtoPublish: '.\x64\Release\'
-          ArtifactName: 'otterbuild'
+          pathtoPublish: $(Build.ArtifactStagingDirectory)
+          artifactName: 'otterbuild'
           publishLocation: 'Container'
