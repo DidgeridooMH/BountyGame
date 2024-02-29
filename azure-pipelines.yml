@@ -1,18 +1,23 @@
 trigger: none
 
-pool:
-  vmImage: windows-latest
-
-steps:
-- task: MSBuild@1
-  inputs:
-    solution: '**/*.sln'
-    msbuildArchitecture: 'x64'
-    platform: 'x64'
-    configuration: 'Release'
-- task: PublishBuildArtifacts@1
-  inputs:
-    PathtoPublish: '$(Build.ArtifactStagingDirectory)\x64\Release\'
-    ArtifactName: 'otterbuild'
-    publishLocation: 'Container'
-    StoreAsTar: true
+jobs:
+  - job: WindowsBuild
+    pool:
+      vmImage: windows-latest
+    steps:
+      - powershell: |
+          Invoke-WebRequest -Uri 'https://sdk.lunarg.com/sdk/download/latest/windows/vulkan-sdk.exe' -OutFile 'vulkan-sdk.exe'
+          .\vulkan-sdk.exe --accept-licenses --default-answer --confirm-command install
+        displayName: 'Install Vulkan SDK'
+      - task: MSBuild@1
+        inputs:
+          solution: '**/*.sln'
+          msbuildArchitecture: 'x64'
+          platform: 'x64'
+          configuration: 'Release'
+      - task: PublishBuildArtifacts@1
+        inputs:
+          PathtoPublish: '$(Build.ArtifactStagingDirectory)\x64\Release\'
+          ArtifactName: 'otterbuild'
+          publishLocation: 'Container'
+          StoreAsTar: true
