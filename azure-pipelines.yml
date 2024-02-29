@@ -13,7 +13,7 @@ jobs:
     steps:
       - task: Cache@2
         inputs:
-          key: ''"vulkansdk"''
+          key: '"vulkansdk"'
           restoreKeys: vulkansdk
           path: ${{ variables.sdk }}
           cacheHitVar: SDK_CACHE_RESTORED
