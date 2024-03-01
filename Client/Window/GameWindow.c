@@ -6,63 +6,11 @@
 
 #define PLAYER_RECT_SIZE 50
 
-float g_timeSinceLastDraw;
-
-static void game_window_draw(HWND window)
-{
-  // Begin paint event.
-  PAINTSTRUCT ps;
-  HDC hdc = BeginPaint(window, &ps);
-
-  // Create brush and save context.
-  HBRUSH otherPlayers  = CreateSolidBrush(RGB(255, 0, 0));
-  HBRUSH currentPlayer = CreateSolidBrush(RGB(0, 255, 0));
-
-  HBRUSH oldBrush = (HBRUSH) SelectObject(hdc, otherPlayers);
-
-  // Draw each of the players.
-  for (uint64_t i = 0; i < MAX_PLAYERS; i++)
-  {
-    if (g_listOfPlayers[i].active)
-    {
-      if (memcmp(&g_listOfPlayers[i].id, &g_clientGuid, sizeof(GUID)) == 0)
-      {
-        SelectObject(hdc, currentPlayer);
-      }
-      else
-      {
-        SelectObject(hdc, otherPlayers);
-      }
-      Rectangle(hdc, (int) g_listOfPlayers[i].positionX - PLAYER_RECT_SIZE / 2,
-          (int) g_listOfPlayers[i].positionY - PLAYER_RECT_SIZE / 2,
-          (int) g_listOfPlayers[i].positionX + PLAYER_RECT_SIZE / 2,
-          (int) g_listOfPlayers[i].positionY + PLAYER_RECT_SIZE / 2);
-    }
-  }
-
-  // Restore drawing context.
-  SelectObject(hdc, oldBrush);
-  DeleteObject(otherPlayers);
-  DeleteObject(currentPlayer);
-
-  // End paint event.
-  EndPaint(window, &ps);
-}
-
 static LRESULT CALLBACK game_window_process(
     HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
   switch (message)
   {
-  case WM_CREATE:
-    SetTimer(window, 100, 16, NULL);
-    break;
-  case WM_TIMER:
-    InvalidateRect(window, NULL, true);
-    break;
-  case WM_PAINT:
-    game_window_draw(window);
-    break;
   case WM_KEYDOWN:
     switch (wParam)
     {
@@ -140,7 +88,7 @@ HWND game_window_create(int width, int height, enum WindowMode windowMode)
     break;
   }
 
-  HWND window = CreateWindowEx(0, CLASS_NAME, L"Networked Game", windowFlags,
+  HWND window = CreateWindowEx(0, CLASS_NAME, L"Otter Engine", windowFlags,
       windowPositionX, windowPositionY, width, height, NULL, NULL, instance,
       NULL);
   if (window == NULL)

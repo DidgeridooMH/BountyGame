@@ -330,6 +330,9 @@ int WINAPI wWinMain(
     float deltaTime = ((float) (currentTime.QuadPart - lastFrameTime.QuadPart)
                        / g_timerFrequency.QuadPart);
     game_state_update(NULL, deltaTime);
+
+    render_instance_draw(renderInstance);
+
     lastFrameTime = currentTime;
   }
 

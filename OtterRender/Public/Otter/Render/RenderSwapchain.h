@@ -24,3 +24,7 @@ void render_swapchain_destroy(
 
 bool render_swapchain_create_framebuffers(RenderSwapchain* renderSwapchain,
     VkDevice logicalDevice, VkRenderPass renderPass);
+
+bool render_swapchain_get_next_image(RenderSwapchain* swapchain,
+    VkDevice logicalDevice, VkFence previousRenderFinished,
+    VkSemaphore signalAfterAcquire, uint32_t* nextImage);

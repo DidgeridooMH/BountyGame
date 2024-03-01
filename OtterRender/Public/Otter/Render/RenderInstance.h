@@ -4,6 +4,17 @@
 #include "Otter/Render/export.h"
 #include <vulkan/vulkan.h>
 
+#define DESCRIPTOR_POOL_SIZE 128
+#define DESCRIPTOR_SET_LIMIT 512
+
+enum DescriptorPoolId
+{
+  DPI_UNIFORM_BUFFERS,
+  DPI_NUM_OF_POOLS
+};
+
+// TODO: Create separate struct for per frame data.
+
 typedef struct RenderInstance
 {
   VkInstance instance;
@@ -12,9 +23,22 @@ typedef struct RenderInstance
 #ifdef _DEBUG
   VkDebugUtilsMessengerEXT debugMessenger;
 #endif
+
   VkSurfaceKHR surface;
   VkRenderPass renderPass;
   RenderSwapchain* swapchain;
+
+  VkDescriptorPool* descriptorPools;
+
+  VkCommandPool commandPool;
+  VkCommandBuffer* commandBuffers;
+
+  VkSemaphore* imageAvailableSemaphores;
+  VkSemaphore* renderFinishedSemaphores;
+  VkFence* inflightFences;
+
+  uint32_t currentFrame;
+
   uint32_t graphicsQueueFamily;
   uint32_t presentQueueFamily;
   uint32_t framesInFlight;
@@ -23,3 +47,5 @@ typedef struct RenderInstance
 OTTER_API RenderInstance* render_instance_create(HWND window);
 
 OTTER_API void render_instance_destroy(RenderInstance* renderInstance);
+
+OTTER_API void render_instance_draw(RenderInstance* renderInstance);

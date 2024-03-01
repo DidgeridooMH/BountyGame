@@ -237,50 +237,32 @@ bool render_swapchain_create_framebuffers(RenderSwapchain* renderSwapchain,
   return true;
 }
 
-// vk::ResultValue<u32> Swapchain::GetNextImageIndex(vk::Device device,
-//     vk::Fence previousRenderFinished, vk::Semaphore signalAfterAcquire)
-//{
-//   /* C++ -> C Translation by Copilot */
-//   if (vkWaitForFences(device, 1, &previousRenderFinished, VK_TRUE,
-//   UINT64_MAX)
-//       != VK_SUCCESS)
-//   {
-//     fprintf(stderr, "Error: Could not wait for fence\n");
-//     // Handle the error appropriately
-//   }
-//
-//   uint32_t imageIndex;
-//   VkResult result = vkAcquireNextImageKHR(
-//       device, m_swapchain, UINT64_MAX, signalAfterAcquire, NULL,
-//       &imageIndex);
-//   if (result == VK_SUCCESS)
-//   {
-//     vkResetFences(device, 1, &previousRenderFinished);
-//   }
-//   else if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR)
-//   {
-//     fprintf(stderr, "Error: Unable to retrieve image index\n");
-//     // Handle the error appropriately
-//   }
-//
-//   /* C++ original code */
-//   if (device.waitForFences({previousRenderFinished}, true, UINT64_MAX)
-//       != vk::Result::eSuccess)
-//   {
-//     LOG_AND_THROW("Could not wait for fence")
-//   }
-//
-//   auto [result, imageIndex] = device.acquireNextImageKHR(
-//       m_swapchain, UINT64_MAX, signalAfterAcquire, nullptr);
-//   if (result == vk::Result::eSuccess)
-//   {
-//     device.resetFences({previousRenderFinished});
-//   }
-//   else if (result != vk::Result::eErrorOutOfDateKHR
-//            && result != vk::Result::eSuboptimalKHR)
-//   {
-//     LOG_AND_THROW("Unable to retrieve image index")
-//   }
-//
-//   return {result, imageIndex};
-// }
+bool render_swapchain_get_next_image(RenderSwapchain* renderSwapchain,
+    VkDevice logicalDevice, VkFence previousRenderFinished,
+    VkSemaphore signalAfterAcquire, uint32_t* nextImage)
+{
+  if (vkWaitForFences(
+          logicalDevice, 1, &previousRenderFinished, VK_TRUE, UINT64_MAX)
+      != VK_SUCCESS)
+  {
+    fprintf(stderr, "Error: Could not wait for fence\n");
+    // Handle the error appropriately
+    return false;
+  }
+
+  VkResult result =
+      vkAcquireNextImageKHR(logicalDevice, renderSwapchain->swapchain,
+          UINT64_MAX, signalAfterAcquire, NULL, nextImage);
+  if (result == VK_SUCCESS)
+  {
+    vkResetFences(logicalDevice, 1, &previousRenderFinished);
+  }
+  else if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR)
+  {
+    fprintf(stderr, "Error: Unable to retrieve image index\n");
+    // TODO: Handle the error appropriately
+    return false;
+  }
+
+  return true;
+}
