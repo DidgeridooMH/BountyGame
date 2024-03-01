@@ -59,3 +59,5 @@ dkms.conf
 *.iobj
 *.ipdb
 RCa*
+
+*.user
