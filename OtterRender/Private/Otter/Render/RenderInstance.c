@@ -695,10 +695,14 @@ RenderInstance* render_instance_create(HWND window)
 
 void render_instance_destroy(RenderInstance* renderInstance)
 {
-  // TODO: Wait for frame to finish.
-
   for (uint32_t i = 0; i < renderInstance->framesInFlight; ++i)
   {
+    if (renderInstance->inflightFences[i] != VK_NULL_HANDLE)
+    {
+      vkWaitForFences(renderInstance->logicalDevice, 1,
+          &renderInstance->inflightFences[i], true, UINT64_MAX);
+    }
+
     vkDestroySemaphore(renderInstance->logicalDevice,
         renderInstance->imageAvailableSemaphores[i], NULL);
     vkDestroySemaphore(renderInstance->logicalDevice,
@@ -802,7 +806,8 @@ static void render_instance_draw_to_image(
 
   VkExtent2D extents = renderInstance->swapchain->extents;
 
-  VkClearValue clearColor              = {0.0f, 0.0f, 0.0f, 1.0f};
+  VkClearValue clearColor = {
+      66.0f / 255.0f, 129.0f / 255.0f, 245.0f / 255.0f, 1.0f};
   VkRenderPassBeginInfo renderPassInfo = {
       .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
       .renderPass      = renderInstance->renderPass,
