@@ -1,5 +1,6 @@
 #include "Server.h"
 
+#include "Otter/Config/Config.h"
 #include "Otter/GameState/GameState.h"
 #include "Otter/GameState/Player/Player.h"
 #include "Otter/GameState/Player/PlayerInput.h"
@@ -169,10 +170,55 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
   }
 }
 
+static char* load_file(const char* path)
+{
+  HANDLE file = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL,
+      OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (file == INVALID_HANDLE_VALUE)
+  {
+    return NULL;
+  }
+
+  int fileSize = GetFileSize(file, NULL);
+
+  char* text = malloc(fileSize + 1);
+  if (text == NULL)
+  {
+    CloseHandle(file);
+    return NULL;
+  }
+
+  if (!ReadFile(file, text, fileSize, NULL, NULL))
+  {
+    free(text);
+    text = NULL;
+  }
+  text[fileSize] = '\0';
+
+  CloseHandle(file);
+  return text;
+}
+
 int main(int argc, char** argv)
 {
+  char* configStr = load_file("Config/config.ini");
+  if (configStr == NULL)
+  {
+    return -1;
+  }
+
+  HashMap* config = config_parse(configStr);
+  free(configStr);
+  if (config == NULL)
+  {
+    return -1;
+  }
+
+  char* ip   = hash_map_get_value(config, "ip");
+  char* port = hash_map_get_value(config, "port");
+
   UdpGameServer server;
-  if (!udp_game_server_create(&server, "0.0.0.0", "42003"))
+  if (!udp_game_server_create(&server, ip, port))
   {
     return 1;
   }
@@ -223,6 +269,7 @@ int main(int argc, char** argv)
   }
 
   udp_game_server_destroy(&server);
+  hash_map_destroy(config);
 
   return 0;
 }

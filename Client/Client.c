@@ -1,4 +1,5 @@
 #include "Input/Input.h"
+#include "Otter/Config/Config.h"
 #include "Otter/GameState/GameState.h"
 #include "Otter/GameState/Player/Player.h"
 #include "Otter/Networking/Client/UdpGameClient.h"
@@ -6,6 +7,11 @@
 #include "Otter/Networking/Messages/EntityMessages.h"
 #include "Otter/Render/RenderInstance.h"
 #include "Window/GameWindow.h"
+
+#define CONFIG_WIDTH  "width"
+#define CONFIG_HEIGHT "height"
+#define CONFIG_HOST   "host"
+#define CONFIG_PORT   "port"
 
 enum ConnectionState
 {
@@ -222,6 +228,35 @@ static void handle_connection(Connection* connection, UdpGameClient* client)
   }
 }
 
+static char* load_file(const char* path)
+{
+  HANDLE file = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL,
+      OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+  if (file == INVALID_HANDLE_VALUE)
+  {
+    return NULL;
+  }
+
+  int fileSize = GetFileSize(file, NULL);
+
+  char* text = malloc(fileSize + 1);
+  if (text == NULL)
+  {
+    CloseHandle(file);
+    return NULL;
+  }
+
+  if (!ReadFile(file, text, fileSize, NULL, NULL))
+  {
+    free(text);
+    text = NULL;
+  }
+  text[fileSize] = '\0';
+
+  CloseHandle(file);
+  return text;
+}
+
 int main()
 {
   wWinMain(GetModuleHandle(NULL), NULL, L"", 1);
@@ -237,22 +272,44 @@ int WINAPI wWinMain(
 
   QueryPerformanceFrequency(&g_timerFrequency);
 
-  HWND window                    = game_window_create(1280, 720, WM_WINDOWED);
+  char* configStr = load_file("Config/config.ini");
+  if (configStr == NULL)
+  {
+    fprintf(stderr, "Unable to find file config.ini\n");
+    return -1;
+  }
+
+  HashMap* config = config_parse(configStr);
+  free(configStr);
+  if (config == NULL)
+  {
+    fprintf(stderr, "Could not parse configuration.");
+    return -1;
+  }
+
+  int width  = atoi((const char*) hash_map_get_value(config, CONFIG_WIDTH));
+  int height = atoi((const char*) hash_map_get_value(config, CONFIG_HEIGHT));
+
+  HWND window = game_window_create(width, height, WM_WINDOWED);
   RenderInstance* renderInstance = render_instance_create(window);
   if (renderInstance == NULL)
   {
     fprintf(stderr, "Failed to initialize render instance.\n");
     game_window_destroy(window);
+    hash_map_destroy(config);
     return -1;
   }
 
+  char* host = hash_map_get_value(config, CONFIG_HOST);
+  char* port = hash_map_get_value(config, CONFIG_PORT);
   UdpGameClient client;
-  if (!udp_game_client_connect(&client, "127.0.0.1", "42003"))
+  if (!udp_game_client_connect(&client, host, port))
   {
-    MessageBox(window, L"Unable to connect to server at 42003.",
-        L"Connection Issue!", MB_ICONERROR);
+    MessageBox(window, L"Unable to connect to server.", L"Connection Issue!",
+        MB_ICONERROR);
     render_instance_destroy(renderInstance);
     game_window_destroy(window);
+    hash_map_destroy(config);
     return -1;
   }
 
@@ -289,6 +346,7 @@ int WINAPI wWinMain(
   udp_game_client_destroy(&client);
   render_instance_destroy(renderInstance);
   game_window_destroy(window);
+  hash_map_destroy(config);
 
   return 0;
 }

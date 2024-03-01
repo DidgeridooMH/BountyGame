@@ -15,22 +15,28 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="Server.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="pch.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Server.h">
+    <ClInclude Include="Public\Otter\Config\export.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Config\Config.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Config\HashMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Config\config.ini" />
+    <ClCompile Include="pch.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Config\Config.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Config\HashMap.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

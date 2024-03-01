@@ -130,6 +130,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
       <CompileAs>CompileAsC</CompileAs>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -151,6 +152,7 @@
       <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\Public;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
       <CompileAs>CompileAsC</CompileAs>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

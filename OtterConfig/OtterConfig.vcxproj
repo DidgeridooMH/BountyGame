@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{d25f67a9-2ba9-4086-a23b-e38930365790}</ProjectGuid>
-    <RootNamespace>OtterRender</RootNamespace>
+    <ProjectGuid>{8c97cc4f-158c-4d11-ab7a-4c6f43f6e64d}</ProjectGuid>
+    <RootNamespace>OtterConfig</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -71,22 +71,16 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
-    <PublicIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\Public</PublicIncludeDirectories>
-    <ExternalIncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(VULKAN_SDK)\Lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
-    <IncludePath>$(VULKAN_SDK)\Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <PublicIncludeDirectories>$(ProjectDir)\Public</PublicIncludeDirectories>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
-    <PublicIncludeDirectories>$(VULKAN_SDK)\Include;$(ProjectDir)\Public</PublicIncludeDirectories>
-    <ExternalIncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</ExternalIncludePath>
-    <LibraryPath>$(VULKAN_SDK)\Lib;$(VC_LibraryPath_x64);$(WindowsSDK_LibraryPath_x64)</LibraryPath>
-    <IncludePath>$(VULKAN_SDK)\Include;$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
+    <PublicIncludeDirectories>$(ProjectDir)\Public</PublicIncludeDirectories>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;OTTERRENDER_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;OTTERCONFIG_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -103,7 +97,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;OTTERRENDER_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;OTTERCONFIG_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -120,21 +114,20 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;OTTERRENDER_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;OTTERCONFIG_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)/Public;$(ProjectDir)/Private</AdditionalIncludeDirectories>
-      <CompileAs>CompileAsC</CompileAs>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\Public</AdditionalIncludeDirectories>
+      <CompileAs>CompileAsC</CompileAs>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>vulkan-1.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -143,15 +136,15 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;OTTERRENDER_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;OTTERCONFIG_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)/Public;$(ProjectDir)/Private</AdditionalIncludeDirectories>
-      <CompileAs>CompileAsC</CompileAs>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
-      <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\Public</AdditionalIncludeDirectories>
+      <CompileAs>CompileAsC</CompileAs>
       <TreatWarningAsError>true</TreatWarningAsError>
+      <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -159,24 +152,23 @@
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <EnableUAC>false</EnableUAC>
-      <AdditionalDependencies>vulkan-1.lib;$(CoreLibraryDependencies);%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
-    <ClInclude Include="Public\Otter\Render\export.h" />
-    <ClInclude Include="Public\Otter\Render\RenderInstance.h" />
-    <ClInclude Include="Public\Otter\Render\RenderSwapchain.h" />
+    <ClInclude Include="Public\Otter\Config\Config.h" />
+    <ClInclude Include="Public\Otter\Config\export.h" />
+    <ClInclude Include="Public\Otter\Config\HashMap.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.c">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
+      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Private\Otter\Render\RenderInstance.c" />
-    <ClCompile Include="Private\Otter\Render\RenderSwapchain.c" />
+    <ClCompile Include="Private\Otter\Config\Config.c" />
+    <ClCompile Include="Private\Otter\Config\HashMap.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -121,6 +121,7 @@
       <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsC</CompileAs>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -142,6 +143,7 @@
       <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
       <AdditionalIncludeDirectories>$(ProjectDir);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <CompileAs>CompileAsC</CompileAs>
+      <TreatWarningAsError>true</TreatWarningAsError>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
@@ -169,6 +171,9 @@
     <ClCompile Include="Window\GameWindow.c" />
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\OtterConfig\OtterConfig.vcxproj">
+      <Project>{8c97cc4f-158c-4d11-ab7a-4c6f43f6e64d}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\OtterGameState\OtterGameState.vcxproj">
       <Project>{d70f673c-d082-4ecc-a9cb-fae152c09105}</Project>
     </ProjectReference>
@@ -178,6 +183,9 @@
     <ProjectReference Include="..\OtterRender\OtterRender.vcxproj">
       <Project>{d25f67a9-2ba9-4086-a23b-e38930365790}</Project>
     </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Config\config.ini" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
