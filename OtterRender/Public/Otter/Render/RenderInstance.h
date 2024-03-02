@@ -15,6 +15,17 @@ enum DescriptorPoolId
 
 // TODO: Create separate struct for per frame data.
 
+typedef struct RenderCapabilities
+{
+  bool hdr;
+  bool debugUtils;
+} RenderCapabilities;
+
+typedef struct RenderSettings
+{
+  bool hdr;
+} RenderSettings;
+
 typedef struct RenderInstance
 {
   VkInstance instance;
@@ -42,6 +53,9 @@ typedef struct RenderInstance
   uint32_t graphicsQueueFamily;
   uint32_t presentQueueFamily;
   uint32_t framesInFlight;
+
+  RenderSettings settings;
+  RenderCapabilities capabilities;
 } RenderInstance;
 
 OTTER_API RenderInstance* render_instance_create(HWND window);

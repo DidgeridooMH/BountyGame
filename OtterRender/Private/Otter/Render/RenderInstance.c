@@ -3,8 +3,94 @@
 #define VK_VALIDATION_LAYER_NAME   "VK_LAYER_KHRONOS_validation"
 #define REQUESTED_NUMBER_OF_FRAMES 3
 
-static bool renderer_check_layers_available(
-    const char** requestedLayers, uint32_t layerCount)
+static void render_instance_request_extensions(const char** requestedExtensions,
+    bool** flags, uint32_t requestedExtensionCount,
+    const char** enabledExtensions, uint32_t* enabledExtensionsCount,
+    VkExtensionProperties* properties, uint32_t extensionPropertiesCount)
+{
+  while (requestedExtensionCount--)
+  {
+    if (flags != NULL && *flags != NULL)
+    {
+      **flags = false;
+    }
+
+    for (uint32_t i = 0; i < extensionPropertiesCount; i++)
+    {
+      if (strcmp(properties[i].extensionName, (*requestedExtensions)) == 0)
+      {
+        enabledExtensions[*enabledExtensionsCount] = *requestedExtensions;
+        *enabledExtensionsCount += 1;
+
+        if (flags != NULL && *flags != NULL)
+        {
+          **flags = true;
+        }
+        break;
+      }
+    }
+    requestedExtensions++;
+    if (flags != NULL)
+    {
+      flags++;
+    }
+  }
+}
+
+static bool render_instance_check_extensions(const char* requiredExtensions[],
+    uint32_t requiredExtensionsCount, const char* optionalExtensions[],
+    bool* optionalExtensionFlags[], uint32_t optionalExtensionsCount,
+    const char* enabledExtensions[], uint32_t* enabledExtensionsCount)
+{
+  *enabledExtensionsCount = 0;
+
+  uint32_t extensionCount = 0;
+  if (vkEnumerateInstanceExtensionProperties(NULL, &extensionCount, NULL)
+          != VK_SUCCESS
+      || extensionCount == 0)
+  {
+    fprintf(stderr, "Unable to enumerate extensions\n");
+    return false;
+  }
+
+  VkExtensionProperties* extensionProperties =
+      malloc(sizeof(VkExtensionProperties) * extensionCount);
+  if (extensionProperties == NULL)
+  {
+    fprintf(stderr, "OOM\n");
+    return false;
+  }
+
+  if (vkEnumerateInstanceExtensionProperties(
+          NULL, &extensionCount, extensionProperties)
+      != VK_SUCCESS)
+  {
+    fprintf(stderr, "Unable to enumerate extensions\n");
+    free(extensionProperties);
+    return false;
+  }
+
+  render_instance_request_extensions(requiredExtensions, NULL,
+      requiredExtensionsCount, enabledExtensions, enabledExtensionsCount,
+      extensionProperties, extensionCount);
+  if (*enabledExtensionsCount != requiredExtensionsCount)
+  {
+    fprintf(stderr, "Missing required extensions.\n");
+    free(extensionProperties);
+    return false;
+  }
+
+  render_instance_request_extensions(optionalExtensions, optionalExtensionFlags,
+      optionalExtensionsCount, enabledExtensions, enabledExtensionsCount,
+      extensionProperties, extensionCount);
+
+  free(extensionProperties);
+  return true;
+}
+
+static bool render_instance_check_layers(const char** requestedLayers,
+    bool** flags, uint32_t layerCount, char** enabledLayers,
+    uint32_t* enabledLayersCount)
 {
   uint32_t propertyCount;
   if (vkEnumerateInstanceLayerProperties(&propertyCount, NULL) != VK_SUCCESS
@@ -35,20 +121,21 @@ static bool renderer_check_layers_available(
 
   for (uint32_t layer = 0; layer < layerCount; layer++)
   {
-    bool layerFound = false;
+    if (*flags != NULL)
+    {
+      **flags = false;
+    }
+
     for (uint32_t i = 0; i < propertyCount; i++)
     {
       if (strcmp(properties[i].layerName, requestedLayers[layer]) == 0)
       {
-        layerFound = true;
+        if (*flags != NULL)
+        {
+          **flags = true;
+        }
         break;
       }
-    }
-
-    if (!layerFound)
-    {
-      free(properties);
-      return false;
     }
   }
 
@@ -66,29 +153,64 @@ static bool render_instance_create_instance(RenderInstance* renderInstance)
       .pApplicationName   = "OtterEngineGame",
       .pEngineName        = "Otter"};
 
-  const char* requiredExtensions[] = {VK_KHR_WIN32_SURFACE_EXTENSION_NAME,
-      VK_KHR_SURFACE_EXTENSION_NAME, VK_EXT_DEBUG_UTILS_EXTENSION_NAME};
-  const char* requiredLayers[]     = {VK_VALIDATION_LAYER_NAME};
-  int requiredExtensionCount =
-      (sizeof(requiredExtensions) / sizeof(requiredExtensions[0])) - 1;
-  int requiredLayerCount =
-      (sizeof(requiredLayers) / sizeof(requiredLayers[0])) - 1;
+  const char* requiredExtensions[] = {
+      VK_KHR_WIN32_SURFACE_EXTENSION_NAME, VK_KHR_SURFACE_EXTENSION_NAME};
+
+  const char* optionalExtensions[] = {
+      VK_EXT_SWAPCHAIN_COLOR_SPACE_EXTENSION_NAME
 #ifdef _DEBUG
-  if (renderer_check_layers_available(
-          requiredLayers, sizeof(requiredLayers) / sizeof(requiredLayers[0])))
-  {
-    requiredExtensionCount += 1;
-    requiredLayerCount += 1;
-  }
+      ,
+      VK_EXT_DEBUG_UTILS_EXTENSION_NAME
 #endif
+  };
+
+  bool* optionalExtensionFlags[] = {&renderInstance->capabilities.hdr
+#ifdef _DEBUG
+      ,
+      &renderInstance->capabilities.debugUtils
+#endif
+  };
+
+  char* enabledExtensions[_countof(requiredExtensions)
+                          + _countof(optionalExtensions)] = {NULL};
+  uint32_t enabledExtensionCount                          = 0;
+  if (!render_instance_check_extensions(requiredExtensions,
+          _countof(requiredExtensions), optionalExtensions,
+          optionalExtensionFlags, _countof(optionalExtensions),
+          enabledExtensions, &enabledExtensionCount))
+  {
+    return false;
+  }
+
+  const char* optionalLayers[] = {
+#ifdef _DEBUG
+      VK_VALIDATION_LAYER_NAME
+#endif
+  };
+  char* enabledLayers[_countof(optionalLayers)] = {NULL};
+  uint32_t enabledLayersCount                   = 0;
+
+#ifdef _DEBUG
+  bool validationFound = false;
+#endif
+
+  bool* flags[_countof(optionalLayers)] = {
+#ifdef _DEBUG
+      &validationFound
+#endif
+  };
+
+  render_instance_check_layers(optionalLayers, flags,
+      sizeof(optionalLayers) / sizeof(optionalLayers[0]), enabledLayers,
+      &enabledLayersCount);
 
   VkInstanceCreateInfo createInfo = {
       .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
       .pApplicationInfo        = &applicationInfo,
-      .enabledExtensionCount   = requiredExtensionCount,
-      .ppEnabledExtensionNames = requiredExtensions,
-      .enabledLayerCount       = requiredLayerCount,
-      .ppEnabledLayerNames     = requiredLayers};
+      .enabledExtensionCount   = enabledExtensionCount,
+      .ppEnabledExtensionNames = enabledExtensions,
+      .enabledLayerCount       = enabledLayersCount,
+      .ppEnabledLayerNames     = enabledLayers};
 
   if (vkCreateInstance(&createInfo, NULL, &renderInstance->instance)
       != VK_SUCCESS)
@@ -333,9 +455,25 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
     return false;
   }
 
-  VkFormat format = (formats[0].format == VK_FORMAT_UNDEFINED)
-                      ? VK_FORMAT_B8G8R8A8_UNORM
-                      : formats[0].format;
+  VkSurfaceFormatKHR format = formats[0];
+  if (renderInstance->settings.hdr)
+  {
+    for (uint32_t i = 0; i < formatCount; i++)
+    {
+      if (formats[i].colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT
+          && formats[i].format == VK_FORMAT_A2B10G10R10_UNORM_PACK32)
+      {
+        format = formats[i];
+        break;
+      }
+    }
+
+    if (format.format != VK_COLOR_SPACE_HDR10_ST2084_EXT)
+    {
+      renderInstance->capabilities.hdr = false;
+      renderInstance->settings.hdr     = false;
+    }
+  }
 
   free(formats);
 
@@ -409,7 +547,7 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
 static bool render_instance_create_render_pass(RenderInstance* renderInstance)
 {
   VkAttachmentDescription colorAttachment = {
-      .format        = renderInstance->swapchain->format,
+      .format        = renderInstance->swapchain->format.format,
       .samples       = VK_SAMPLE_COUNT_1_BIT,
       .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
       .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -637,12 +775,15 @@ RenderInstance* render_instance_create(HWND window)
     return NULL;
   }
 
+  // TODO: Implement system to set system settings and apply those changes.
+  renderInstance->settings.hdr = renderInstance->capabilities.hdr;
+
 #ifdef _DEBUG
-  if (!render_instance_attach_debug_messenger(renderInstance))
+  if (renderInstance->capabilities.debugUtils
+      && !render_instance_attach_debug_messenger(renderInstance))
   {
     fprintf(stderr, "WARN: Debug messenger could not be attached. Continuing "
                     "without...\n");
-    return NULL;
   }
 #endif
 

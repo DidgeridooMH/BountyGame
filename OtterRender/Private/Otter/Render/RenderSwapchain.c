@@ -29,8 +29,8 @@ static bool render_swapchain_create_swapchain(RenderSwapchain* renderSwapchain,
       .sType            = VK_STRUCTURE_TYPE_SWAPCHAIN_CREATE_INFO_KHR,
       .surface          = surface,
       .minImageCount    = numOfFrames,
-      .imageFormat      = renderSwapchain->format,
-      .imageColorSpace  = VK_COLORSPACE_SRGB_NONLINEAR_KHR,
+      .imageFormat      = renderSwapchain->format.format,
+      .imageColorSpace  = renderSwapchain->format.colorSpace,
       .imageExtent      = renderSwapchain->extents,
       .imageArrayLayers = 1,
       .imageUsage       = VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
@@ -105,7 +105,7 @@ static bool render_swapchain_create_images(
     VkImageViewCreateInfo imageViewInfo = {
         .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
         .image            = renderSwapchain->swapchainImages[i],
-        .format           = renderSwapchain->format,
+        .format           = renderSwapchain->format.format,
         .viewType         = VK_IMAGE_VIEW_TYPE_2D,
         .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
             .baseArrayLayer              = 0,
@@ -130,7 +130,7 @@ static bool render_swapchain_create_images(
 }
 
 RenderSwapchain* render_swapchain_create(uint32_t requestedNumberOfFrames,
-    VkExtent2D extents, VkFormat format, VkPresentModeKHR presentMode,
+    VkExtent2D extents, VkSurfaceFormatKHR format, VkPresentModeKHR presentMode,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
     VkSurfaceKHR surface, uint32_t graphicsQueueFamily,
     uint32_t presentQueueFamily)
