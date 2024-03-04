@@ -46,6 +46,6 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Config\config.ini" />
+    <CopyFileToFolders Include="Config\config.ini" />
   </ItemGroup>
 </Project>

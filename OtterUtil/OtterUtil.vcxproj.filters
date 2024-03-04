@@ -18,25 +18,13 @@
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Otter\Render\RenderInstance.h">
+    <ClInclude Include="Public\Otter\Util\File.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Otter\Render\export.h">
+    <ClInclude Include="Public\Otter\Util\export.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Otter\Render\RenderSwapchain.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\Otter\Render\RenderQueue.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\Otter\Render\GpuBuffer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\Otter\Render\Pipeline.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Public\Otter\Render\Mesh.h">
+    <ClInclude Include="Public\Otter\Util\Math\Vec.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -44,24 +32,11 @@
     <ClCompile Include="pch.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Private\Otter\Render\RenderInstance.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Otter\Render\RenderSwapchain.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Otter\Render\GpuBuffer.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Otter\Render\Pipeline.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Otter\Render\Mesh.c">
+    <ClCompile Include="Private\Otter\Util\File.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="Shaders\pbr.vert.glsl" />
-    <CustomBuild Include="Shaders\pbr.frag.glsl" />
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

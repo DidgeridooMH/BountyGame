@@ -24,11 +24,11 @@ typedef struct HashMap
   size_t coefficient;
 } HashMap;
 
-OTTER_API HashMap* hash_map_create(size_t numOfBuckets, size_t coefficient);
+OTTERRENDER_API HashMap* hash_map_create(size_t numOfBuckets, size_t coefficient);
 
-OTTER_API void hash_map_destroy(HashMap* map);
+OTTERRENDER_API void hash_map_destroy(HashMap* map);
 
-OTTER_API bool hash_map_set_value(
+OTTERRENDER_API bool hash_map_set_value(
     HashMap* map, const char* key, void* value, size_t valueSize);
 
-OTTER_API void* hash_map_get_value(HashMap* map, const char* key);
+OTTERRENDER_API void* hash_map_get_value(HashMap* map, const char* key);

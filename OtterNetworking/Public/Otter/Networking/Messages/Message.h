@@ -27,6 +27,6 @@ typedef struct Message
   void* payload;
 } Message;
 
-OTTER_API Message* message_create(
+OTTERNETWORKING_API Message* message_create(
     enum MessageType type, GUID* guid, int payloadSize, uint32_t tickId);
-OTTER_API void message_destroy(Message* message);
+OTTERNETWORKING_API void message_destroy(Message* message);

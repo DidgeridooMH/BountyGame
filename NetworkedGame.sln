@@ -15,6 +15,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OtterRender", "OtterRender\
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OtterConfig", "OtterConfig\OtterConfig.vcxproj", "{8C97CC4F-158C-4D11-AB7A-4C6F43F6E64D}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "OtterUtil", "OtterUtil\OtterUtil.vcxproj", "{F954D441-B93B-4238-9444-C3F81F760135}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -71,6 +73,14 @@ Global
 		{8C97CC4F-158C-4D11-AB7A-4C6F43F6E64D}.Release|x64.Build.0 = Release|x64
 		{8C97CC4F-158C-4D11-AB7A-4C6F43F6E64D}.Release|x86.ActiveCfg = Release|Win32
 		{8C97CC4F-158C-4D11-AB7A-4C6F43F6E64D}.Release|x86.Build.0 = Release|Win32
+		{F954D441-B93B-4238-9444-C3F81F760135}.Debug|x64.ActiveCfg = Debug|x64
+		{F954D441-B93B-4238-9444-C3F81F760135}.Debug|x64.Build.0 = Debug|x64
+		{F954D441-B93B-4238-9444-C3F81F760135}.Debug|x86.ActiveCfg = Debug|Win32
+		{F954D441-B93B-4238-9444-C3F81F760135}.Debug|x86.Build.0 = Debug|Win32
+		{F954D441-B93B-4238-9444-C3F81F760135}.Release|x64.ActiveCfg = Release|x64
+		{F954D441-B93B-4238-9444-C3F81F760135}.Release|x64.Build.0 = Release|x64
+		{F954D441-B93B-4238-9444-C3F81F760135}.Release|x86.ActiveCfg = Release|Win32
+		{F954D441-B93B-4238-9444-C3F81F760135}.Release|x86.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

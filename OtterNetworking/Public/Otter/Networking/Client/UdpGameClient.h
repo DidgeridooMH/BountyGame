@@ -9,12 +9,12 @@ typedef struct UdpGameClient
   struct sockaddr_in address;
 } UdpGameClient;
 
-OTTER_API bool udp_game_client_connect(
+OTTERNETWORKING_API bool udp_game_client_connect(
     UdpGameClient* client, const char* host, const char* port);
 
-OTTER_API Message* udp_game_client_get_message(UdpGameClient* client);
+OTTERNETWORKING_API Message* udp_game_client_get_message(UdpGameClient* client);
 
-OTTER_API void udp_game_client_send_message(
+OTTERNETWORKING_API void udp_game_client_send_message(
     UdpGameClient* client, const Message* message);
 
-OTTER_API void udp_game_client_destroy(UdpGameClient* client);
+OTTERNETWORKING_API void udp_game_client_destroy(UdpGameClient* client);

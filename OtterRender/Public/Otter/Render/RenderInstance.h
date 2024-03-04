@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Otter/Render/RenderQueue.h"
 #include "Otter/Render/RenderSwapchain.h"
 #include "Otter/Render/export.h"
 #include <vulkan/vulkan.h>
@@ -56,10 +57,12 @@ typedef struct RenderInstance
 
   RenderSettings settings;
   RenderCapabilities capabilities;
+
+  RenderCommand command;
 } RenderInstance;
 
-OTTER_API RenderInstance* render_instance_create(HWND window);
+OTTERRENDER_API RenderInstance* render_instance_create(HWND window);
 
-OTTER_API void render_instance_destroy(RenderInstance* renderInstance);
+OTTERRENDER_API void render_instance_destroy(RenderInstance* renderInstance);
 
-OTTER_API void render_instance_draw(RenderInstance* renderInstance);
+OTTERRENDER_API void render_instance_draw(RenderInstance* renderInstance);

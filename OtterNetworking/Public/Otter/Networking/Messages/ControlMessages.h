@@ -15,8 +15,9 @@ typedef struct JoinResponseMessage
   GUID clientId;
 } JoinResponseMessage;
 
-OTTER_API Message* message_create_join_request();
-OTTER_API Message* message_create_join_response(
+OTTERNETWORKING_API Message* message_create_join_request();
+OTTERNETWORKING_API Message* message_create_join_response(
     GUID* id, enum JoinStatus status, GUID* clientId, uint32_t tickId);
-OTTER_API Message* message_create_heartbeat(GUID* id, uint32_t tickId);
-OTTER_API Message* message_create_leave_request(GUID* id);
+OTTERNETWORKING_API Message* message_create_heartbeat(
+    GUID* id, uint32_t tickId);
+OTTERNETWORKING_API Message* message_create_leave_request(GUID* id);

@@ -1,5 +1,7 @@
 #include "Otter/Render/RenderInstance.h"
 
+#include "Otter/Render/GpuBuffer.h"
+
 #define VK_VALIDATION_LAYER_NAME   "VK_LAYER_KHRONOS_validation"
 #define REQUESTED_NUMBER_OF_FRAMES 3
 
@@ -779,11 +781,17 @@ RenderInstance* render_instance_create(HWND window)
   renderInstance->settings.hdr = renderInstance->capabilities.hdr;
 
 #ifdef _DEBUG
-  if (renderInstance->capabilities.debugUtils
-      && !render_instance_attach_debug_messenger(renderInstance))
+  if (renderInstance->capabilities.debugUtils)
   {
-    fprintf(stderr, "WARN: Debug messenger could not be attached. Continuing "
-                    "without...\n");
+    if (render_instance_attach_debug_messenger(renderInstance))
+    {
+      printf("DEBUG: Validation and debug layers enabled\n");
+    }
+    else
+    {
+      fprintf(stderr, "WARN: Debug messenger could not be attached. Continuing "
+                      "without...\n");
+    }
   }
 #endif
 
@@ -973,6 +981,18 @@ static void render_instance_draw_to_image(
 
   vkResetDescriptorPool(renderInstance->logicalDevice,
       renderInstance->descriptorPools[renderInstance->currentFrame], 0);
+
+  // TODO: Render meshes that are queued up.
+  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      renderInstance->command.pipeline);
+
+  VkDeviceSize offset = 0;
+  vkCmdBindVertexBuffers(
+      commandBuffer, 0, 1, &renderInstance->command.vertices, &offset);
+  vkCmdBindIndexBuffer(
+      commandBuffer, renderInstance->command.indices, 0, VK_INDEX_TYPE_UINT16);
+  vkCmdDrawIndexed(commandBuffer,
+      (uint32_t) renderInstance->command.numOfIndices, 1, 0, 0, 0);
 
   vkCmdEndRenderPass(commandBuffer);
 

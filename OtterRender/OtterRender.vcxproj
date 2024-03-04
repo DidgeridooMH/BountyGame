@@ -165,7 +165,11 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="Public\Otter\Render\export.h" />
+    <ClInclude Include="Public\Otter\Render\GpuBuffer.h" />
+    <ClInclude Include="Public\Otter\Render\Mesh.h" />
+    <ClInclude Include="Public\Otter\Render\Pipeline.h" />
     <ClInclude Include="Public\Otter\Render\RenderInstance.h" />
+    <ClInclude Include="Public\Otter\Render\RenderQueue.h" />
     <ClInclude Include="Public\Otter\Render\RenderSwapchain.h" />
   </ItemGroup>
   <ItemGroup>
@@ -175,8 +179,46 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Private\Otter\Render\GpuBuffer.c" />
+    <ClCompile Include="Private\Otter\Render\Mesh.c" />
+    <ClCompile Include="Private\Otter\Render\Pipeline.c" />
     <ClCompile Include="Private\Otter\Render\RenderInstance.c" />
     <ClCompile Include="Private\Otter\Render\RenderSwapchain.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OtterUtil\OtterUtil.vcxproj">
+      <Project>{f954d441-b93b-4238-9444-c3f81f760135}</Project>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="Shaders\pbr.vert.glsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">-spirv %(AdditionalOptions)</AdditionalOptions>
+      <AdditionalOptions Condition="'$(Configuration)|$(Platform)'=='Release|x64'">-spirv %(AdditionalOptions)</AdditionalOptions>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">6.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">glslangValidator -V %(Identity) -o $(OutDir)/Shaders/%(Filename).spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling PBR vertex shader.</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">glslangValidator -V %(Identity) -o $(OutDir)/Shaders/%(Filename).spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling PBR vertex shader.</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <CustomBuild Include="Shaders\pbr.frag.glsl">
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">glslangValidator -V %(Identity) -o $(OutDir)/Shaders/%(Filename).spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">glslangValidator -V %(Identity) -o $(OutDir)/Shaders/%(Filename).spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling PBR fragment shader.</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling PBR fragment shader.</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
+    </CustomBuild>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

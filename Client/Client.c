@@ -5,7 +5,12 @@
 #include "Otter/Networking/Client/UdpGameClient.h"
 #include "Otter/Networking/Messages/ControlMessages.h"
 #include "Otter/Networking/Messages/EntityMessages.h"
+#include "Otter/Render/GpuBuffer.h"
+#include "Otter/Render/Mesh.h"
+#include "Otter/Render/Pipeline.h"
 #include "Otter/Render/RenderInstance.h"
+#include "Otter/Util/File.h"
+#include "Otter/Util/Math/Vec.h"
 #include "Window/GameWindow.h"
 
 #define CONFIG_WIDTH  "width"
@@ -228,35 +233,6 @@ static void handle_connection(Connection* connection, UdpGameClient* client)
   }
 }
 
-static char* load_file(const char* path)
-{
-  HANDLE file = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL,
-      OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
-  if (file == INVALID_HANDLE_VALUE)
-  {
-    return NULL;
-  }
-
-  int fileSize = GetFileSize(file, NULL);
-
-  char* text = malloc(fileSize + 1);
-  if (text == NULL)
-  {
-    CloseHandle(file);
-    return NULL;
-  }
-
-  if (!ReadFile(file, text, fileSize, NULL, NULL))
-  {
-    free(text);
-    text = NULL;
-  }
-  text[fileSize] = '\0';
-
-  CloseHandle(file);
-  return text;
-}
-
 int main()
 {
   wWinMain(GetModuleHandle(NULL), NULL, L"", 1);
@@ -272,7 +248,7 @@ int WINAPI wWinMain(
 
   QueryPerformanceFrequency(&g_timerFrequency);
 
-  char* configStr = load_file("Config/config.ini");
+  char* configStr = file_load("Config/client.ini", NULL);
   if (configStr == NULL)
   {
     fprintf(stderr, "Unable to find file config.ini\n");
@@ -299,6 +275,40 @@ int WINAPI wWinMain(
     hash_map_destroy(config);
     return -1;
   }
+
+  // TODO: make this better.
+  // ------
+  const MeshVertex vertices[] = {{.position = {-0.5f, -0.5f, 0.5f}},
+      {.position = {0.5f, -0.5f, 0.5f}}, {.position = {-0.5f, 0.5f, 0.5f}},
+      {.position = {0.5f, 0.5f, 0.5f}}, {.position = {-0.5f, -0.5f, -0.5f}},
+      {.position = {0.5f, -0.5f, -0.5f}}, {.position = {-0.5f, 0.5f, -0.5f}},
+      {.position = {0.5f, 0.5f, -0.5f}}};
+  const uint16_t indices[]    = {
+      0, 2, 1, 2, 3, 1, // Front
+      1, 3, 5, 3, 7, 5, // Right
+      5, 7, 4, 7, 6, 4, // Back
+      4, 6, 0, 6, 2, 0, // Left
+      4, 0, 1, 4, 1, 5, // Top
+      2, 6, 3, 6, 7, 3 // Bottom
+  };
+
+  VkQueue graphicsQueue;
+  vkGetDeviceQueue(renderInstance->logicalDevice,
+      renderInstance->graphicsQueueFamily, 0, &graphicsQueue);
+
+  Mesh* cube =
+      mesh_create(vertices, _countof(vertices), indices, _countof(indices),
+          renderInstance->physicalDevice, renderInstance->logicalDevice,
+          renderInstance->commandPool, graphicsQueue);
+
+  Pipeline* pipeline = pipeline_create(
+      "pbr", renderInstance->logicalDevice, renderInstance->renderPass);
+
+  renderInstance->command.vertices     = cube->vertices->buffer;
+  renderInstance->command.indices      = cube->indices->buffer;
+  renderInstance->command.numOfIndices = cube->indices->size / sizeof(uint16_t);
+  renderInstance->command.pipeline     = pipeline->pipeline;
+  // ------
 
   char* host = hash_map_get_value(config, CONFIG_HOST);
   char* port = hash_map_get_value(config, CONFIG_PORT);
@@ -346,6 +356,8 @@ int WINAPI wWinMain(
     }
   }
 
+  pipeline_destroy(pipeline, renderInstance->logicalDevice);
+  mesh_destroy(cube, renderInstance->logicalDevice);
   udp_game_client_destroy(&client);
   render_instance_destroy(renderInstance);
   game_window_destroy(window);

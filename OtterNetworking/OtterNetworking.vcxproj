@@ -171,6 +171,7 @@
     <ClInclude Include="Public\Otter\Networking\export.h" />
     <ClInclude Include="Public\Otter\Networking\Messages\EntityMessages.h" />
     <ClInclude Include="Public\Otter\Networking\Messages\Message.h" />
+    <ClInclude Include="Public\Otter\Networking\Server\TcpGameServer.h" />
     <ClInclude Include="Public\Otter\Networking\Server\UdpGameServer.h" />
     <ClInclude Include="Public\Otter\Networking\Shared\GameNetworking.h" />
     <ClInclude Include="pch.h" />
