@@ -156,6 +156,8 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Public\Otter\Util\Math\Clamp.h" />
+    <ClInclude Include="Public\Otter\Util\Math\Mat.h" />
     <ClInclude Include="Public\Otter\Util\Math\Vec.h" />
     <ClInclude Include="Public\Otter\Util\export.h" />
     <ClInclude Include="Public\Otter\Util\File.h" />

@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Otter/Util/Math/Mat.h"
 #include <vulkan/vulkan.h>
 
 typedef struct RenderCommand
@@ -7,6 +8,5 @@ typedef struct RenderCommand
   VkBuffer vertices;
   VkBuffer indices;
   VkDeviceSize numOfIndices;
-  VkPipeline pipeline;
-  // TODO: Add transform.
+  Mat4 transform;
 } RenderCommand;

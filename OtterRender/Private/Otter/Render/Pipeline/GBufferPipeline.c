@@ -1,62 +1,25 @@
-#include "Otter/Render/Pipeline.h"
+#include "Otter/Render/Pipeline/GBufferPipeline.h"
 
 #include "Otter/Render/Mesh.h"
-#include "Otter/Util/File.h"
-#include "Otter/Util/Math/Vec.h"
+#include "Otter/Render/Pipeline/Pipeline.h"
+#include "Otter/Render/RenderStack.h"
 
-static VkShaderModule pipeline_load_shader_module(
-    const char* file, VkDevice logicalDevice)
+bool g_buffer_pipeline_create(
+    VkDevice logicalDevice, VkRenderPass renderPass, GBufferPipeline* pipeline)
 {
-  uint64_t shaderLength = 0;
-  char* shaderCode      = file_load(file, &shaderLength);
-  if (shaderCode == NULL)
-  {
-    fprintf(stderr, "Unable to find vertex shader\n");
-    return VK_NULL_HANDLE;
-  }
-
-  VkShaderModuleCreateInfo shaderCreateInfo = {
-      .sType    = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO,
-      .pCode    = (uint32_t*) shaderCode,
-      .codeSize = shaderLength};
-
-  VkShaderModule shaderModule = VK_NULL_HANDLE;
-  if (vkCreateShaderModule(
-          logicalDevice, &shaderCreateInfo, NULL, &shaderModule)
-      != VK_SUCCESS)
-  {
-    free(shaderCode);
-    fprintf(stderr, "Unable to create shader module.\n");
-    return VK_NULL_HANDLE;
-  }
-
-  free(shaderCode);
-
-  return shaderModule;
-}
-
-Pipeline* pipeline_create(
-    const char* name, VkDevice logicalDevice, VkRenderPass renderPass)
-{
-  char vertexShaderName[256] = {0};
-  snprintf(
-      vertexShaderName, sizeof(vertexShaderName), "Shaders/%s.vert.spv", name);
   VkShaderModule vertexShader =
-      pipeline_load_shader_module(vertexShaderName, logicalDevice);
+      pipeline_load_shader_module("Shaders/gbuffer.vert.spv", logicalDevice);
   if (vertexShader == VK_NULL_HANDLE)
   {
-    return NULL;
+    return false;
   }
 
-  char fragShaderName[256] = {0};
-  snprintf(
-      fragShaderName, sizeof(vertexShaderName), "Shaders/%s.frag.spv", name);
   VkShaderModule fragShader =
-      pipeline_load_shader_module(fragShaderName, logicalDevice);
+      pipeline_load_shader_module("Shaders/gbuffer.frag.spv", logicalDevice);
   if (fragShader == VK_NULL_HANDLE)
   {
     vkDestroyShaderModule(logicalDevice, vertexShader, NULL);
-    return NULL;
+    return false;
   }
 
   VkPipelineShaderStageCreateInfo shaderStagesCreateInfo[] = {
@@ -101,7 +64,7 @@ Pipeline* pipeline_create(
           .offset   = offsetof(MeshVertex, bitangent)},
       {.binding     = 0,
           .location = 4,
-          .format   = VK_FORMAT_R32G32B32_SFLOAT,
+          .format   = VK_FORMAT_R32G32_SFLOAT,
           .offset   = offsetof(MeshVertex, uv)}};
   VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
@@ -127,32 +90,31 @@ Pipeline* pipeline_create(
       .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
       .minSampleShading     = 1.0f};
 
-  VkPipelineColorBlendAttachmentState colorBlendAttachment = {
-      .blendEnable         = true,
-      .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
-      .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-      .colorBlendOp        = VK_BLEND_OP_ADD,
-      .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
-      .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
-      .alphaBlendOp        = VK_BLEND_OP_ADD,
-      .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
-                      | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT};
+  VkPipelineColorBlendAttachmentState
+      colorBlendAttachment[NUM_OF_GBUFFER_LAYERS] = {0};
+  for (int i = 0; i < _countof(colorBlendAttachment); i++)
+  {
+    colorBlendAttachment[i].blendEnable         = true;
+    colorBlendAttachment[i].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
+    colorBlendAttachment[i].dstColorBlendFactor =
+        VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
+    colorBlendAttachment[i].colorBlendOp        = VK_BLEND_OP_ADD;
+    colorBlendAttachment[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
+    colorBlendAttachment[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
+    colorBlendAttachment[i].alphaBlendOp        = VK_BLEND_OP_ADD;
+    colorBlendAttachment[i].colorWriteMask =
+        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+        | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
+  }
   VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = {
       .logicOpEnable   = false,
-      .attachmentCount = 1,
-      .pAttachments    = &colorBlendAttachment};
+      .attachmentCount = _countof(colorBlendAttachment),
+      .pAttachments    = colorBlendAttachment};
 
   VkPipelineLayoutCreateInfo layoutCreateInfo = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO};
-
-  Pipeline* pipeline = malloc(sizeof(Pipeline));
-  if (pipeline == NULL)
-  {
-    fprintf(stderr, "OOM\n");
-    vkDestroyShaderModule(logicalDevice, vertexShader, NULL);
-    vkDestroyShaderModule(logicalDevice, fragShader, NULL);
-    return NULL;
-  }
+      .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .pSetLayouts    = NULL,
+      .setLayoutCount = 0};
 
   if (vkCreatePipelineLayout(
           logicalDevice, &layoutCreateInfo, NULL, &pipeline->layout)
@@ -161,8 +123,7 @@ Pipeline* pipeline_create(
     fprintf(stderr, "Unable to create pipeline layout.\n");
     vkDestroyShaderModule(logicalDevice, vertexShader, NULL);
     vkDestroyShaderModule(logicalDevice, fragShader, NULL);
-    free(pipeline);
-    return NULL;
+    return false;
   }
 
   VkGraphicsPipelineCreateInfo pipelineCreateInfo = {
@@ -186,19 +147,18 @@ Pipeline* pipeline_create(
     vkDestroyPipelineLayout(logicalDevice, pipeline->layout, NULL);
     vkDestroyShaderModule(logicalDevice, vertexShader, NULL);
     vkDestroyShaderModule(logicalDevice, fragShader, NULL);
-    free(pipeline);
-    return NULL;
+    return false;
   }
 
   vkDestroyShaderModule(logicalDevice, vertexShader, NULL);
   vkDestroyShaderModule(logicalDevice, fragShader, NULL);
 
-  return pipeline;
+  return true;
 }
 
-void pipeline_destroy(Pipeline* pipeline, VkDevice logicalDevice)
+void g_buffer_pipeline_destroy(
+    GBufferPipeline* pipeline, VkDevice logicalDevice)
 {
   vkDestroyPipelineLayout(logicalDevice, pipeline->layout, NULL);
   vkDestroyPipeline(logicalDevice, pipeline->pipeline, NULL);
-  free(pipeline);
 }

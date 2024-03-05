@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Otter/Render/RenderStack.h"
 #include <vulkan/vulkan.h>
 
 typedef struct RenderSwapchain
@@ -7,9 +8,7 @@ typedef struct RenderSwapchain
   VkSwapchainKHR swapchain;
   VkSurfaceFormatKHR format;
   VkExtent2D extents;
-  VkImage* swapchainImages;
-  VkImageView* imageViews;
-  VkFramebuffer* framebuffers;
+  RenderStack* renderStacks;
   uint32_t numOfSwapchainImages;
 } RenderSwapchain;
 
@@ -22,8 +21,9 @@ RenderSwapchain* render_swapchain_create(uint32_t requestedNumberOfFrames,
 void render_swapchain_destroy(
     RenderSwapchain* renderSwapchain, VkDevice logicalDevice);
 
-bool render_swapchain_create_framebuffers(RenderSwapchain* renderSwapchain,
-    VkDevice logicalDevice, VkRenderPass renderPass);
+bool render_swapchain_create_render_stacks(RenderSwapchain* renderSwapchain,
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
+    VkRenderPass renderPass);
 
 bool render_swapchain_get_next_image(RenderSwapchain* swapchain,
     VkDevice logicalDevice, VkFence previousRenderFinished,

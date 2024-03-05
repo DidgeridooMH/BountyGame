@@ -5,9 +5,7 @@
 #include "Otter/Networking/Client/UdpGameClient.h"
 #include "Otter/Networking/Messages/ControlMessages.h"
 #include "Otter/Networking/Messages/EntityMessages.h"
-#include "Otter/Render/GpuBuffer.h"
 #include "Otter/Render/Mesh.h"
-#include "Otter/Render/Pipeline.h"
 #include "Otter/Render/RenderInstance.h"
 #include "Otter/Util/File.h"
 #include "Otter/Util/Math/Vec.h"
@@ -301,13 +299,9 @@ int WINAPI wWinMain(
           renderInstance->physicalDevice, renderInstance->logicalDevice,
           renderInstance->commandPool, graphicsQueue);
 
-  Pipeline* pipeline = pipeline_create(
-      "pbr", renderInstance->logicalDevice, renderInstance->renderPass);
-
   renderInstance->command.vertices     = cube->vertices->buffer;
   renderInstance->command.indices      = cube->indices->buffer;
   renderInstance->command.numOfIndices = cube->indices->size / sizeof(uint16_t);
-  renderInstance->command.pipeline     = pipeline->pipeline;
   // ------
 
   char* host = hash_map_get_value(config, CONFIG_HOST);
@@ -356,7 +350,6 @@ int WINAPI wWinMain(
     }
   }
 
-  pipeline_destroy(pipeline, renderInstance->logicalDevice);
   mesh_destroy(cube, renderInstance->logicalDevice);
   udp_game_client_destroy(&client);
   render_instance_destroy(renderInstance);

@@ -1,28 +1,6 @@
-#include "Otter/Render/GpuBuffer.h"
+#include "Otter/Render/Memory/GpuBuffer.h"
 
-static bool gpu_buffer_find_memory_type(uint32_t typeFilter,
-    VkPhysicalDevice physicalDevice, VkMemoryPropertyFlags properties,
-    uint32_t* memoryIndex)
-{
-  VkPhysicalDeviceMemoryProperties physicalMemoryProperties;
-  vkGetPhysicalDeviceMemoryProperties(
-      physicalDevice, &physicalMemoryProperties);
-
-  for (uint32_t i = 0; i < physicalMemoryProperties.memoryTypeCount; i++)
-  {
-    bool isCorrectType = typeFilter & (1 << i);
-    bool hasCorrectProperties =
-        (physicalMemoryProperties.memoryTypes[i].propertyFlags & properties)
-        == properties;
-    if (isCorrectType && hasCorrectProperties)
-    {
-      *memoryIndex = i;
-      return true;
-    }
-  }
-
-  return false;
-}
+#include "Otter/Render/Memory/MemoryType.h"
 
 GpuBuffer* gpu_buffer_allocate(VkDeviceSize size, VkBufferUsageFlags usage,
     VkMemoryPropertyFlags memoryProperties, VkPhysicalDevice physicalDevice,
@@ -53,8 +31,8 @@ GpuBuffer* gpu_buffer_allocate(VkDeviceSize size, VkBufferUsageFlags usage,
       logicalDevice, buffer->buffer, &memoryRequirements);
 
   uint32_t memoryIndex;
-  if (!gpu_buffer_find_memory_type(memoryRequirements.memoryTypeBits,
-          physicalDevice, memoryProperties, &memoryIndex))
+  if (!memory_type_find(memoryRequirements.memoryTypeBits, physicalDevice,
+          memoryProperties, &memoryIndex))
   {
     fprintf(stderr, "Failed to find suitable memory type\n");
     vkDestroyBuffer(logicalDevice, buffer->buffer, NULL);

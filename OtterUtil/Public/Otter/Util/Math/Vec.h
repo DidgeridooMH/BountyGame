@@ -26,3 +26,18 @@ typedef struct Vec3
     float val[3];
   };
 } Vec3;
+
+typedef struct Vec4
+{
+  union
+  {
+    struct
+    {
+      float x;
+      float y;
+      float z;
+      float w;
+    };
+    float val[4];
+  };
+} Vec4;

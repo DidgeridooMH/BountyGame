@@ -1,9 +1,6 @@
 #include "Otter/Render/RenderSwapchain.h"
 
-static inline uint32_t clamp(uint32_t value, uint32_t minimum, uint32_t maximum)
-{
-  return max(min(value, maximum), minimum);
-}
+#include "Otter/Util/Math/Clamp.h"
 
 static bool render_swapchain_create_swapchain(RenderSwapchain* renderSwapchain,
     uint32_t requestedNumberOfFrames, VkPhysicalDevice physicalDevice,
@@ -59,76 +56,6 @@ static bool render_swapchain_create_swapchain(RenderSwapchain* renderSwapchain,
   return true;
 }
 
-static bool render_swapchain_create_images(
-    RenderSwapchain* renderSwapchain, VkDevice logicalDevice)
-{
-  if (vkGetSwapchainImagesKHR(logicalDevice, renderSwapchain->swapchain,
-          &renderSwapchain->numOfSwapchainImages, NULL)
-          != VK_SUCCESS
-      || renderSwapchain->numOfSwapchainImages == 0)
-  {
-    fprintf(stderr, "Unable to get swapchain images.\n");
-    return false;
-  }
-
-  renderSwapchain->swapchainImages =
-      calloc(renderSwapchain->numOfSwapchainImages, sizeof(VkImage));
-  if (renderSwapchain->swapchainImages == NULL)
-  {
-    fprintf(stderr, "OOM\n");
-    return false;
-  }
-
-  if (vkGetSwapchainImagesKHR(logicalDevice, renderSwapchain->swapchain,
-          &renderSwapchain->numOfSwapchainImages,
-          renderSwapchain->swapchainImages)
-      != VK_SUCCESS)
-  {
-    fprintf(stderr, "Unable to get swapchain images.\n");
-    free(renderSwapchain->swapchainImages);
-    renderSwapchain->swapchainImages = NULL;
-    return false;
-  }
-
-  renderSwapchain->imageViews =
-      calloc(renderSwapchain->numOfSwapchainImages, sizeof(VkImageView));
-  if (renderSwapchain->imageViews == NULL)
-  {
-    fprintf(stderr, "Unable to get swapchain images.\n");
-    free(renderSwapchain->swapchainImages);
-    renderSwapchain->swapchainImages = NULL;
-    return false;
-  }
-
-  for (uint32_t i = 0; i < renderSwapchain->numOfSwapchainImages; i++)
-  {
-    VkImageViewCreateInfo imageViewInfo = {
-        .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-        .image            = renderSwapchain->swapchainImages[i],
-        .format           = renderSwapchain->format.format,
-        .viewType         = VK_IMAGE_VIEW_TYPE_2D,
-        .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-            .baseArrayLayer              = 0,
-            .layerCount                  = 1,
-            .baseMipLevel                = 0,
-            .levelCount                  = 1}};
-
-    if (vkCreateImageView(logicalDevice, &imageViewInfo, NULL,
-            &renderSwapchain->imageViews[i])
-        != VK_SUCCESS)
-    {
-      fprintf(stderr, "Unable to get swapchain images.\n");
-      free(renderSwapchain->swapchainImages);
-      renderSwapchain->swapchainImages = NULL;
-      free(renderSwapchain->imageViews);
-      renderSwapchain->imageViews = NULL;
-      return false;
-    }
-  }
-
-  return true;
-}
-
 RenderSwapchain* render_swapchain_create(uint32_t requestedNumberOfFrames,
     VkExtent2D extents, VkSurfaceFormatKHR format, VkPresentModeKHR presentMode,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
@@ -152,12 +79,6 @@ RenderSwapchain* render_swapchain_create(uint32_t requestedNumberOfFrames,
     return NULL;
   }
 
-  if (!render_swapchain_create_images(renderSwapchain, logicalDevice))
-  {
-    render_swapchain_destroy(renderSwapchain, logicalDevice);
-    return NULL;
-  }
-
   return renderSwapchain;
 }
 
@@ -166,29 +87,10 @@ void render_swapchain_destroy(
 {
   // TODO: Should we wait for the fences to finish?
 
-  if (renderSwapchain->framebuffers != NULL)
+  if (renderSwapchain->renderStacks != NULL)
   {
-    for (uint32_t i = 0; i < renderSwapchain->numOfSwapchainImages; i++)
-    {
-      if (renderSwapchain->framebuffers[i] != VK_NULL_HANDLE)
-      {
-        vkDestroyFramebuffer(
-            logicalDevice, renderSwapchain->framebuffers[i], NULL);
-      }
-    }
-    free(renderSwapchain->framebuffers);
-  }
-
-  if (renderSwapchain->imageViews != NULL)
-  {
-    for (uint32_t i = 0; i < renderSwapchain->numOfSwapchainImages; i++)
-    {
-      if (renderSwapchain->imageViews[i] != VK_NULL_HANDLE)
-      {
-        vkDestroyImageView(logicalDevice, renderSwapchain->imageViews[i], NULL);
-      }
-    }
-    free(renderSwapchain->imageViews);
+    render_stack_destroy(renderSwapchain->renderStacks, logicalDevice);
+    free(renderSwapchain->renderStacks);
   }
 
   if (renderSwapchain->swapchain != VK_NULL_HANDLE)
@@ -202,37 +104,58 @@ void render_swapchain_destroy(
   free(renderSwapchain);
 }
 
-bool render_swapchain_create_framebuffers(RenderSwapchain* renderSwapchain,
-    VkDevice logicalDevice, VkRenderPass renderPass)
+bool render_swapchain_create_render_stacks(RenderSwapchain* renderSwapchain,
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
+    VkRenderPass renderPass)
 {
-  renderSwapchain->framebuffers =
-      calloc(renderSwapchain->numOfSwapchainImages, sizeof(VkFramebuffer));
-  if (renderSwapchain->framebuffers == NULL)
+  if (vkGetSwapchainImagesKHR(logicalDevice, renderSwapchain->swapchain,
+          &renderSwapchain->numOfSwapchainImages, NULL)
+          != VK_SUCCESS
+      || renderSwapchain->numOfSwapchainImages == 0)
+  {
+    fprintf(stderr, "Unable to get swapchain images.\n");
+    return false;
+  }
+
+  VkImage* swapchainImages =
+      calloc(renderSwapchain->numOfSwapchainImages, sizeof(VkImage));
+  if (swapchainImages == NULL)
   {
     fprintf(stderr, "OOM\n");
     return false;
   }
 
+  if (vkGetSwapchainImagesKHR(logicalDevice, renderSwapchain->swapchain,
+          &renderSwapchain->numOfSwapchainImages, swapchainImages)
+      != VK_SUCCESS)
+  {
+    fprintf(stderr, "Unable to get swapchain images.\n");
+    free(swapchainImages);
+    return false;
+  }
+
+  renderSwapchain->renderStacks =
+      calloc(renderSwapchain->numOfSwapchainImages, sizeof(RenderStack));
+  if (renderSwapchain->renderStacks == NULL)
+  {
+    fprintf(stderr, "OOM\n");
+    free(swapchainImages);
+    return false;
+  }
+
   for (uint32_t i = 0; i < renderSwapchain->numOfSwapchainImages; i++)
   {
-    VkFramebufferCreateInfo framebufferCreateInfo = {
-        .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-        .renderPass      = renderPass,
-        .attachmentCount = 1,
-        .pAttachments    = &renderSwapchain->imageViews[i],
-        .width           = renderSwapchain->extents.width,
-        .height          = renderSwapchain->extents.height,
-        .layers          = 1,
-    };
-
-    if (vkCreateFramebuffer(logicalDevice, &framebufferCreateInfo, NULL,
-            &renderSwapchain->framebuffers[i])
-        != VK_SUCCESS)
+    if (!render_stack_create(&renderSwapchain->renderStacks[i],
+            swapchainImages[i], renderSwapchain->extents,
+            renderSwapchain->format.format, renderPass, physicalDevice,
+            logicalDevice))
     {
-      fprintf(stderr, "Error: Unable to create framebuffer from image view.\n");
+      free(swapchainImages);
       return false;
     }
   }
+
+  free(swapchainImages);
 
   return true;
 }

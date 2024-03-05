@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Otter/Render/Pipeline/GBufferPipeline.h"
 #include "Otter/Render/RenderQueue.h"
 #include "Otter/Render/RenderSwapchain.h"
 #include "Otter/Render/export.h"
@@ -57,6 +58,8 @@ typedef struct RenderInstance
 
   RenderSettings settings;
   RenderCapabilities capabilities;
+
+  GBufferPipeline gBufferPipeline;
 
   RenderCommand command;
 } RenderInstance;

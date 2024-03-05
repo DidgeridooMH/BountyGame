@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Otter/Render/GpuBuffer.h"
+#include "Otter/Render/Memory/GpuBuffer.h"
 #include "Otter/Render/export.h"
 #include "Otter/Util/Math/Vec.h"
 

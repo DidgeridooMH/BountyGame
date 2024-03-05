@@ -1,6 +1,6 @@
 #include "Otter/Render/RenderInstance.h"
 
-#include "Otter/Render/GpuBuffer.h"
+#include "Otter/Render/Memory/GpuBuffer.h"
 
 #define VK_VALIDATION_LAYER_NAME   "VK_LAYER_KHRONOS_validation"
 #define REQUESTED_NUMBER_OF_FRAMES 3
@@ -379,7 +379,8 @@ static bool render_instance_find_queue_families(RenderInstance* renderInstance)
   return true;
 }
 
-bool render_instance_create_logical_device(RenderInstance* renderInstance)
+static bool render_instance_create_logical_device(
+    RenderInstance* renderInstance)
 {
   const char* deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
   float queuePriority            = 0.0f;
@@ -539,23 +540,44 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
     return false;
   }
 
-  renderInstance->framesInFlight =
-      min(renderInstance->swapchain->numOfSwapchainImages,
-          REQUESTED_NUMBER_OF_FRAMES);
-
   return true;
 }
 
 static bool render_instance_create_render_pass(RenderInstance* renderInstance)
 {
-  VkAttachmentDescription colorAttachment = {
-      .format        = renderInstance->swapchain->format.format,
-      .samples       = VK_SAMPLE_COUNT_1_BIT,
-      .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
-      .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
-      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-      .finalLayout   = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-  };
+  VkAttachmentDescription colorAttachment[] = {
+      {
+          .format        = renderInstance->swapchain->format.format,
+          .samples       = VK_SAMPLE_COUNT_1_BIT,
+          .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
+          .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
+          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      },
+      {
+          .format        = renderInstance->swapchain->format.format,
+          .samples       = VK_SAMPLE_COUNT_1_BIT,
+          .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
+          .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
+          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      },
+      {
+          .format        = renderInstance->swapchain->format.format,
+          .samples       = VK_SAMPLE_COUNT_1_BIT,
+          .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
+          .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
+          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      },
+      {
+          .format        = renderInstance->swapchain->format.format,
+          .samples       = VK_SAMPLE_COUNT_1_BIT,
+          .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
+          .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
+          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      }};
 
   VkSubpassDependency dependency = {
       .srcSubpass   = VK_SUBPASS_EXTERNAL,
@@ -564,23 +586,24 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
       .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
   };
 
-  VkAttachmentReference colorAttachmentRef = {
-      .attachment = 0,
-      .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-  };
+  VkAttachmentReference gbufferAttachmentRef[] = {
+      {.attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
+      {.attachment = 1, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
+      {.attachment = 2, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
+      {.attachment = 3, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
 
-  VkSubpassDescription subpass = {
+  VkSubpassDescription gbufferSubpass = {
       .pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS,
-      .colorAttachmentCount = 1,
-      .pColorAttachments    = &colorAttachmentRef,
+      .colorAttachmentCount = _countof(gbufferAttachmentRef),
+      .pColorAttachments    = gbufferAttachmentRef,
   };
 
   VkRenderPassCreateInfo renderPassInfo = {
       .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-      .attachmentCount = 1,
-      .pAttachments    = &colorAttachment,
+      .attachmentCount = NUM_OF_GBUFFER_LAYERS,
+      .pAttachments    = colorAttachment,
       .subpassCount    = 1,
-      .pSubpasses      = &subpass,
+      .pSubpasses      = &gbufferSubpass,
       .dependencyCount = 1,
       .pDependencies   = &dependency,
   };
@@ -627,8 +650,9 @@ static bool render_instance_create_render_surface(
     return false;
   }
 
-  if (!render_swapchain_create_framebuffers(renderInstance->swapchain,
-          renderInstance->logicalDevice, renderInstance->renderPass))
+  if (!render_swapchain_create_render_stacks(renderInstance->swapchain,
+          renderInstance->physicalDevice, renderInstance->logicalDevice,
+          renderInstance->renderPass))
   {
     return false;
   }
@@ -819,6 +843,10 @@ RenderInstance* render_instance_create(HWND window)
     return NULL;
   }
 
+  renderInstance->framesInFlight =
+      min(renderInstance->swapchain->numOfSwapchainImages,
+          REQUESTED_NUMBER_OF_FRAMES);
+
   if (!render_instance_create_descriptor_pools(renderInstance))
   {
     return NULL;
@@ -835,6 +863,12 @@ RenderInstance* render_instance_create(HWND window)
   }
 
   if (!render_instance_create_sync_objects(renderInstance))
+  {
+    return NULL;
+  }
+
+  if (!g_buffer_pipeline_create(renderInstance->logicalDevice,
+          renderInstance->renderPass, &renderInstance->gBufferPipeline))
   {
     return NULL;
   }
@@ -955,15 +989,16 @@ static void render_instance_draw_to_image(
 
   VkExtent2D extents = renderInstance->swapchain->extents;
 
-  VkClearValue clearColor = {
-      66.0f / 255.0f, 129.0f / 255.0f, 245.0f / 255.0f, 1.0f};
+  VkClearValue clearColor[]            = {{0.0f, 0.0f, 0.0f, 1.0f},
+                 {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
+                 {0.0f, 0.0f, 0.0f, 1.0f}};
   VkRenderPassBeginInfo renderPassInfo = {
       .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
       .renderPass      = renderInstance->renderPass,
-      .framebuffer     = renderInstance->swapchain->framebuffers[image],
+      .framebuffer     = renderInstance->swapchain->renderStacks[image].gBuffer,
       .renderArea      = {{0, 0}, extents},
-      .clearValueCount = 1,
-      .pClearValues    = &clearColor};
+      .clearValueCount = _countof(clearColor),
+      .pClearValues    = clearColor};
 
   vkCmdBeginRenderPass(
       commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
@@ -984,7 +1019,7 @@ static void render_instance_draw_to_image(
 
   // TODO: Render meshes that are queued up.
   vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      renderInstance->command.pipeline);
+      renderInstance->gBufferPipeline.pipeline);
 
   VkDeviceSize offset = 0;
   vkCmdBindVertexBuffers(

@@ -30,13 +30,28 @@
     <ClInclude Include="Public\Otter\Render\RenderQueue.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Otter\Render\GpuBuffer.h">
+    <ClInclude Include="Public\Otter\Render\Memory\GpuBuffer.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Otter\Render\Pipeline.h">
+    <ClInclude Include="Public\Otter\Render\Pipeline\GBufferPipeline.h">
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Public\Otter\Render\Mesh.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Render\Uniform\ModelViewProjection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Render\RenderStage\GBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Render\Memory\MemoryType.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Render\Pipeline\Pipeline.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Render\RenderStack.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -50,18 +65,32 @@
     <ClCompile Include="Private\Otter\Render\RenderSwapchain.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Private\Otter\Render\GpuBuffer.c">
+    <ClCompile Include="Private\Otter\Render\Memory\GpuBuffer.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Private\Otter\Render\Pipeline.c">
+    <ClCompile Include="Private\Otter\Render\Pipeline\GBufferPipeline.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Private\Otter\Render\Mesh.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Render\Memory\MemoryType.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Render\Pipeline\Pipeline.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Render\RenderStack.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Shaders\pbr.vert.glsl" />
     <CustomBuild Include="Shaders\pbr.frag.glsl" />
+    <CustomBuild Include="Shaders\gbuffer.vert.glsl" />
+    <CustomBuild Include="Shaders\gbuffer.frag.glsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
   </ItemGroup>
 </Project>

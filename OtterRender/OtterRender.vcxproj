@@ -165,9 +165,13 @@
   <ItemGroup>
     <ClInclude Include="pch.h" />
     <ClInclude Include="Public\Otter\Render\export.h" />
-    <ClInclude Include="Public\Otter\Render\GpuBuffer.h" />
+    <ClInclude Include="Public\Otter\Render\Memory\GpuBuffer.h" />
+    <ClInclude Include="Public\Otter\Render\Memory\MemoryType.h" />
     <ClInclude Include="Public\Otter\Render\Mesh.h" />
-    <ClInclude Include="Public\Otter\Render\Pipeline.h" />
+    <ClInclude Include="Public\Otter\Render\RenderStack.h" />
+    <ClInclude Include="Public\Otter\Render\RenderStage\GBuffer.h" />
+    <ClInclude Include="Public\Otter\Render\Uniform\ModelViewProjection.h" />
+    <ClInclude Include="Public\Otter\Render\Pipeline\GBufferPipeline.h" />
     <ClInclude Include="Public\Otter\Render\RenderInstance.h" />
     <ClInclude Include="Public\Otter\Render\RenderQueue.h" />
     <ClInclude Include="Public\Otter\Render\RenderSwapchain.h" />
@@ -179,11 +183,17 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Private\Otter\Render\GpuBuffer.c" />
+    <ClCompile Include="Private\Otter\Render\Memory\GpuBuffer.c" />
+    <ClCompile Include="Private\Otter\Render\Memory\MemoryType.c" />
     <ClCompile Include="Private\Otter\Render\Mesh.c" />
-    <ClCompile Include="Private\Otter\Render\Pipeline.c" />
+    <ClCompile Include="Private\Otter\Render\Pipeline\GBufferPipeline.c" />
+    <ClCompile Include="Private\Otter\Render\Pipeline\Pipeline.c" />
     <ClCompile Include="Private\Otter\Render\RenderInstance.c" />
+    <ClCompile Include="Private\Otter\Render\RenderStack.c" />
     <ClCompile Include="Private\Otter\Render\RenderSwapchain.c" />
+    <ClInclude Include="Public\Otter\Render\Pipeline\Pipeline.h">
+      <FileType>CppCode</FileType>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\OtterUtil\OtterUtil.vcxproj">
@@ -202,10 +212,10 @@
       <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">6.0</ShaderModel>
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">glslangValidator -V %(Identity) -o $(OutDir)/Shaders/%(Filename).spv</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling PBR vertex shader.</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">glslangValidator -V %(Identity) -o $(OutDir)/Shaders/%(Filename).spv</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling PBR vertex shader.</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
     </CustomBuild>
   </ItemGroup>
@@ -214,8 +224,33 @@
       <FileType>Document</FileType>
       <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">glslangValidator -V %(Identity) -o $(OutDir)/Shaders/%(Filename).spv</Command>
       <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">glslangValidator -V %(Identity) -o $(OutDir)/Shaders/%(Filename).spv</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling PBR fragment shader.</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling PBR fragment shader.</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity).</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity).</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="cpp.hint" />
+    <CustomBuild Include="Shaders\gbuffer.vert.glsl">
+      <SubType>
+      </SubType>
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">glslangValidator -V %(Identity) -o $(OutDir)/Shaders/%(Filename).spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">glslangValidator -V %(Identity) -o $(OutDir)/Shaders/%(Filename).spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity)</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
+    </CustomBuild>
+    <CustomBuild Include="Shaders\gbuffer.frag.glsl">
+      <SubType>
+      </SubType>
+      <FileType>Document</FileType>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">glslangValidator -V %(Identity) -o $(OutDir)/Shaders/%(Filename).spv</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">glslangValidator -V %(Identity) -o $(OutDir)/Shaders/%(Filename).spv</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Compiling %(Identity)</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Compiling %(Identity)</Message>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
     </CustomBuild>
