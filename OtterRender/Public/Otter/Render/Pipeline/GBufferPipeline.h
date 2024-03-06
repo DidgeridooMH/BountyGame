@@ -5,6 +5,7 @@
 
 typedef struct GBufferPipeline
 {
+  VkDescriptorSetLayout descriptorSetLayouts;
   VkPipelineLayout layout;
   VkPipeline pipeline;
 } GBufferPipeline;

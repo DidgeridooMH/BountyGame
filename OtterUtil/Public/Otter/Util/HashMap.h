@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Otter/Config/export.h"
+#include "Otter/Util/export.h"
 
 #define HASH_MAP_DEFAULT_BUCKETS 512
 #define HASH_MAP_DEFAULT_COEF    769
@@ -24,11 +24,11 @@ typedef struct HashMap
   size_t coefficient;
 } HashMap;
 
-OTTERRENDER_API HashMap* hash_map_create(size_t numOfBuckets, size_t coefficient);
+OTTERUTIL_API HashMap* hash_map_create(size_t numOfBuckets, size_t coefficient);
 
-OTTERRENDER_API void hash_map_destroy(HashMap* map);
+OTTERUTIL_API void hash_map_destroy(HashMap* map);
 
-OTTERRENDER_API bool hash_map_set_value(
+OTTERUTIL_API bool hash_map_set_value(
     HashMap* map, const char* key, void* value, size_t valueSize);
 
-OTTERRENDER_API void* hash_map_get_value(HashMap* map, const char* key);
+OTTERUTIL_API void* hash_map_get_value(HashMap* map, const char* key);

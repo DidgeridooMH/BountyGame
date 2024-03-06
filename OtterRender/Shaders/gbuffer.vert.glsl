@@ -9,9 +9,16 @@ layout (location = 4) in vec2 inUv;
 layout (location = 0) out vec3 outPosition;
 layout (location = 1) out vec3 outNormal;
 
+layout (binding = 0) uniform ModelViewProjection
+{
+    mat4 model;
+    mat4 view;
+    mat4 proj;
+} mvp;
+
 void main()
 {
-    gl_Position = vec4(inPosition, 1.0);
+    gl_Position = mvp.proj * mvp.view * mvp.model * vec4(inPosition, 1.0);
     outPosition = inPosition;
     outNormal = inNormal;
 }

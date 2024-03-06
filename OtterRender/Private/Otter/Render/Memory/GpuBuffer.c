@@ -2,16 +2,10 @@
 
 #include "Otter/Render/Memory/MemoryType.h"
 
-GpuBuffer* gpu_buffer_allocate(VkDeviceSize size, VkBufferUsageFlags usage,
-    VkMemoryPropertyFlags memoryProperties, VkPhysicalDevice physicalDevice,
-    VkDevice logicalDevice)
+bool gpu_buffer_allocate(GpuBuffer* buffer, VkDeviceSize size,
+    VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties,
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
 {
-  GpuBuffer* buffer = malloc(sizeof(GpuBuffer));
-  if (buffer == NULL)
-  {
-    fprintf(stderr, "OOM\n");
-    return NULL;
-  }
   buffer->size = size;
 
   VkBufferCreateInfo createInfo = {
@@ -22,8 +16,7 @@ GpuBuffer* gpu_buffer_allocate(VkDeviceSize size, VkBufferUsageFlags usage,
   if (vkCreateBuffer(logicalDevice, &createInfo, NULL, &buffer->buffer)
       != VK_SUCCESS)
   {
-    free(buffer);
-    return NULL;
+    return false;
   }
 
   VkMemoryRequirements memoryRequirements;
@@ -36,8 +29,7 @@ GpuBuffer* gpu_buffer_allocate(VkDeviceSize size, VkBufferUsageFlags usage,
   {
     fprintf(stderr, "Failed to find suitable memory type\n");
     vkDestroyBuffer(logicalDevice, buffer->buffer, NULL);
-    free(buffer);
-    return NULL;
+    return false;
   }
 
   VkMemoryAllocateInfo allocateInfo = {
@@ -49,8 +41,7 @@ GpuBuffer* gpu_buffer_allocate(VkDeviceSize size, VkBufferUsageFlags usage,
   {
     fprintf(stderr, "Unable to allocate GPU memory.\n");
     vkDestroyBuffer(logicalDevice, buffer->buffer, NULL);
-    free(buffer);
-    return NULL;
+    return false;
   }
 
   if (vkBindBufferMemory(logicalDevice, buffer->buffer, buffer->memory, 0)
@@ -58,18 +49,16 @@ GpuBuffer* gpu_buffer_allocate(VkDeviceSize size, VkBufferUsageFlags usage,
   {
     vkFreeMemory(logicalDevice, buffer->memory, NULL);
     vkDestroyBuffer(logicalDevice, buffer->buffer, NULL);
-    free(buffer);
-    return NULL;
+    return false;
   }
 
-  return buffer;
+  return true;
 }
 
 void gpu_buffer_free(GpuBuffer* buffer, VkDevice logicalDevice)
 {
   vkFreeMemory(logicalDevice, buffer->memory, NULL);
   vkDestroyBuffer(logicalDevice, buffer->buffer, NULL);
-  free(buffer);
 }
 
 bool gpu_buffer_write(GpuBuffer* buffer, uint8_t* data, VkDeviceSize size,

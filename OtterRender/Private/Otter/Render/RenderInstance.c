@@ -1,6 +1,7 @@
 #include "Otter/Render/RenderInstance.h"
 
 #include "Otter/Render/Memory/GpuBuffer.h"
+#include "Otter/Render/Uniform/ModelViewProjection.h"
 
 #define VK_VALIDATION_LAYER_NAME   "VK_LAYER_KHRONOS_validation"
 #define REQUESTED_NUMBER_OF_FRAMES 3
@@ -660,41 +661,6 @@ static bool render_instance_create_render_surface(
   return true;
 }
 
-static bool render_instance_create_descriptor_pools(
-    RenderInstance* renderInstance)
-{
-  VkDescriptorPoolSize poolSizes[DPI_NUM_OF_POOLS] = {
-      {.type               = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-          .descriptorCount = DESCRIPTOR_POOL_SIZE}};
-
-  renderInstance->descriptorPools =
-      calloc(renderInstance->framesInFlight, sizeof(VkDescriptorPool));
-  if (renderInstance->descriptorPools == NULL)
-  {
-    fprintf(stderr, "OOM\n");
-    return false;
-  }
-
-  VkDescriptorPoolCreateInfo createInfo = {
-      .sType         = VK_STRUCTURE_TYPE_DESCRIPTOR_POOL_CREATE_INFO,
-      .maxSets       = DESCRIPTOR_SET_LIMIT,
-      .poolSizeCount = DPI_NUM_OF_POOLS,
-      .pPoolSizes    = poolSizes};
-
-  for (uint32_t i = 0; i < renderInstance->framesInFlight; i++)
-  {
-    if (vkCreateDescriptorPool(renderInstance->logicalDevice, &createInfo, NULL,
-            &renderInstance->descriptorPools[i])
-        != VK_SUCCESS)
-    {
-      fprintf(stderr, "Could not create descriptor pools\n");
-      return false;
-    }
-  }
-
-  return true;
-}
-
 static bool render_instance_create_command_pool(RenderInstance* renderInstance)
 {
   VkCommandPoolCreateInfo poolInfo = {
@@ -708,79 +674,6 @@ static bool render_instance_create_command_pool(RenderInstance* renderInstance)
   {
     fprintf(stderr, "Error: Failed to create command pool\n");
     return false;
-  }
-
-  return true;
-}
-
-static bool render_instance_create_command_buffers(
-    RenderInstance* renderInstance)
-{
-  VkCommandBufferAllocateInfo allocInfo = {
-      .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-      .commandPool        = renderInstance->commandPool,
-      .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-      .commandBufferCount = renderInstance->framesInFlight};
-
-  renderInstance->commandBuffers =
-      malloc(renderInstance->framesInFlight * sizeof(VkCommandBuffer));
-  if (renderInstance->commandBuffers == NULL)
-  {
-    fprintf(stderr, "Error: Failed to allocate memory for command buffers\n");
-    return false;
-  }
-
-  if (vkAllocateCommandBuffers(renderInstance->logicalDevice, &allocInfo,
-          renderInstance->commandBuffers)
-      != VK_SUCCESS)
-  {
-    fprintf(stderr, "Error: Failed to allocate command buffers\n");
-    free(renderInstance->commandBuffers);
-    return false;
-  }
-
-  return true;
-}
-
-bool render_instance_create_sync_objects(RenderInstance* renderInstance)
-{
-  VkSemaphoreCreateInfo semaphoreInfo = {
-      .sType = VK_STRUCTURE_TYPE_SEMAPHORE_CREATE_INFO};
-
-  VkFenceCreateInfo fenceInfo = {.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO,
-      .flags                            = VK_FENCE_CREATE_SIGNALED_BIT};
-
-  renderInstance->imageAvailableSemaphores =
-      malloc(renderInstance->framesInFlight * sizeof(VkSemaphore));
-  renderInstance->renderFinishedSemaphores =
-      malloc(renderInstance->framesInFlight * sizeof(VkSemaphore));
-  renderInstance->inflightFences =
-      malloc(renderInstance->framesInFlight * sizeof(VkFence));
-
-  if (!renderInstance->imageAvailableSemaphores
-      || !renderInstance->renderFinishedSemaphores
-      || !renderInstance->inflightFences)
-  {
-    fprintf(stderr,
-        "Error: Failed to allocate memory for synchronization objects\n");
-    return false;
-  }
-
-  for (uint32_t i = 0; i < renderInstance->framesInFlight; ++i)
-  {
-    if (vkCreateSemaphore(renderInstance->logicalDevice, &semaphoreInfo, NULL,
-            &renderInstance->imageAvailableSemaphores[i])
-            != VK_SUCCESS
-        || vkCreateSemaphore(renderInstance->logicalDevice, &semaphoreInfo,
-               NULL, &renderInstance->renderFinishedSemaphores[i])
-               != VK_SUCCESS
-        || vkCreateFence(renderInstance->logicalDevice, &fenceInfo, NULL,
-               &renderInstance->inflightFences[i])
-               != VK_SUCCESS)
-    {
-      fprintf(stderr, "Error: Failed to create synchronization objects\n");
-      return false;
-    }
   }
 
   return true;
@@ -847,24 +740,25 @@ RenderInstance* render_instance_create(HWND window)
       min(renderInstance->swapchain->numOfSwapchainImages,
           REQUESTED_NUMBER_OF_FRAMES);
 
-  if (!render_instance_create_descriptor_pools(renderInstance))
-  {
-    return NULL;
-  }
-
   if (!render_instance_create_command_pool(renderInstance))
   {
     return NULL;
   }
 
-  if (!render_instance_create_command_buffers(renderInstance))
+  renderInstance->frames =
+      malloc(sizeof(RenderFrame) * renderInstance->framesInFlight);
+  if (renderInstance->frames == NULL)
   {
     return NULL;
   }
 
-  if (!render_instance_create_sync_objects(renderInstance))
+  for (uint32_t i = 0; i < renderInstance->framesInFlight; i++)
   {
-    return NULL;
+    if (!render_frame_create(&renderInstance->frames[i],
+            renderInstance->logicalDevice, renderInstance->commandPool))
+    {
+      return NULL;
+    }
   }
 
   if (!g_buffer_pipeline_create(renderInstance->logicalDevice,
@@ -878,52 +772,19 @@ RenderInstance* render_instance_create(HWND window)
 
 void render_instance_destroy(RenderInstance* renderInstance)
 {
-  for (uint32_t i = 0; i < renderInstance->framesInFlight; ++i)
+  if (renderInstance->frames != NULL)
   {
-    if (renderInstance->inflightFences[i] != VK_NULL_HANDLE)
+    for (uint32_t i = 0; i < renderInstance->framesInFlight; i++)
     {
-      vkWaitForFences(renderInstance->logicalDevice, 1,
-          &renderInstance->inflightFences[i], true, UINT64_MAX);
+      render_frame_destroy(&renderInstance->frames[i],
+          renderInstance->commandPool, renderInstance->logicalDevice);
     }
-
-    vkDestroySemaphore(renderInstance->logicalDevice,
-        renderInstance->imageAvailableSemaphores[i], NULL);
-    vkDestroySemaphore(renderInstance->logicalDevice,
-        renderInstance->renderFinishedSemaphores[i], NULL);
-    vkDestroyFence(
-        renderInstance->logicalDevice, renderInstance->inflightFences[i], NULL);
-  }
-
-  free(renderInstance->imageAvailableSemaphores);
-  free(renderInstance->renderFinishedSemaphores);
-  free(renderInstance->inflightFences);
-
-  if (renderInstance->commandBuffers)
-  {
-    vkFreeCommandBuffers(renderInstance->logicalDevice,
-        renderInstance->commandPool, renderInstance->framesInFlight,
-        renderInstance->commandBuffers);
-    free(renderInstance->commandBuffers);
-    renderInstance->commandBuffers = NULL;
   }
 
   if (renderInstance->commandPool != NULL)
   {
     vkDestroyCommandPool(
         renderInstance->logicalDevice, renderInstance->commandPool, NULL);
-  }
-
-  if (renderInstance->descriptorPools != NULL)
-  {
-    for (uint32_t i = 0; i < renderInstance->framesInFlight; i++)
-    {
-      if (renderInstance->descriptorPools[i] != VK_NULL_HANDLE)
-      {
-        vkDestroyDescriptorPool(renderInstance->logicalDevice,
-            renderInstance->descriptorPools[i], NULL);
-      }
-    }
-    free(renderInstance->descriptorPools);
   }
 
   if (renderInstance->renderPass != NULL)
@@ -968,134 +829,14 @@ void render_instance_destroy(RenderInstance* renderInstance)
   free(renderInstance);
 }
 
-static void render_instance_draw_to_image(
-    RenderInstance* renderInstance, uint32_t image)
-{
-  VkCommandBuffer commandBuffer =
-      renderInstance->commandBuffers[renderInstance->currentFrame];
-  vkResetCommandBuffer(commandBuffer, 0);
-
-  VkCommandBufferBeginInfo beginInfo = {
-      .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-      .flags            = 0,
-      .pInheritanceInfo = NULL};
-
-  if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
-  {
-    fprintf(stderr, "Error: Unable to begin command buffer\n");
-    // TODO: Handle error
-    return;
-  }
-
-  VkExtent2D extents = renderInstance->swapchain->extents;
-
-  VkClearValue clearColor[]            = {{0.0f, 0.0f, 0.0f, 1.0f},
-                 {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
-                 {0.0f, 0.0f, 0.0f, 1.0f}};
-  VkRenderPassBeginInfo renderPassInfo = {
-      .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
-      .renderPass      = renderInstance->renderPass,
-      .framebuffer     = renderInstance->swapchain->renderStacks[image].gBuffer,
-      .renderArea      = {{0, 0}, extents},
-      .clearValueCount = _countof(clearColor),
-      .pClearValues    = clearColor};
-
-  vkCmdBeginRenderPass(
-      commandBuffer, &renderPassInfo, VK_SUBPASS_CONTENTS_INLINE);
-
-  VkViewport viewport = {.x = 0.0f,
-      .y                    = 0.0f,
-      .width                = (float) extents.width,
-      .height               = (float) extents.height,
-      .minDepth             = 0.0f,
-      .maxDepth             = 1.0f};
-  vkCmdSetViewport(commandBuffer, 0, 1, &viewport);
-
-  VkRect2D scissor = {{0, 0}, extents};
-  vkCmdSetScissor(commandBuffer, 0, 1, &scissor);
-
-  vkResetDescriptorPool(renderInstance->logicalDevice,
-      renderInstance->descriptorPools[renderInstance->currentFrame], 0);
-
-  // TODO: Render meshes that are queued up.
-  vkCmdBindPipeline(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      renderInstance->gBufferPipeline.pipeline);
-
-  VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(
-      commandBuffer, 0, 1, &renderInstance->command.vertices, &offset);
-  vkCmdBindIndexBuffer(
-      commandBuffer, renderInstance->command.indices, 0, VK_INDEX_TYPE_UINT16);
-  vkCmdDrawIndexed(commandBuffer,
-      (uint32_t) renderInstance->command.numOfIndices, 1, 0, 0, 0);
-
-  vkCmdEndRenderPass(commandBuffer);
-
-  if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
-  {
-    fprintf(stderr, "Error: Unable to end recording of command buffer\n");
-    // Handle error
-    return;
-  }
-
-  VkQueue graphicsQueue;
-  vkGetDeviceQueue(renderInstance->logicalDevice,
-      renderInstance->presentQueueFamily, 0, &graphicsQueue);
-
-  VkSemaphore renderFinishedSemaphore =
-      renderInstance->renderFinishedSemaphores[renderInstance->currentFrame];
-  VkPipelineStageFlags waitStages =
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  VkSubmitInfo submitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-      .waitSemaphoreCount           = 1,
-      .pWaitSemaphores =
-          &renderInstance
-               ->imageAvailableSemaphores[renderInstance->currentFrame],
-      .pWaitDstStageMask    = &waitStages,
-      .commandBufferCount   = 1,
-      .pCommandBuffers      = &commandBuffer,
-      .signalSemaphoreCount = 1,
-      .pSignalSemaphores    = &renderFinishedSemaphore};
-
-  if (vkQueueSubmit(graphicsQueue, 1, &submitInfo,
-          renderInstance->inflightFences[renderInstance->currentFrame])
-      != VK_SUCCESS)
-  {
-    fprintf(stderr, "Error: Unable to submit graphics work\n");
-    // TODO: Handle error
-    return;
-  }
-}
-
-static void render_instance_present_image(
-    RenderInstance* renderInstance, uint32_t image)
-{
-  VkPresentInfoKHR presentInfo = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
-      .pWaitSemaphores =
-          &renderInstance
-               ->renderFinishedSemaphores[renderInstance->currentFrame],
-      .waitSemaphoreCount = 1,
-      .pSwapchains        = &renderInstance->swapchain->swapchain,
-      .swapchainCount     = 1,
-      .pImageIndices      = &image};
-
-  VkQueue presentQueue;
-  vkGetDeviceQueue(renderInstance->logicalDevice,
-      renderInstance->graphicsQueueFamily, 0, &presentQueue);
-  if (vkQueuePresentKHR(presentQueue, &presentInfo))
-  {
-    fprintf(stderr, "Unable to present frame\n");
-  }
-}
-
 void render_instance_draw(RenderInstance* renderInstance)
 {
   uint32_t image;
   if (!render_swapchain_get_next_image(renderInstance->swapchain,
           renderInstance->logicalDevice,
-          renderInstance->inflightFences[renderInstance->currentFrame],
-          renderInstance
-              ->imageAvailableSemaphores[renderInstance->currentFrame],
+          renderInstance->frames[renderInstance->currentFrame].inflightFence,
+          renderInstance->frames[renderInstance->currentFrame]
+              .imageAvailableSemaphore,
           &image))
   {
     fprintf(stderr, "WARN: Swapchain was invalid, but recreation is not "
@@ -1104,8 +845,44 @@ void render_instance_draw(RenderInstance* renderInstance)
     return;
   }
 
-  render_instance_draw_to_image(renderInstance, image);
-  render_instance_present_image(renderInstance, image);
+  for (uint32_t i = 0; i < renderInstance->frames[renderInstance->currentFrame]
+                               .perRenderBuffersCount;
+       i++)
+  {
+    gpu_buffer_free(&renderInstance->frames[renderInstance->currentFrame]
+                         .perRenderBuffers[i],
+        renderInstance->logicalDevice);
+  }
+  renderInstance->frames[renderInstance->currentFrame].perRenderBuffersCount =
+      0;
+
+  VkQueue graphicsQueue;
+  vkGetDeviceQueue(renderInstance->logicalDevice,
+      renderInstance->graphicsQueueFamily, 0, &graphicsQueue);
+
+  render_frame_draw(&renderInstance->frames[renderInstance->currentFrame],
+      &renderInstance->swapchain->renderStacks[image], &renderInstance->command,
+      &renderInstance->gBufferPipeline, renderInstance->swapchain->extents,
+      renderInstance->renderPass, graphicsQueue, renderInstance->physicalDevice,
+      renderInstance->logicalDevice);
+
+  VkPresentInfoKHR presentInfo = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
+      .pWaitSemaphores = &renderInstance->frames[renderInstance->currentFrame]
+                              .renderFinishedSemaphore,
+      .waitSemaphoreCount = 1,
+      .pSwapchains        = &renderInstance->swapchain->swapchain,
+      .swapchainCount     = 1,
+      .pImageIndices      = &image};
+
+  VkQueue presentQueue;
+  vkGetDeviceQueue(renderInstance->logicalDevice,
+      renderInstance->presentQueueFamily, 0, &presentQueue);
+
+  if (vkQueuePresentKHR(presentQueue, &presentInfo) != VK_SUCCESS)
+  {
+    fprintf(stderr, "Unable to present frame\n");
+    // TODO: Should try to reset the swapchain.
+  }
 
   renderInstance->currentFrame =
       (renderInstance->currentFrame + 1) % renderInstance->framesInFlight;

@@ -161,6 +161,9 @@
     <ProjectReference Include="..\OtterNetworking\OtterNetworking.vcxproj">
       <Project>{11648445-41e8-4e7b-a37e-0bc842cc576b}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\OtterUtil\OtterUtil.vcxproj">
+      <Project>{f954d441-b93b-4238-9444-c3f81f760135}</Project>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup>
     <None Include="Config\config.ini" />

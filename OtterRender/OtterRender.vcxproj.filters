@@ -54,6 +54,9 @@
     <ClInclude Include="Public\Otter\Render\RenderStack.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Public\Otter\Render\RenderFrame.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.c">
@@ -81,6 +84,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Private\Otter\Render\RenderStack.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Render\RenderFrame.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

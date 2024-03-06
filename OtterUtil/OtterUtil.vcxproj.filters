@@ -33,12 +33,27 @@
     <ClInclude Include="Public\Otter\Util\Math\Clamp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Public\Otter\Util\HashMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Util\LinkedList.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Private\Otter\Util\File.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Util\HashMap.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Util\LinkedList.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Util\Math\Mat.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

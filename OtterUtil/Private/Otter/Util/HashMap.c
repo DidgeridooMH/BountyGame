@@ -1,4 +1,4 @@
-#include "Otter/Config/HashMap.h"
+#include "Otter/Util/HashMap.h"
 
 HashMap* hash_map_create(size_t numOfBuckets, size_t coefficient)
 {

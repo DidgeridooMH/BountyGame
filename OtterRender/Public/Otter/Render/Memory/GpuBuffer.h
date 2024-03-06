@@ -10,7 +10,7 @@ typedef struct GpuBuffer
   VkDeviceSize size;
 } GpuBuffer;
 
-OTTERRENDER_API GpuBuffer* gpu_buffer_allocate(VkDeviceSize size,
+OTTERRENDER_API bool gpu_buffer_allocate(GpuBuffer* buffer, VkDeviceSize size,
     VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice);
 

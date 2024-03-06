@@ -24,18 +24,12 @@
     <ClInclude Include="Public\Otter\Config\Config.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Otter\Config\HashMap.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Private\Otter\Config\Config.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Otter\Config\HashMap.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

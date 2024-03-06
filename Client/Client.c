@@ -299,9 +299,9 @@ int WINAPI wWinMain(
           renderInstance->physicalDevice, renderInstance->logicalDevice,
           renderInstance->commandPool, graphicsQueue);
 
-  renderInstance->command.vertices     = cube->vertices->buffer;
-  renderInstance->command.indices      = cube->indices->buffer;
-  renderInstance->command.numOfIndices = cube->indices->size / sizeof(uint16_t);
+  renderInstance->command.vertices     = cube->vertices.buffer;
+  renderInstance->command.indices      = cube->indices.buffer;
+  renderInstance->command.numOfIndices = cube->indices.size / sizeof(uint16_t);
   // ------
 
   char* host = hash_map_get_value(config, CONFIG_HOST);

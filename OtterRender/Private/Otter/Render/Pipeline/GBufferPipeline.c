@@ -111,11 +111,24 @@ bool g_buffer_pipeline_create(
       .attachmentCount = _countof(colorBlendAttachment),
       .pAttachments    = colorBlendAttachment};
 
+  VkDescriptorSetLayoutBinding layoutBindings[] = {{.binding = 0,
+      .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      .descriptorCount = 1,
+      .stageFlags      = VK_SHADER_STAGE_VERTEX_BIT}};
+  VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
+      .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .pBindings    = layoutBindings,
+      .bindingCount = _countof(layoutBindings)};
+  if (vkCreateDescriptorSetLayout(logicalDevice, &descriptorSetLayoutCreateInfo,
+          NULL, &pipeline->descriptorSetLayouts))
+  {
+    return false;
+  }
+
   VkPipelineLayoutCreateInfo layoutCreateInfo = {
       .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .pSetLayouts    = NULL,
-      .setLayoutCount = 0};
-
+      .pSetLayouts    = &pipeline->descriptorSetLayouts,
+      .setLayoutCount = 1};
   if (vkCreatePipelineLayout(
           logicalDevice, &layoutCreateInfo, NULL, &pipeline->layout)
       != VK_SUCCESS)

@@ -5,55 +5,52 @@ Mesh* mesh_create(const MeshVertex vertices[], uint64_t numOfVertices,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
     VkCommandPool commandPool, VkQueue commandQueue)
 {
-  Mesh* mesh = malloc(sizeof(Mesh));
+  Mesh* mesh = calloc(1, sizeof(Mesh));
   if (mesh == NULL)
   {
     return NULL;
   }
 
-  mesh->vertices = gpu_buffer_allocate(numOfVertices * sizeof(vertices[0]),
-      VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice);
-
-  mesh->indices = gpu_buffer_allocate(numOfIndices * sizeof(indices[0]),
-      VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
-      VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice);
-
-  GpuBuffer* vertexStagingBuffer = gpu_buffer_allocate(mesh->vertices->size,
-      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-          | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-      physicalDevice, logicalDevice);
-
-  GpuBuffer* indexStagingBuffer =
-      gpu_buffer_allocate(mesh->indices->size, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+  GpuBuffer vertexStagingBuffer = {0};
+  GpuBuffer indexStagingBuffer  = {0};
+  if (!gpu_buffer_allocate(&vertexStagingBuffer,
+          numOfVertices * sizeof(vertices[0]), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
               | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-          physicalDevice, logicalDevice);
-
-  if (mesh->vertices == NULL || mesh->indices == NULL
-      || vertexStagingBuffer == NULL || indexStagingBuffer == NULL)
+          physicalDevice, logicalDevice)
+      || !gpu_buffer_allocate(&indexStagingBuffer,
+          numOfIndices * sizeof(indices[0]), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+              | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+          physicalDevice, logicalDevice))
   {
-    fprintf(stderr, "There was a problem allocating the mesh\n");
-    gpu_buffer_free(mesh->vertices, logicalDevice);
-    gpu_buffer_free(mesh->indices, logicalDevice);
-    gpu_buffer_free(vertexStagingBuffer, logicalDevice);
-    gpu_buffer_free(indexStagingBuffer, logicalDevice);
-    free(mesh);
+    gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
+    gpu_buffer_free(&indexStagingBuffer, logicalDevice);
+    mesh_destroy(mesh, logicalDevice);
     return NULL;
   }
 
-  if (!gpu_buffer_write(vertexStagingBuffer, (uint8_t*) vertices,
-          mesh->vertices->size, 0, logicalDevice)
-      || !gpu_buffer_write(indexStagingBuffer, (uint8_t*) indices,
-          mesh->indices->size, 0, logicalDevice))
+  if (!gpu_buffer_allocate(&mesh->vertices, numOfVertices * sizeof(vertices[0]),
+          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice)
+      || !gpu_buffer_allocate(&mesh->indices, numOfIndices * sizeof(indices[0]),
+          VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice))
+  {
+    fprintf(stderr, "There was a problem allocating the mesh\n");
+    mesh_destroy(mesh, logicalDevice);
+    return NULL;
+  }
+
+  if (!gpu_buffer_write(&vertexStagingBuffer, (uint8_t*) vertices,
+          mesh->vertices.size, 0, logicalDevice)
+      || !gpu_buffer_write(&indexStagingBuffer, (uint8_t*) indices,
+          mesh->indices.size, 0, logicalDevice))
   {
     fprintf(stderr, "There was an issue writing to the buffer.\n");
-    gpu_buffer_free(mesh->vertices, logicalDevice);
-    gpu_buffer_free(mesh->indices, logicalDevice);
-    gpu_buffer_free(vertexStagingBuffer, logicalDevice);
-    gpu_buffer_free(indexStagingBuffer, logicalDevice);
-    free(mesh);
+    gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
+    gpu_buffer_free(&indexStagingBuffer, logicalDevice);
+    mesh_destroy(mesh, logicalDevice);
     return NULL;
   }
 
@@ -68,11 +65,9 @@ Mesh* mesh_create(const MeshVertex vertices[], uint64_t numOfVertices,
       != VK_SUCCESS)
   {
     fprintf(stderr, "Unable to allocate command buffer\n");
-    gpu_buffer_free(mesh->vertices, logicalDevice);
-    gpu_buffer_free(mesh->indices, logicalDevice);
-    gpu_buffer_free(vertexStagingBuffer, logicalDevice);
-    gpu_buffer_free(indexStagingBuffer, logicalDevice);
-    free(mesh);
+    gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
+    gpu_buffer_free(&indexStagingBuffer, logicalDevice);
+    mesh_destroy(mesh, logicalDevice);
     return NULL;
   }
 
@@ -83,26 +78,22 @@ Mesh* mesh_create(const MeshVertex vertices[], uint64_t numOfVertices,
   {
     fprintf(stderr, "Unable to start command buffer\n");
     vkFreeCommandBuffers(logicalDevice, commandPool, 1, &transferCommands);
-    gpu_buffer_free(mesh->vertices, logicalDevice);
-    gpu_buffer_free(mesh->indices, logicalDevice);
-    gpu_buffer_free(vertexStagingBuffer, logicalDevice);
-    gpu_buffer_free(indexStagingBuffer, logicalDevice);
-    free(mesh);
+    gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
+    gpu_buffer_free(&indexStagingBuffer, logicalDevice);
+    mesh_destroy(mesh, logicalDevice);
     return NULL;
   }
 
-  gpu_buffer_transfer(vertexStagingBuffer, mesh->vertices, transferCommands);
-  gpu_buffer_transfer(indexStagingBuffer, mesh->indices, transferCommands);
+  gpu_buffer_transfer(&vertexStagingBuffer, &mesh->vertices, transferCommands);
+  gpu_buffer_transfer(&indexStagingBuffer, &mesh->indices, transferCommands);
 
   if (vkEndCommandBuffer(transferCommands) != VK_SUCCESS)
   {
     fprintf(stderr, "Unable to end command buffer\n");
     vkFreeCommandBuffers(logicalDevice, commandPool, 1, &transferCommands);
-    gpu_buffer_free(mesh->vertices, logicalDevice);
-    gpu_buffer_free(mesh->indices, logicalDevice);
-    gpu_buffer_free(vertexStagingBuffer, logicalDevice);
-    gpu_buffer_free(indexStagingBuffer, logicalDevice);
-    free(mesh);
+    gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
+    gpu_buffer_free(&indexStagingBuffer, logicalDevice);
+    mesh_destroy(mesh, logicalDevice);
     return NULL;
   }
 
@@ -113,11 +104,9 @@ Mesh* mesh_create(const MeshVertex vertices[], uint64_t numOfVertices,
   {
     fprintf(stderr, "Unable to submit queue\n");
     vkFreeCommandBuffers(logicalDevice, commandPool, 1, &transferCommands);
-    gpu_buffer_free(mesh->vertices, logicalDevice);
-    gpu_buffer_free(mesh->indices, logicalDevice);
-    gpu_buffer_free(vertexStagingBuffer, logicalDevice);
-    gpu_buffer_free(indexStagingBuffer, logicalDevice);
-    free(mesh);
+    gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
+    gpu_buffer_free(&indexStagingBuffer, logicalDevice);
+    mesh_destroy(mesh, logicalDevice);
     return NULL;
   }
 
@@ -125,25 +114,23 @@ Mesh* mesh_create(const MeshVertex vertices[], uint64_t numOfVertices,
   {
     fprintf(stderr, "Unable to start command buffer\n");
     vkFreeCommandBuffers(logicalDevice, commandPool, 1, &transferCommands);
-    gpu_buffer_free(mesh->vertices, logicalDevice);
-    gpu_buffer_free(mesh->indices, logicalDevice);
-    gpu_buffer_free(vertexStagingBuffer, logicalDevice);
-    gpu_buffer_free(indexStagingBuffer, logicalDevice);
-    free(mesh);
+    gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
+    gpu_buffer_free(&indexStagingBuffer, logicalDevice);
+    mesh_destroy(mesh, logicalDevice);
     return NULL;
   }
 
   vkFreeCommandBuffers(logicalDevice, commandPool, 1, &transferCommands);
 
-  gpu_buffer_free(vertexStagingBuffer, logicalDevice);
-  gpu_buffer_free(indexStagingBuffer, logicalDevice);
+  gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
+  gpu_buffer_free(&indexStagingBuffer, logicalDevice);
 
   return mesh;
 }
 
 void mesh_destroy(Mesh* mesh, VkDevice logicalDevice)
 {
-  gpu_buffer_free(mesh->vertices, logicalDevice);
-  gpu_buffer_free(mesh->indices, logicalDevice);
+  gpu_buffer_free(&mesh->vertices, logicalDevice);
+  gpu_buffer_free(&mesh->indices, logicalDevice);
   free(mesh);
 }

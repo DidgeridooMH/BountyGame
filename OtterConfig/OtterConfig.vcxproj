@@ -158,7 +158,6 @@
     <ClInclude Include="pch.h" />
     <ClInclude Include="Public\Otter\Config\Config.h" />
     <ClInclude Include="Public\Otter\Config\export.h" />
-    <ClInclude Include="Public\Otter\Config\HashMap.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.c">
@@ -168,7 +167,11 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
     <ClCompile Include="Private\Otter\Config\Config.c" />
-    <ClCompile Include="Private\Otter\Config\HashMap.c" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\OtterUtil\OtterUtil.vcxproj">
+      <Project>{f954d441-b93b-4238-9444-c3f81f760135}</Project>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

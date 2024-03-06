@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Otter/Config/HashMap.h"
 #include "Otter/Config/export.h"
+#include "Otter/Util/HashMap.h"
 
-OTTERRENDER_API HashMap* config_parse(char* config);
+OTTERCONFIG_API HashMap* config_parse(char* config);

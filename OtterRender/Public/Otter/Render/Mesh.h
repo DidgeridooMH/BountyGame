@@ -15,8 +15,8 @@ typedef struct MeshVertex
 
 typedef struct Mesh
 {
-  GpuBuffer* vertices;
-  GpuBuffer* indices;
+  GpuBuffer vertices;
+  GpuBuffer indices;
 } Mesh;
 
 OTTERRENDER_API Mesh* mesh_create(const MeshVertex vertices[],

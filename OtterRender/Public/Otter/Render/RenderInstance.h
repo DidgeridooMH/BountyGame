@@ -1,13 +1,12 @@
 #pragma once
 
 #include "Otter/Render/Pipeline/GBufferPipeline.h"
+#include "Otter/Render/RenderFrame.h"
 #include "Otter/Render/RenderQueue.h"
 #include "Otter/Render/RenderSwapchain.h"
 #include "Otter/Render/export.h"
+#include "Otter/Util/LinkedList.h"
 #include <vulkan/vulkan.h>
-
-#define DESCRIPTOR_POOL_SIZE 128
-#define DESCRIPTOR_SET_LIMIT 512
 
 enum DescriptorPoolId
 {
@@ -41,19 +40,14 @@ typedef struct RenderInstance
   VkRenderPass renderPass;
   RenderSwapchain* swapchain;
 
-  VkDescriptorPool* descriptorPools;
-
   VkCommandPool commandPool;
-  VkCommandBuffer* commandBuffers;
-
-  VkSemaphore* imageAvailableSemaphores;
-  VkSemaphore* renderFinishedSemaphores;
-  VkFence* inflightFences;
 
   uint32_t currentFrame;
 
   uint32_t graphicsQueueFamily;
   uint32_t presentQueueFamily;
+
+  RenderFrame* frames;
   uint32_t framesInFlight;
 
   RenderSettings settings;
