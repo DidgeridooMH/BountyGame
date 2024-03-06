@@ -1,6 +1,8 @@
 #pragma once
 
+#include "Otter/Render/Mesh.h"
 #include "Otter/Render/Pipeline/GBufferPipeline.h"
+#include "Otter/Render/Pipeline/PbrPipeline.h"
 #include "Otter/Render/RenderFrame.h"
 #include "Otter/Render/RenderQueue.h"
 #include "Otter/Render/RenderSwapchain.h"
@@ -54,6 +56,9 @@ typedef struct RenderInstance
   RenderCapabilities capabilities;
 
   GBufferPipeline gBufferPipeline;
+  PbrPipeline pbrPipeline;
+  // TODO: Rewrite mesh to not have to be a pointer.
+  Mesh* fullscreenQuad;
 
   RenderCommand command;
 } RenderInstance;

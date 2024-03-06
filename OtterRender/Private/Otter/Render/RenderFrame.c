@@ -102,8 +102,9 @@ void render_frame_destroy(
 
 void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     RenderCommand* command, GBufferPipeline* gBufferPipeline,
-    VkExtent2D extents, VkRenderPass renderPass, VkQueue queue,
-    VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
+    PbrPipeline* pbrPipeline, Mesh* fullscreenQuad, VkExtent2D extents,
+    VkRenderPass renderPass, VkQueue queue, VkPhysicalDevice physicalDevice,
+    VkDevice logicalDevice)
 {
   vkResetCommandBuffer(renderFrame->commandBuffer, 0);
 
@@ -126,7 +127,7 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
   VkRenderPassBeginInfo renderPassInfo = {
       .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
       .renderPass      = renderPass,
-      .framebuffer     = renderStack->gBuffer,
+      .framebuffer     = renderStack->framebuffer,
       .renderArea      = {{0, 0}, extents},
       .clearValueCount = _countof(clearColor),
       .pClearValues    = clearColor};
@@ -231,6 +232,18 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
       renderFrame->commandBuffer, command->indices, 0, VK_INDEX_TYPE_UINT16);
   vkCmdDrawIndexed(
       renderFrame->commandBuffer, (uint32_t) command->numOfIndices, 1, 0, 0, 0);
+
+  vkCmdNextSubpass(renderFrame->commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
+
+  vkCmdBindPipeline(renderFrame->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      pbrPipeline->pipeline);
+
+  vkCmdBindVertexBuffers(renderFrame->commandBuffer, 0, 1,
+      &fullscreenQuad->vertices.buffer, &offset);
+  vkCmdBindIndexBuffer(renderFrame->commandBuffer,
+      fullscreenQuad->indices.buffer, 0, VK_INDEX_TYPE_UINT16);
+  vkCmdDrawIndexed(renderFrame->commandBuffer,
+      (uint32_t) fullscreenQuad->indices.size / sizeof(uint16_t), 1, 0, 0, 0);
 
   vkCmdEndRenderPass(renderFrame->commandBuffer);
 

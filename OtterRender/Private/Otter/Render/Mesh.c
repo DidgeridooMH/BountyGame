@@ -1,7 +1,7 @@
 #include "Otter/Render/Mesh.h"
 
-Mesh* mesh_create(const MeshVertex vertices[], uint64_t numOfVertices,
-    const uint16_t indices[], uint64_t numOfIndices,
+Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
+    uint64_t numOfVertices, const uint16_t indices[], uint64_t numOfIndices,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
     VkCommandPool commandPool, VkQueue commandQueue)
 {
@@ -13,8 +13,8 @@ Mesh* mesh_create(const MeshVertex vertices[], uint64_t numOfVertices,
 
   GpuBuffer vertexStagingBuffer = {0};
   GpuBuffer indexStagingBuffer  = {0};
-  if (!gpu_buffer_allocate(&vertexStagingBuffer,
-          numOfVertices * sizeof(vertices[0]), VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+  if (!gpu_buffer_allocate(&vertexStagingBuffer, numOfVertices * vertexSize,
+          VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
               | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
           physicalDevice, logicalDevice)
@@ -30,7 +30,7 @@ Mesh* mesh_create(const MeshVertex vertices[], uint64_t numOfVertices,
     return NULL;
   }
 
-  if (!gpu_buffer_allocate(&mesh->vertices, numOfVertices * sizeof(vertices[0]),
+  if (!gpu_buffer_allocate(&mesh->vertices, numOfVertices * vertexSize,
           VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice)
       || !gpu_buffer_allocate(&mesh->indices, numOfIndices * sizeof(indices[0]),

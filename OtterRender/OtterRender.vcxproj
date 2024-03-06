@@ -168,6 +168,7 @@
     <ClInclude Include="Public\Otter\Render\Memory\GpuBuffer.h" />
     <ClInclude Include="Public\Otter\Render\Memory\MemoryType.h" />
     <ClInclude Include="Public\Otter\Render\Mesh.h" />
+    <ClInclude Include="Public\Otter\Render\Pipeline\PbrPipeline.h" />
     <ClInclude Include="Public\Otter\Render\RenderFrame.h" />
     <ClInclude Include="Public\Otter\Render\RenderStack.h" />
     <ClInclude Include="Public\Otter\Render\RenderStage\GBuffer.h" />
@@ -188,6 +189,7 @@
     <ClCompile Include="Private\Otter\Render\Memory\MemoryType.c" />
     <ClCompile Include="Private\Otter\Render\Mesh.c" />
     <ClCompile Include="Private\Otter\Render\Pipeline\GBufferPipeline.c" />
+    <ClCompile Include="Private\Otter\Render\Pipeline\PbrPipeline.c" />
     <ClCompile Include="Private\Otter\Render\Pipeline\Pipeline.c" />
     <ClCompile Include="Private\Otter\Render\RenderFrame.c" />
     <ClCompile Include="Private\Otter\Render\RenderInstance.c" />

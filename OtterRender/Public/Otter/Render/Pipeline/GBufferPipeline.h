@@ -10,8 +10,8 @@ typedef struct GBufferPipeline
   VkPipeline pipeline;
 } GBufferPipeline;
 
-OTTERRENDER_API bool g_buffer_pipeline_create(
+bool g_buffer_pipeline_create(
     VkDevice logicalDevice, VkRenderPass renderPass, GBufferPipeline* pipeline);
 
-OTTERRENDER_API void g_buffer_pipeline_destroy(
+void g_buffer_pipeline_destroy(
     GBufferPipeline* pipeline, VkDevice logicalDevice);

@@ -548,7 +548,7 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
 {
   VkAttachmentDescription colorAttachment[] = {
       {
-          .format        = renderInstance->swapchain->format.format,
+          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
           .samples       = VK_SAMPLE_COUNT_1_BIT,
           .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
           .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -556,7 +556,7 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
           .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
       {
-          .format        = renderInstance->swapchain->format.format,
+          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
           .samples       = VK_SAMPLE_COUNT_1_BIT,
           .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
           .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -564,7 +564,15 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
           .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
       {
-          .format        = renderInstance->swapchain->format.format,
+          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
+          .samples       = VK_SAMPLE_COUNT_1_BIT,
+          .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
+          .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
+          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
+          .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
+      },
+      {
+          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
           .samples       = VK_SAMPLE_COUNT_1_BIT,
           .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
           .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -593,18 +601,27 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
       {.attachment = 2, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
       {.attachment = 3, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
 
-  VkSubpassDescription gbufferSubpass = {
-      .pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS,
-      .colorAttachmentCount = _countof(gbufferAttachmentRef),
-      .pColorAttachments    = gbufferAttachmentRef,
-  };
+  VkAttachmentReference lightingBufferAttachmentRef[] = {
+      {.attachment = 4, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
+
+  VkSubpassDescription subpassDescriptions[] = {
+      {
+          .pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS,
+          .colorAttachmentCount = _countof(gbufferAttachmentRef),
+          .pColorAttachments    = gbufferAttachmentRef,
+      },
+      {
+          .pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS,
+          .colorAttachmentCount = _countof(lightingBufferAttachmentRef),
+          .pColorAttachments    = lightingBufferAttachmentRef,
+      }};
 
   VkRenderPassCreateInfo renderPassInfo = {
       .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-      .attachmentCount = NUM_OF_GBUFFER_LAYERS,
+      .attachmentCount = _countof(colorAttachment),
       .pAttachments    = colorAttachment,
-      .subpassCount    = 1,
-      .pSubpasses      = &gbufferSubpass,
+      .subpassCount    = _countof(subpassDescriptions),
+      .pSubpasses      = subpassDescriptions,
       .dependencyCount = 1,
       .pDependencies   = &dependency,
   };
@@ -767,11 +784,42 @@ RenderInstance* render_instance_create(HWND window)
     return NULL;
   }
 
+  if (!pbr_pipeline_create(renderInstance->logicalDevice,
+          renderInstance->renderPass, &renderInstance->pbrPipeline))
+  {
+    return NULL;
+  }
+
+  Vec3 vertices[]    = {{-1.0f, 1.0f, 0.0f}, {-1.0f, -1.0f, 0.0f},
+         {1.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 0.0f}};
+  uint16_t indices[] = {0, 1, 2, 0, 3, 2};
+  VkQueue transferQueue;
+  vkGetDeviceQueue(renderInstance->logicalDevice,
+      renderInstance->graphicsQueueFamily, 0, &transferQueue);
+  renderInstance->fullscreenQuad = mesh_create(vertices, sizeof(Vec3),
+      _countof(vertices), indices, _countof(indices),
+      renderInstance->physicalDevice, renderInstance->logicalDevice,
+      renderInstance->commandPool, transferQueue);
+  if (renderInstance->fullscreenQuad == NULL)
+  {
+    return NULL;
+  }
+
   return renderInstance;
 }
 
 void render_instance_destroy(RenderInstance* renderInstance)
 {
+  if (renderInstance->fullscreenQuad != NULL)
+  {
+    mesh_destroy(renderInstance->fullscreenQuad, renderInstance->logicalDevice);
+  }
+
+  pbr_pipeline_destroy(
+      &renderInstance->pbrPipeline, renderInstance->logicalDevice);
+  g_buffer_pipeline_destroy(
+      &renderInstance->gBufferPipeline, renderInstance->logicalDevice);
+
   if (renderInstance->frames != NULL)
   {
     for (uint32_t i = 0; i < renderInstance->framesInFlight; i++)
@@ -862,7 +910,8 @@ void render_instance_draw(RenderInstance* renderInstance)
 
   render_frame_draw(&renderInstance->frames[renderInstance->currentFrame],
       &renderInstance->swapchain->renderStacks[image], &renderInstance->command,
-      &renderInstance->gBufferPipeline, renderInstance->swapchain->extents,
+      &renderInstance->gBufferPipeline, &renderInstance->pbrPipeline,
+      renderInstance->fullscreenQuad, renderInstance->swapchain->extents,
       renderInstance->renderPass, graphicsQueue, renderInstance->physicalDevice,
       renderInstance->logicalDevice);
 

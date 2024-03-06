@@ -1,7 +1,9 @@
 #pragma once
 
 #include "Otter/Render/Memory/GpuBuffer.h"
+#include "Otter/Render/Mesh.h"
 #include "Otter/Render/Pipeline/GBufferPipeline.h"
+#include "Otter/Render/Pipeline/PbrPipeline.h"
 #include "Otter/Render/RenderQueue.h"
 #include "Otter/Render/RenderStack.h"
 #include <vulkan/vulkan.h>
@@ -27,5 +29,6 @@ void render_frame_destroy(RenderFrame* renderFrame, VkCommandPool commandPool,
 
 void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     RenderCommand* command, GBufferPipeline* gBufferPipeline,
-    VkExtent2D extents, VkRenderPass renderPass, VkQueue queue,
-    VkPhysicalDevice physicalDevice, VkDevice logicalDevice);
+    PbrPipeline* pbrPipeline, Mesh* fullscreenQuad, VkExtent2D extents,
+    VkRenderPass renderPass, VkQueue queue, VkPhysicalDevice physicalDevice,
+    VkDevice logicalDevice);

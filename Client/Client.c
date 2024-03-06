@@ -294,10 +294,10 @@ int WINAPI wWinMain(
   vkGetDeviceQueue(renderInstance->logicalDevice,
       renderInstance->graphicsQueueFamily, 0, &graphicsQueue);
 
-  Mesh* cube =
-      mesh_create(vertices, _countof(vertices), indices, _countof(indices),
-          renderInstance->physicalDevice, renderInstance->logicalDevice,
-          renderInstance->commandPool, graphicsQueue);
+  Mesh* cube = mesh_create(vertices, _countof(vertices), sizeof(MeshVertex),
+      indices, _countof(indices), renderInstance->physicalDevice,
+      renderInstance->logicalDevice, renderInstance->commandPool,
+      graphicsQueue);
 
   renderInstance->command.vertices     = cube->vertices.buffer;
   renderInstance->command.indices      = cube->indices.buffer;

@@ -8,23 +8,23 @@ typedef struct RenderImage
   VkDeviceMemory memory;
 } RenderImage;
 
-enum GBufferLayer
+#define G_BUFFER_LAYERS 4
+
+enum RenderStackLayers
 {
-  GBL_POSITION,
-  GBL_NORMAL,
-  GBL_COLOR,
-  GBL_MATERIAL,
-  NUM_OF_GBUFFER_LAYERS
+  RSL_POSITION,
+  RSL_NORMAL,
+  RSL_COLOR,
+  RSL_MATERIAL,
+  RSL_LIGHTING,
+  NUM_OF_RENDER_STACK_LAYERS
 };
 
 typedef struct RenderStack
 {
   RenderImage gBufferImage;
-  VkImageView gBufferLayers[NUM_OF_GBUFFER_LAYERS];
-  VkFramebuffer gBuffer;
-
-  VkImageView renderImageView;
-  VkFramebuffer renderBuffer;
+  VkImageView bufferAttachments[NUM_OF_RENDER_STACK_LAYERS];
+  VkFramebuffer framebuffer;
 } RenderStack;
 
 bool render_stack_create(RenderStack* renderStack, VkImage renderImage,

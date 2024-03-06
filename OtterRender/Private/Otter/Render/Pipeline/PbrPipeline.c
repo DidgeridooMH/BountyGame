@@ -1,21 +1,21 @@
-#include "Otter/Render/Pipeline/GBufferPipeline.h"
+#include "Otter/Render/Pipeline/PbrPipeline.h"
 
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/Pipeline/Pipeline.h"
 #include "Otter/Render/RenderStack.h"
 
-bool g_buffer_pipeline_create(
-    VkDevice logicalDevice, VkRenderPass renderPass, GBufferPipeline* pipeline)
+bool pbr_pipeline_create(
+    VkDevice logicalDevice, VkRenderPass renderPass, PbrPipeline* pipeline)
 {
   VkShaderModule vertexShader =
-      pipeline_load_shader_module("Shaders/gbuffer.vert.spv", logicalDevice);
+      pipeline_load_shader_module("Shaders/pbr.vert.spv", logicalDevice);
   if (vertexShader == VK_NULL_HANDLE)
   {
     return false;
   }
 
   VkShaderModule fragShader =
-      pipeline_load_shader_module("Shaders/gbuffer.frag.spv", logicalDevice);
+      pipeline_load_shader_module("Shaders/pbr.frag.spv", logicalDevice);
   if (fragShader == VK_NULL_HANDLE)
   {
     vkDestroyShaderModule(logicalDevice, vertexShader, NULL);
@@ -42,30 +42,13 @@ bool g_buffer_pipeline_create(
 
   VkVertexInputBindingDescription vertexBindingDescription = {
       .binding   = 0,
-      .stride    = sizeof(MeshVertex),
+      .stride    = sizeof(Vec3),
       .inputRate = VK_VERTEX_INPUT_RATE_VERTEX,
   };
-  VkVertexInputAttributeDescription attributeDescription[] = {
-      {.binding     = 0,
-          .location = 0,
-          .format   = VK_FORMAT_R32G32B32_SFLOAT,
-          .offset   = offsetof(MeshVertex, position)},
-      {.binding     = 0,
-          .location = 1,
-          .format   = VK_FORMAT_R32G32B32_SFLOAT,
-          .offset   = offsetof(MeshVertex, normal)},
-      {.binding     = 0,
-          .location = 2,
-          .format   = VK_FORMAT_R32G32B32_SFLOAT,
-          .offset   = offsetof(MeshVertex, tangent)},
-      {.binding     = 0,
-          .location = 3,
-          .format   = VK_FORMAT_R32G32B32_SFLOAT,
-          .offset   = offsetof(MeshVertex, bitangent)},
-      {.binding     = 0,
-          .location = 4,
-          .format   = VK_FORMAT_R32G32_SFLOAT,
-          .offset   = offsetof(MeshVertex, uv)}};
+  VkVertexInputAttributeDescription attributeDescription[]   = {{.binding = 0,
+        .location                                                         = 0,
+        .format = VK_FORMAT_R32G32B32_SFLOAT,
+        .offset = 0}};
   VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO,
       .pVertexBindingDescriptions      = &vertexBindingDescription,
@@ -90,35 +73,26 @@ bool g_buffer_pipeline_create(
       .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
       .minSampleShading     = 1.0f};
 
-  VkPipelineColorBlendAttachmentState colorBlendAttachment[G_BUFFER_LAYERS] = {
-      0};
-  for (int i = 0; i < _countof(colorBlendAttachment); i++)
-  {
-    colorBlendAttachment[i].blendEnable         = true;
-    colorBlendAttachment[i].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
-    colorBlendAttachment[i].dstColorBlendFactor =
-        VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
-    colorBlendAttachment[i].colorBlendOp        = VK_BLEND_OP_ADD;
-    colorBlendAttachment[i].srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE;
-    colorBlendAttachment[i].dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO;
-    colorBlendAttachment[i].alphaBlendOp        = VK_BLEND_OP_ADD;
-    colorBlendAttachment[i].colorWriteMask =
-        VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
-        | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
-  }
+  VkPipelineColorBlendAttachmentState colorBlendAttachment = {
+      .blendEnable         = true,
+      .srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA,
+      .dstColorBlendFactor = VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+      .colorBlendOp        = VK_BLEND_OP_ADD,
+      .srcAlphaBlendFactor = VK_BLEND_FACTOR_ONE,
+      .dstAlphaBlendFactor = VK_BLEND_FACTOR_ZERO,
+      .alphaBlendOp        = VK_BLEND_OP_ADD,
+      .colorWriteMask      = VK_COLOR_COMPONENT_R_BIT | VK_COLOR_COMPONENT_G_BIT
+                      | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT};
+
   VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = {
       .logicOpEnable   = false,
-      .attachmentCount = _countof(colorBlendAttachment),
-      .pAttachments    = colorBlendAttachment};
+      .attachmentCount = 1,
+      .pAttachments    = &colorBlendAttachment};
 
-  VkDescriptorSetLayoutBinding layoutBindings[] = {{.binding = 0,
-      .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      .descriptorCount = 1,
-      .stageFlags      = VK_SHADER_STAGE_VERTEX_BIT}};
   VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
       .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-      .pBindings    = layoutBindings,
-      .bindingCount = _countof(layoutBindings)};
+      .pBindings    = NULL,
+      .bindingCount = 0};
   if (vkCreateDescriptorSetLayout(logicalDevice, &descriptorSetLayoutCreateInfo,
           NULL, &pipeline->descriptorSetLayouts))
   {
@@ -169,8 +143,7 @@ bool g_buffer_pipeline_create(
   return true;
 }
 
-void g_buffer_pipeline_destroy(
-    GBufferPipeline* pipeline, VkDevice logicalDevice)
+void pbr_pipeline_destroy(PbrPipeline* pipeline, VkDevice logicalDevice)
 {
   vkDestroyPipelineLayout(logicalDevice, pipeline->layout, NULL);
   vkDestroyPipeline(logicalDevice, pipeline->pipeline, NULL);

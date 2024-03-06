@@ -11,7 +11,7 @@ static bool render_stack_create_render_image(VkExtent2D extents,
       .imageType = VK_IMAGE_TYPE_2D,
       .extent = {.width = extents.width, .height = extents.height, .depth = 1},
       .mipLevels     = 1,
-      .arrayLayers   = NUM_OF_GBUFFER_LAYERS,
+      .arrayLayers   = G_BUFFER_LAYERS,
       .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
       .tiling        = VK_IMAGE_TILING_OPTIMAL,
       .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
@@ -80,33 +80,15 @@ bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
       .subresourceRange.layerCount     = 1,
   };
 
-  for (int layer = 0; layer < _countof(renderStack->gBufferLayers); layer++)
+  for (int layer = 0; layer < G_BUFFER_LAYERS; layer++)
   {
     gBufferImageViewCreateInfo.subresourceRange.baseArrayLayer = layer;
     if (vkCreateImageView(logicalDevice, &gBufferImageViewCreateInfo, NULL,
-            &renderStack->gBufferLayers[layer])
+            &renderStack->bufferAttachments[layer])
         != VK_SUCCESS)
     {
       return false;
     }
-  }
-
-  VkFramebufferCreateInfo gBufferFramebufferCreateInfo = {
-      .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
-      .renderPass      = renderPass,
-      .attachmentCount = _countof(renderStack->gBufferLayers),
-      .pAttachments    = renderStack->gBufferLayers,
-      .width           = extents.width,
-      .height          = extents.height,
-      .layers          = 1,
-  };
-
-  if (vkCreateFramebuffer(logicalDevice, &gBufferFramebufferCreateInfo, NULL,
-          &renderStack->gBuffer)
-      != VK_SUCCESS)
-  {
-    fprintf(stderr, "Error: Unable to create framebuffer from image view.\n");
-    return false;
   }
 
   VkImageViewCreateInfo finalImageViewCreateInfo = {
@@ -121,44 +103,46 @@ bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
           .levelCount                  = 1}};
 
   if (vkCreateImageView(logicalDevice, &finalImageViewCreateInfo, NULL,
-          &renderStack->renderImageView)
+          &renderStack->bufferAttachments[RSL_LIGHTING])
       != VK_SUCCESS)
   {
     fprintf(stderr, "Unable to get swapchain images.\n");
     return false;
   }
 
-  VkFramebufferCreateInfo finalFramebufferCreateInfo = {
+  VkFramebufferCreateInfo framebufferCreateInfo = {
       .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
       .renderPass      = renderPass,
-      .attachmentCount = 1,
-      .pAttachments    = &renderStack->renderImageView,
+      .attachmentCount = _countof(renderStack->bufferAttachments),
+      .pAttachments    = renderStack->bufferAttachments,
       .width           = extents.width,
       .height          = extents.height,
       .layers          = 1,
   };
 
-  if (vkCreateFramebuffer(logicalDevice, &finalFramebufferCreateInfo, NULL,
-          &renderStack->renderBuffer)
+  if (vkCreateFramebuffer(logicalDevice, &framebufferCreateInfo, NULL,
+          &renderStack->framebuffer)
       != VK_SUCCESS)
   {
     fprintf(stderr, "Error: Unable to create framebuffer from image view.\n");
     return false;
   }
+
   return true;
 }
 
 void render_stack_destroy(RenderStack* renderStack, VkDevice logicalDevice)
 {
-  if (renderStack->gBuffer != VK_NULL_HANDLE)
+  if (renderStack->framebuffer != VK_NULL_HANDLE)
   {
-    vkDestroyFramebuffer(logicalDevice, renderStack->gBuffer, NULL);
+    vkDestroyFramebuffer(logicalDevice, renderStack->framebuffer, NULL);
   }
-  for (int i = 0; i < _countof(renderStack->gBufferLayers); i++)
+  for (int i = 0; i < _countof(renderStack->bufferAttachments); i++)
   {
-    if (renderStack->gBufferLayers[i] != VK_NULL_HANDLE)
+    if (renderStack->bufferAttachments[i] != VK_NULL_HANDLE)
     {
-      vkDestroyImageView(logicalDevice, renderStack->gBufferLayers[i], NULL);
+      vkDestroyImageView(
+          logicalDevice, renderStack->bufferAttachments[i], NULL);
     }
   }
 
@@ -169,14 +153,5 @@ void render_stack_destroy(RenderStack* renderStack, VkDevice logicalDevice)
   if (renderStack->gBufferImage.memory != VK_NULL_HANDLE)
   {
     vkFreeMemory(logicalDevice, renderStack->gBufferImage.memory, NULL);
-  }
-
-  if (renderStack->renderImageView != VK_NULL_HANDLE)
-  {
-    vkDestroyImageView(logicalDevice, renderStack->renderImageView, NULL);
-  }
-  if (renderStack->renderBuffer != VK_NULL_HANDLE)
-  {
-    vkDestroyFramebuffer(logicalDevice, renderStack->renderBuffer, NULL);
   }
 }
