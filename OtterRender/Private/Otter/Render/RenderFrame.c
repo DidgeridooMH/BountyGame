@@ -1,6 +1,7 @@
 #include "Otter/Render/RenderFrame.h"
 
 #include "Otter/Render/Uniform/ModelViewProjection.h"
+#include "Otter/Util/Math/Projection.h"
 
 #define DESCRIPTOR_POOL_SIZE 128
 #define DESCRIPTOR_SET_LIMIT 512
@@ -153,7 +154,9 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
   ModelViewProjection mvp = {0};
   mat4_identity(mvp.model);
   mat4_identity(mvp.view);
-  mat4_identity(mvp.projection);
+  mvp.view[3].val[2] = -2.0f;
+  projection_create_perspective(mvp.projection, 90.0f,
+      (float) extents.width / (float) extents.height, 1.0f, 0.0f);
 
   //****
   // TODO: Abstract to an auto array
