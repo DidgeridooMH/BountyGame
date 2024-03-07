@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Otter/Render/Memory/GpuBuffer.h"
 #include "Otter/Render/export.h"
 #include <vulkan/vulkan.h>
 
@@ -15,3 +16,7 @@ bool g_buffer_pipeline_create(
 
 void g_buffer_pipeline_destroy(
     GBufferPipeline* pipeline, VkDevice logicalDevice);
+
+void g_buffer_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
+    VkDescriptorPool descriptorPool, VkDevice logicalDevice,
+    GpuBuffer* mvpBuffer, GBufferPipeline* pipeline);

@@ -2,8 +2,8 @@
 
 #include "Otter/GameState/export.h"
 
-#define PLAYER_SPEED 100.0f
-#define MAX_PLAYERS 16
+#define PLAYER_SPEED 10.0f
+#define MAX_PLAYERS  16
 
 // TODO: Make struct of lists for better cache utilization.
 typedef struct Player

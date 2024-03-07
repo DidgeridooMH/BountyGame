@@ -89,10 +89,28 @@ bool pbr_pipeline_create(
       .attachmentCount = 1,
       .pAttachments    = &colorBlendAttachment};
 
+  VkDescriptorSetLayoutBinding layoutBindings[] = {
+      {.binding            = 0,
+          .descriptorCount = 1,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT},
+      {.binding            = 1,
+          .descriptorCount = 1,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT},
+      {.binding            = 2,
+          .descriptorCount = 1,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT},
+      {.binding            = 3,
+          .descriptorCount = 1,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}};
+
   VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
       .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
-      .pBindings    = NULL,
-      .bindingCount = 0};
+      .pBindings    = layoutBindings,
+      .bindingCount = _countof(layoutBindings)};
   if (vkCreateDescriptorSetLayout(logicalDevice, &descriptorSetLayoutCreateInfo,
           NULL, &pipeline->descriptorSetLayouts))
   {
@@ -125,7 +143,8 @@ bool pbr_pipeline_create(
       .pColorBlendState    = &colorBlendStateCreateInfo,
       .pDynamicState       = &dynamicStateCreateInfo,
       .layout              = pipeline->layout,
-      .renderPass          = renderPass};
+      .renderPass          = renderPass,
+      .subpass             = 1};
 
   if (vkCreateGraphicsPipelines(logicalDevice, NULL, 1, &pipelineCreateInfo,
           NULL, &pipeline->pipeline)
@@ -147,4 +166,54 @@ void pbr_pipeline_destroy(PbrPipeline* pipeline, VkDevice logicalDevice)
 {
   vkDestroyPipelineLayout(logicalDevice, pipeline->layout, NULL);
   vkDestroyPipeline(logicalDevice, pipeline->pipeline, NULL);
+}
+
+void pbr_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
+    VkDescriptorPool descriptorPool, VkDevice logicalDevice,
+    RenderStack* renderStack, PbrPipeline* pipeline)
+{
+
+  VkDescriptorSetAllocateInfo attachmentDescriptorSetAllocInfo = {
+      .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool     = descriptorPool,
+      .pSetLayouts        = &pipeline->descriptorSetLayouts,
+      .descriptorSetCount = 1};
+  VkDescriptorSet attachmentDescriptorSet;
+  if (vkAllocateDescriptorSets(logicalDevice, &attachmentDescriptorSetAllocInfo,
+          &attachmentDescriptorSet)
+      != VK_SUCCESS)
+  {
+    fprintf(stderr, "WARN: Unable to allocate descriptors\n");
+  }
+
+  VkDescriptorImageInfo attachmentDescriptors[] = {
+      {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+          .imageView = renderStack->bufferAttachments[RSL_POSITION],
+          .sampler   = VK_NULL_HANDLE},
+      {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+          .imageView = renderStack->bufferAttachments[RSL_NORMAL],
+          .sampler   = VK_NULL_HANDLE},
+      {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+          .imageView = renderStack->bufferAttachments[RSL_COLOR],
+          .sampler   = VK_NULL_HANDLE},
+      {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+          .imageView = renderStack->bufferAttachments[RSL_MATERIAL],
+          .sampler   = VK_NULL_HANDLE}};
+
+  VkWriteDescriptorSet attachmentWrites[G_BUFFER_LAYERS] = {0};
+  for (uint32_t i = 0; i < G_BUFFER_LAYERS; i++)
+  {
+    attachmentWrites[i].sType          = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+    attachmentWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
+    attachmentWrites[i].descriptorCount = 1;
+    attachmentWrites[i].dstBinding      = i;
+    attachmentWrites[i].dstSet          = attachmentDescriptorSet;
+    attachmentWrites[i].pImageInfo      = attachmentDescriptors + i;
+  }
+
+  vkUpdateDescriptorSets(
+      logicalDevice, _countof(attachmentWrites), attachmentWrites, 0, NULL);
+
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      pipeline->layout, 0, 1, &attachmentDescriptorSet, 0, NULL);
 }

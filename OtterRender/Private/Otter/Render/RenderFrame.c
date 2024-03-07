@@ -102,9 +102,9 @@ void render_frame_destroy(
 
 void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     RenderCommand* command, GBufferPipeline* gBufferPipeline,
-    PbrPipeline* pbrPipeline, Mesh* fullscreenQuad, VkExtent2D extents,
-    VkRenderPass renderPass, VkQueue queue, VkPhysicalDevice physicalDevice,
-    VkDevice logicalDevice)
+    PbrPipeline* pbrPipeline, Mesh* fullscreenQuad, Vec3* camera,
+    VkExtent2D extents, VkRenderPass renderPass, VkQueue queue,
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
 {
   vkResetCommandBuffer(renderFrame->commandBuffer, 0);
 
@@ -121,9 +121,9 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     return;
   }
 
-  VkClearValue clearColor[]            = {{0.0f, 0.0f, 0.0f, 1.0f},
+  VkClearValue clearColor[]            = {{0.0f, 0.0f, 0.0f, 0.0f},
                  {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
-                 {0.0f, 0.0f, 0.0f, 1.0f}};
+                 {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
   VkRenderPassBeginInfo renderPassInfo = {
       .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
       .renderPass      = renderPass,
@@ -155,7 +155,9 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
   ModelViewProjection mvp = {0};
   mat4_identity(mvp.model);
   mat4_identity(mvp.view);
-  mvp.view[3].val[2] = -2.0f;
+  mvp.view[3].x = -camera->x;
+  mvp.view[3].y = camera->y;
+  mvp.view[3].z = -camera->z;
   projection_create_perspective(mvp.projection, 90.0f,
       (float) extents.width / (float) extents.height, 1.0f, 0.0f);
 
@@ -196,34 +198,8 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     return;
   }
 
-  VkDescriptorSetAllocateInfo mvpDescriptorSetAllocInfo = {
-      .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
-      .descriptorPool     = renderFrame->descriptorPool,
-      .pSetLayouts        = &gBufferPipeline->descriptorSetLayouts,
-      .descriptorSetCount = 1};
-  VkDescriptorSet mvpDescriptorSet;
-  if (vkAllocateDescriptorSets(
-          logicalDevice, &mvpDescriptorSetAllocInfo, &mvpDescriptorSet)
-      != VK_SUCCESS)
-  {
-    fprintf(stderr, "WARN: Unable to allocate descriptors\n");
-  }
-
-  VkDescriptorBufferInfo mvpBufferInfo = {
-      .buffer = mvpBuffer->buffer, .offset = 0, .range = mvpBuffer->size};
-  VkWriteDescriptorSet mvpWrite = {
-      .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-      .descriptorCount = 1,
-      .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      .dstSet          = mvpDescriptorSet,
-      .dstBinding      = 0,
-      .dstArrayElement = 0,
-      .pBufferInfo     = &mvpBufferInfo};
-  vkUpdateDescriptorSets(logicalDevice, 1, &mvpWrite, 0, NULL);
-
-  vkCmdBindDescriptorSets(renderFrame->commandBuffer,
-      VK_PIPELINE_BIND_POINT_GRAPHICS, gBufferPipeline->layout, 0, 1,
-      &mvpDescriptorSet, 0, NULL);
+  g_buffer_pipeline_write_descriptor_set(renderFrame->commandBuffer,
+      renderFrame->descriptorPool, logicalDevice, mvpBuffer, gBufferPipeline);
 
   VkDeviceSize offset = 0;
   vkCmdBindVertexBuffers(
@@ -237,6 +213,8 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
 
   vkCmdBindPipeline(renderFrame->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       pbrPipeline->pipeline);
+  pbr_pipeline_write_descriptor_set(renderFrame->commandBuffer,
+      renderFrame->descriptorPool, logicalDevice, renderStack, pbrPipeline);
 
   vkCmdBindVertexBuffers(renderFrame->commandBuffer, 0, 1,
       &fullscreenQuad->vertices.buffer, &offset);

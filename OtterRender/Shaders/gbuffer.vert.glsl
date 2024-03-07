@@ -20,5 +20,7 @@ void main()
 {
     gl_Position = mvp.proj * mvp.view * mvp.model * vec4(inPosition, 1.0);
     outPosition = inPosition;
-    outNormal = inNormal;
+
+    // TODO: Move inverse model to the cpu.
+    outNormal = mat3(transpose(inverse(mvp.model))) * normalize(inNormal);
 }

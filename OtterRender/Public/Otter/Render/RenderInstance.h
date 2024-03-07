@@ -61,6 +61,7 @@ typedef struct RenderInstance
   Mesh* fullscreenQuad;
 
   RenderCommand command;
+  Vec3 cameraPosition;
 } RenderInstance;
 
 OTTERRENDER_API RenderInstance* render_instance_create(HWND window);

@@ -83,7 +83,9 @@ bool g_buffer_pipeline_create(
       .scissorCount  = 1};
 
   VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+      .sType     = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+      .cullMode  = VK_CULL_MODE_BACK_BIT,
+      .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE};
 
   VkPipelineMultisampleStateCreateInfo multisamplingStateCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
@@ -174,4 +176,37 @@ void g_buffer_pipeline_destroy(
 {
   vkDestroyPipelineLayout(logicalDevice, pipeline->layout, NULL);
   vkDestroyPipeline(logicalDevice, pipeline->pipeline, NULL);
+}
+
+void g_buffer_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
+    VkDescriptorPool descriptorPool, VkDevice logicalDevice,
+    GpuBuffer* mvpBuffer, GBufferPipeline* pipeline)
+{
+  VkDescriptorSetAllocateInfo mvpDescriptorSetAllocInfo = {
+      .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool     = descriptorPool,
+      .pSetLayouts        = &pipeline->descriptorSetLayouts,
+      .descriptorSetCount = 1};
+  VkDescriptorSet mvpDescriptorSet;
+  if (vkAllocateDescriptorSets(
+          logicalDevice, &mvpDescriptorSetAllocInfo, &mvpDescriptorSet)
+      != VK_SUCCESS)
+  {
+    fprintf(stderr, "WARN: Unable to allocate descriptors\n");
+  }
+
+  VkDescriptorBufferInfo mvpBufferInfo = {
+      .buffer = mvpBuffer->buffer, .offset = 0, .range = mvpBuffer->size};
+  VkWriteDescriptorSet mvpWrite = {
+      .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+      .descriptorCount = 1,
+      .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+      .dstSet          = mvpDescriptorSet,
+      .dstBinding      = 0,
+      .dstArrayElement = 0,
+      .pBufferInfo     = &mvpBufferInfo};
+  vkUpdateDescriptorSets(logicalDevice, 1, &mvpWrite, 0, NULL);
+
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      pipeline->layout, 0, 1, &mvpDescriptorSet, 0, NULL);
 }

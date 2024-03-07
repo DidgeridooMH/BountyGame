@@ -588,12 +588,19 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
           .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       }};
 
-  VkSubpassDependency dependency = {
-      .srcSubpass   = VK_SUBPASS_EXTERNAL,
-      .dstSubpass   = 0,
-      .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-      .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-  };
+  VkSubpassDependency dependencies[] = {
+      {
+          .srcSubpass   = VK_SUBPASS_EXTERNAL,
+          .dstSubpass   = 0,
+          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      },
+      {
+          .srcSubpass   = 0,
+          .dstSubpass   = 1,
+          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      }};
 
   VkAttachmentReference gbufferAttachmentRef[] = {
       {.attachment = 0, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
@@ -602,7 +609,8 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
       {.attachment = 3, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
 
   VkAttachmentReference lightingBufferAttachmentRef[] = {
-      {.attachment = 4, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
+      {.attachment = 4, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
+      {.attachment = 0, .layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
 
   VkSubpassDescription subpassDescriptions[] = {
       {
@@ -622,8 +630,8 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
       .pAttachments    = colorAttachment,
       .subpassCount    = _countof(subpassDescriptions),
       .pSubpasses      = subpassDescriptions,
-      .dependencyCount = 1,
-      .pDependencies   = &dependency,
+      .dependencyCount = _countof(dependencies),
+      .pDependencies   = dependencies,
   };
 
   VkResult result = vkCreateRenderPass(renderInstance->logicalDevice,
@@ -792,7 +800,7 @@ RenderInstance* render_instance_create(HWND window)
 
   Vec3 vertices[]    = {{-1.0f, 1.0f, 0.0f}, {-1.0f, -1.0f, 0.0f},
          {1.0f, -1.0f, 0.0f}, {1.0f, 1.0f, 0.0f}};
-  uint16_t indices[] = {0, 1, 2, 0, 3, 2};
+  uint16_t indices[] = {1, 0, 2, 0, 3, 2};
   VkQueue transferQueue;
   vkGetDeviceQueue(renderInstance->logicalDevice,
       renderInstance->graphicsQueueFamily, 0, &transferQueue);
@@ -911,8 +919,9 @@ void render_instance_draw(RenderInstance* renderInstance)
   render_frame_draw(&renderInstance->frames[renderInstance->currentFrame],
       &renderInstance->swapchain->renderStacks[image], &renderInstance->command,
       &renderInstance->gBufferPipeline, &renderInstance->pbrPipeline,
-      renderInstance->fullscreenQuad, renderInstance->swapchain->extents,
-      renderInstance->renderPass, graphicsQueue, renderInstance->physicalDevice,
+      renderInstance->fullscreenQuad, &renderInstance->cameraPosition,
+      renderInstance->swapchain->extents, renderInstance->renderPass,
+      graphicsQueue, renderInstance->physicalDevice,
       renderInstance->logicalDevice);
 
   VkPresentInfoKHR presentInfo = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,

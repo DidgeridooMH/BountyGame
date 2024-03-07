@@ -276,12 +276,25 @@ int WINAPI wWinMain(
 
   // TODO: make this better.
   // ------
-  const MeshVertex vertices[] = {{.position = {-0.5f, -0.5f, 0.5f}},
-      {.position = {0.5f, -0.5f, 0.5f}}, {.position = {-0.5f, 0.5f, 0.5f}},
-      {.position = {0.5f, 0.5f, 0.5f}}, {.position = {-0.5f, -0.5f, -0.5f}},
-      {.position = {0.5f, -0.5f, -0.5f}}, {.position = {-0.5f, 0.5f, -0.5f}},
-      {.position = {0.5f, 0.5f, -0.5f}}};
-  const uint16_t indices[]    = {
+  const float baseComp        = 1.0f / sqrtf(3.0f);
+  const MeshVertex vertices[] = {
+      {.position  = {-0.5f, -0.5f, 0.5f},
+          .normal = {-baseComp, -baseComp, baseComp}},
+      {.position  = {0.5f, -0.5f, 0.5f},
+          .normal = {baseComp, -baseComp, baseComp}},
+      {.position  = {-0.5f, 0.5f, 0.5f},
+          .normal = {-baseComp, baseComp, baseComp}},
+      {.position  = {0.5f, 0.5f, 0.5f},
+          .normal = {baseComp, baseComp, baseComp}},
+      {.position  = {-0.5f, -0.5f, -0.5f},
+          .normal = {-baseComp, -baseComp, -baseComp}},
+      {.position  = {0.5f, -0.5f, -0.5f},
+          .normal = {baseComp, -baseComp, -baseComp}},
+      {.position  = {-0.5f, 0.5f, -0.5f},
+          .normal = {-baseComp, baseComp, -baseComp}},
+      {.position  = {0.5f, 0.5f, -0.5f},
+          .normal = {baseComp, baseComp, -baseComp}}};
+  const uint16_t indices[] = {
       0, 2, 1, 2, 3, 1, // Front
       1, 3, 5, 3, 7, 5, // Right
       5, 7, 4, 7, 6, 4, // Back
@@ -325,6 +338,7 @@ int WINAPI wWinMain(
   QueryPerformanceCounter(&connection.lastHeartbeatTime);
   connection.lastStateTime    = connection.lastHeartbeatTime;
   LARGE_INTEGER lastFrameTime = connection.lastStateTime;
+
   while (!game_window_process_message())
   {
     handle_connection(&connection, &client);
@@ -335,6 +349,9 @@ int WINAPI wWinMain(
                        / g_timerFrequency.QuadPart);
     game_state_update(NULL, deltaTime);
 
+    renderInstance->cameraPosition.x = g_listOfPlayers->positionX;
+    renderInstance->cameraPosition.y = 1.0f;
+    renderInstance->cameraPosition.z = g_listOfPlayers->positionY;
     render_instance_draw(renderInstance);
 
     lastFrameTime = currentTime;

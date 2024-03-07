@@ -14,7 +14,7 @@ void main()
 	outPosition = vec4(inPosition, 1.0);
 	outNormal = vec4(inNormal, 1.0);
 
-	outColor = vec4(1.0, 1.0, 1.0, 1.0);
+	outColor = vec4(0.5, 0.34, 0.2, 1.0);
 
 	float metallic = 0.5;
 	float roughness = 0.5;

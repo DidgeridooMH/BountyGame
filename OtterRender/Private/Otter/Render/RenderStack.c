@@ -11,12 +11,13 @@ static bool render_stack_create_render_image(VkExtent2D extents,
       .imageType = VK_IMAGE_TYPE_2D,
       .extent = {.width = extents.width, .height = extents.height, .depth = 1},
       .mipLevels     = 1,
+      .samples       = VK_SAMPLE_COUNT_1_BIT,
       .arrayLayers   = G_BUFFER_LAYERS,
       .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
       .tiling        = VK_IMAGE_TILING_OPTIMAL,
       .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-      .usage =
-          VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT};
+      .usage         = VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
+             | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT};
 
   if (vkCreateImage(
           logicalDevice, &gBufferImageCreateInfo, NULL, &renderImage->image)
