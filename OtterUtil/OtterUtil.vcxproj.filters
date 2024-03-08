@@ -36,10 +36,10 @@
     <ClInclude Include="Public\Otter\Util\HashMap.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Otter\Util\LinkedList.h">
+    <ClInclude Include="Public\Otter\Util\Math\Projection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Otter\Util\Math\Projection.h">
+    <ClInclude Include="Public\Otter\Util\AutoArray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -53,13 +53,13 @@
     <ClCompile Include="Private\Otter\Util\HashMap.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Private\Otter\Util\LinkedList.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Private\Otter\Util\Math\Mat.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Private\Otter\Util\Math\Projection.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Util\AutoArray.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

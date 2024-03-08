@@ -76,8 +76,8 @@ static void handle_message(UdpGameServer* server, Message* requestMessage)
         if (!g_listOfPlayers[i].active)
         {
           g_listOfPlayers[i].active    = true;
-          g_listOfPlayers[i].positionX = 50.0f;
-          g_listOfPlayers[i].positionY = 50.0f;
+          g_listOfPlayers[i].positionX = 2.0f;
+          g_listOfPlayers[i].positionY = 2.0f;
           g_listOfPlayers[i].id        = requestMessage->header->entity;
 
           wchar_t guid[128];

@@ -311,10 +311,6 @@ int WINAPI wWinMain(
       indices, _countof(indices), renderInstance->physicalDevice,
       renderInstance->logicalDevice, renderInstance->commandPool,
       graphicsQueue);
-
-  renderInstance->command.vertices     = cube->vertices.buffer;
-  renderInstance->command.indices      = cube->indices.buffer;
-  renderInstance->command.numOfIndices = cube->indices.size / sizeof(uint16_t);
   // ------
 
   char* host = hash_map_get_value(config, CONFIG_HOST);
@@ -349,9 +345,27 @@ int WINAPI wWinMain(
                        / g_timerFrequency.QuadPart);
     game_state_update(NULL, deltaTime);
 
-    renderInstance->cameraPosition.x = g_listOfPlayers->positionX;
-    renderInstance->cameraPosition.y = 1.0f;
-    renderInstance->cameraPosition.z = g_listOfPlayers->positionY;
+    for (int i = 0; i < MAX_PLAYERS; i++)
+    {
+      if (g_listOfPlayers[i].active)
+      {
+        if (memcmp(&g_listOfPlayers[i].id, &g_clientGuid, sizeof(GUID)) == 0)
+        {
+          renderInstance->cameraPosition.x = g_listOfPlayers[i].positionX;
+          renderInstance->cameraPosition.y = 1.0f;
+          renderInstance->cameraPosition.z = g_listOfPlayers[i].positionY;
+        }
+        else
+        {
+          Mat4 playerTransform;
+          mat4_identity(playerTransform);
+          mat4_translate(playerTransform, g_listOfPlayers[i].positionX, 0.0,
+              g_listOfPlayers[i].positionY);
+          render_instance_queue_mesh_draw(
+              cube, playerTransform, renderInstance);
+        }
+      }
+    }
     render_instance_draw(renderInstance);
 
     lastFrameTime = currentTime;

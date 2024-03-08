@@ -4,10 +4,8 @@
 #include "Otter/Render/Pipeline/GBufferPipeline.h"
 #include "Otter/Render/Pipeline/PbrPipeline.h"
 #include "Otter/Render/RenderFrame.h"
-#include "Otter/Render/RenderQueue.h"
 #include "Otter/Render/RenderSwapchain.h"
 #include "Otter/Render/export.h"
-#include "Otter/Util/LinkedList.h"
 #include <vulkan/vulkan.h>
 
 enum DescriptorPoolId
@@ -60,7 +58,6 @@ typedef struct RenderInstance
   // TODO: Rewrite mesh to not have to be a pointer.
   Mesh* fullscreenQuad;
 
-  RenderCommand command;
   Vec3 cameraPosition;
 } RenderInstance;
 
@@ -69,3 +66,6 @@ OTTERRENDER_API RenderInstance* render_instance_create(HWND window);
 OTTERRENDER_API void render_instance_destroy(RenderInstance* renderInstance);
 
 OTTERRENDER_API void render_instance_draw(RenderInstance* renderInstance);
+
+OTTERRENDER_API void render_instance_queue_mesh_draw(
+    Mesh* mesh, Mat4 transform, RenderInstance* renderInstance);

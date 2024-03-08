@@ -63,20 +63,23 @@ bool render_frame_create(
     return false;
   }
 
+  auto_array_create(&renderFrame->renderQueue, sizeof(RenderCommand));
+  auto_array_create(&renderFrame->perRenderBuffers, sizeof(GpuBuffer));
+
   return true;
 }
 
 void render_frame_destroy(
     RenderFrame* renderFrame, VkCommandPool commandPool, VkDevice logicalDevice)
 {
-  if (renderFrame->perRenderBuffersCount > 0)
+  for (uint32_t i = 0; i < renderFrame->perRenderBuffers.size; i++)
   {
-    for (uint32_t i = 0; i < renderFrame->perRenderBuffersCount; i++)
-    {
-      gpu_buffer_free(&renderFrame->perRenderBuffers[i], logicalDevice);
-    }
+    gpu_buffer_free(
+        auto_array_get(&renderFrame->perRenderBuffers, i), logicalDevice);
   }
-  free(renderFrame->perRenderBuffers);
+
+  auto_array_destroy(&renderFrame->perRenderBuffers);
+  auto_array_destroy(&renderFrame->renderQueue);
 
   if (renderFrame->inflightFence != VK_NULL_HANDLE)
   {
@@ -100,11 +103,58 @@ void render_frame_destroy(
   }
 }
 
+static void render_frame_draw_mesh(RenderCommand* meshCommand,
+    RenderFrame* renderFrame, ModelViewProjection* mvp,
+    GBufferPipeline* gBufferPipeline, VkPhysicalDevice physicalDevice,
+    VkDevice logicalDevice)
+{
+
+  memcpy(mvp->model, meshCommand->transform, sizeof(Mat4));
+
+  GpuBuffer* mvpBuffer = auto_array_allocate(&renderFrame->perRenderBuffers);
+  if (mvpBuffer == NULL)
+  {
+    fprintf(stderr, "Unable to queue mesh for rendering.\n");
+    return;
+  }
+
+  if (!gpu_buffer_allocate(mvpBuffer, sizeof(ModelViewProjection),
+          VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+              | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+          physicalDevice, logicalDevice))
+  {
+    fprintf(stderr, "Warning: Could not allocate temporary gpu buffer...but I "
+                    "also don't know what to do about that.\n");
+    return;
+  }
+
+  if (!gpu_buffer_write(mvpBuffer, (uint8_t*) mvp, sizeof(ModelViewProjection),
+          0, logicalDevice))
+  {
+    fprintf(stderr, "WARN: Unable to write MVP buffer\n");
+    gpu_buffer_free(mvpBuffer, logicalDevice);
+    mvpBuffer = NULL;
+    return;
+  }
+
+  g_buffer_pipeline_write_descriptor_set(renderFrame->commandBuffer,
+      renderFrame->descriptorPool, logicalDevice, mvpBuffer, gBufferPipeline);
+
+  VkDeviceSize offset = 0;
+  vkCmdBindVertexBuffers(
+      renderFrame->commandBuffer, 0, 1, &meshCommand->vertices, &offset);
+  vkCmdBindIndexBuffer(renderFrame->commandBuffer, meshCommand->indices, 0,
+      VK_INDEX_TYPE_UINT16);
+  vkCmdDrawIndexed(renderFrame->commandBuffer,
+      (uint32_t) meshCommand->numOfIndices, 1, 0, 0, 0);
+}
+
 void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
-    RenderCommand* command, GBufferPipeline* gBufferPipeline,
-    PbrPipeline* pbrPipeline, Mesh* fullscreenQuad, Vec3* camera,
-    VkExtent2D extents, VkRenderPass renderPass, VkQueue queue,
-    VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
+    GBufferPipeline* gBufferPipeline, PbrPipeline* pbrPipeline,
+    Mesh* fullscreenQuad, Vec3* camera, VkExtent2D extents,
+    VkRenderPass renderPass, VkQueue queue, VkPhysicalDevice physicalDevice,
+    VkDevice logicalDevice)
 {
   vkResetCommandBuffer(renderFrame->commandBuffer, 0);
 
@@ -151,9 +201,7 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
   vkCmdBindPipeline(renderFrame->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       gBufferPipeline->pipeline);
 
-  // TODO: Render meshes that are queued up.
   ModelViewProjection mvp = {0};
-  mat4_identity(mvp.model);
   mat4_identity(mvp.view);
   mvp.view[3].x = -camera->x;
   mvp.view[3].y = camera->y;
@@ -161,54 +209,13 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
   projection_create_perspective(mvp.projection, 90.0f,
       (float) extents.width / (float) extents.height, 1.0f, 0.0f);
 
-  //****
-  // TODO: Abstract to an auto array
-
-  if (renderFrame->perRenderBuffersCount
-      == renderFrame->perRenderBuffersCapacity)
+  for (uint32_t i = 0; i < renderFrame->renderQueue.size; i++)
   {
-    renderFrame->perRenderBuffersCapacity += 32;
-    // TODO: deal with realloc failing.
-    renderFrame->perRenderBuffers = realloc(
-        renderFrame->perRenderBuffers, renderFrame->perRenderBuffersCapacity);
+    render_frame_draw_mesh(auto_array_get(&renderFrame->renderQueue, i),
+        renderFrame, &mvp, gBufferPipeline, physicalDevice, logicalDevice);
   }
 
-  if (!gpu_buffer_allocate(
-          &renderFrame->perRenderBuffers[renderFrame->perRenderBuffersCount],
-          sizeof(ModelViewProjection), VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-              | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-          physicalDevice, logicalDevice))
-  {
-    fprintf(stderr, "Warning: Could not allocate temporary gpu buffer...but I "
-                    "also don't know what to do about that.\n");
-    return;
-  }
-  GpuBuffer* mvpBuffer =
-      &renderFrame->perRenderBuffers[renderFrame->perRenderBuffersCount];
-  renderFrame->perRenderBuffersCount += 1;
-  //****
-
-  if (!gpu_buffer_write(
-          mvpBuffer, (uint8_t*) &mvp, sizeof(mvp), 0, logicalDevice))
-  {
-    fprintf(stderr, "WARN: Unable to write MVP buffer\n");
-    gpu_buffer_free(mvpBuffer, logicalDevice);
-    mvpBuffer = NULL;
-    return;
-  }
-
-  g_buffer_pipeline_write_descriptor_set(renderFrame->commandBuffer,
-      renderFrame->descriptorPool, logicalDevice, mvpBuffer, gBufferPipeline);
-
-  VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(
-      renderFrame->commandBuffer, 0, 1, &command->vertices, &offset);
-  vkCmdBindIndexBuffer(
-      renderFrame->commandBuffer, command->indices, 0, VK_INDEX_TYPE_UINT16);
-  vkCmdDrawIndexed(
-      renderFrame->commandBuffer, (uint32_t) command->numOfIndices, 1, 0, 0, 0);
-
+  // Lighting subpass
   vkCmdNextSubpass(renderFrame->commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
 
   vkCmdBindPipeline(renderFrame->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -216,6 +223,7 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
   pbr_pipeline_write_descriptor_set(renderFrame->commandBuffer,
       renderFrame->descriptorPool, logicalDevice, renderStack, pbrPipeline);
 
+  VkDeviceSize offset = 0;
   vkCmdBindVertexBuffers(renderFrame->commandBuffer, 0, 1,
       &fullscreenQuad->vertices.buffer, &offset);
   vkCmdBindIndexBuffer(renderFrame->commandBuffer,
@@ -250,4 +258,17 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     // TODO: Handle error
     return;
   }
+
+  auto_array_clear(&renderFrame->renderQueue);
+}
+
+void render_frame_clear_buffers(
+    RenderFrame* renderFrame, VkDevice logicalDevice)
+{
+  for (uint32_t i = 0; i < renderFrame->perRenderBuffers.size; i++)
+  {
+    gpu_buffer_free(
+        auto_array_get(&renderFrame->perRenderBuffers, i), logicalDevice);
+  }
+  auto_array_clear(&renderFrame->perRenderBuffers);
 }

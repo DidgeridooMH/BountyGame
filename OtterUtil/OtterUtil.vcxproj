@@ -156,6 +156,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Public\Otter\Util\AutoArray.h" />
     <ClInclude Include="Public\Otter\Util\HashMap.h" />
     <ClInclude Include="Public\Otter\Util\Math\Clamp.h" />
     <ClInclude Include="Public\Otter\Util\Math\Mat.h" />
@@ -163,7 +164,6 @@
     <ClInclude Include="Public\Otter\Util\Math\Vec.h" />
     <ClInclude Include="Public\Otter\Util\export.h" />
     <ClInclude Include="Public\Otter\Util\File.h" />
-    <ClInclude Include="Public\Otter\Util\LinkedList.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.c">
@@ -172,9 +172,9 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Private\Otter\Util\AutoArray.c" />
     <ClCompile Include="Private\Otter\Util\File.c" />
     <ClCompile Include="Private\Otter\Util\HashMap.c" />
-    <ClCompile Include="Private\Otter\Util\LinkedList.c" />
     <ClCompile Include="Private\Otter\Util\Math\Mat.c" />
     <ClCompile Include="Private\Otter\Util\Math\Projection.c" />
   </ItemGroup>

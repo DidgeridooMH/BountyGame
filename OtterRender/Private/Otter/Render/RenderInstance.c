@@ -459,20 +459,20 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
     return false;
   }
 
-  VkSurfaceFormatKHR format = formats[0];
+  const VkFormat HdrColorSpace = VK_COLOR_SPACE_HDR10_ST2084_EXT;
+  VkSurfaceFormatKHR format    = formats[0];
   if (renderInstance->settings.hdr)
   {
     for (uint32_t i = 0; i < formatCount; i++)
     {
-      if (formats[i].colorSpace == VK_COLOR_SPACE_HDR10_ST2084_EXT
-          && formats[i].format == VK_FORMAT_A2B10G10R10_UNORM_PACK32)
+      if (formats[i].colorSpace == HdrColorSpace)
       {
         format = formats[i];
         break;
       }
     }
 
-    if (format.format != VK_COLOR_SPACE_HDR10_ST2084_EXT)
+    if (format.format != HdrColorSpace)
     {
       renderInstance->capabilities.hdr = false;
       renderInstance->settings.hdr     = false;
@@ -548,7 +548,7 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
 {
   VkAttachmentDescription colorAttachment[] = {
       {
-          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
+          .format        = VK_FORMAT_R32G32B32A32_SFLOAT,
           .samples       = VK_SAMPLE_COUNT_1_BIT,
           .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
           .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -556,7 +556,7 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
           .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
       {
-          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
+          .format        = VK_FORMAT_R32G32B32A32_SFLOAT,
           .samples       = VK_SAMPLE_COUNT_1_BIT,
           .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
           .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -564,7 +564,7 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
           .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
       {
-          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
+          .format        = VK_FORMAT_R32G32B32A32_SFLOAT,
           .samples       = VK_SAMPLE_COUNT_1_BIT,
           .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
           .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -572,7 +572,7 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
           .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
       {
-          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
+          .format        = VK_FORMAT_R32G32B32A32_SFLOAT,
           .samples       = VK_SAMPLE_COUNT_1_BIT,
           .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
           .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -901,23 +901,16 @@ void render_instance_draw(RenderInstance* renderInstance)
     return;
   }
 
-  for (uint32_t i = 0; i < renderInstance->frames[renderInstance->currentFrame]
-                               .perRenderBuffersCount;
-       i++)
-  {
-    gpu_buffer_free(&renderInstance->frames[renderInstance->currentFrame]
-                         .perRenderBuffers[i],
-        renderInstance->logicalDevice);
-  }
-  renderInstance->frames[renderInstance->currentFrame].perRenderBuffersCount =
-      0;
+  render_frame_clear_buffers(
+      &renderInstance->frames[renderInstance->currentFrame],
+      renderInstance->logicalDevice);
 
   VkQueue graphicsQueue;
   vkGetDeviceQueue(renderInstance->logicalDevice,
       renderInstance->graphicsQueueFamily, 0, &graphicsQueue);
 
   render_frame_draw(&renderInstance->frames[renderInstance->currentFrame],
-      &renderInstance->swapchain->renderStacks[image], &renderInstance->command,
+      &renderInstance->swapchain->renderStacks[image],
       &renderInstance->gBufferPipeline, &renderInstance->pbrPipeline,
       renderInstance->fullscreenQuad, &renderInstance->cameraPosition,
       renderInstance->swapchain->extents, renderInstance->renderPass,
@@ -944,4 +937,20 @@ void render_instance_draw(RenderInstance* renderInstance)
 
   renderInstance->currentFrame =
       (renderInstance->currentFrame + 1) % renderInstance->framesInFlight;
+}
+
+void render_instance_queue_mesh_draw(
+    Mesh* mesh, Mat4 transform, RenderInstance* renderInstance)
+{
+  RenderCommand* command = auto_array_allocate(
+      &renderInstance->frames[renderInstance->currentFrame].renderQueue);
+  if (command == NULL)
+  {
+    return;
+  }
+
+  command->vertices     = mesh->vertices.buffer;
+  command->indices      = mesh->indices.buffer;
+  command->numOfIndices = mesh->indices.size / sizeof(uint16_t);
+  memcpy(command->transform, transform, sizeof(Mat4));
 }
