@@ -42,6 +42,9 @@
     <ClInclude Include="Public\Otter\Util\AutoArray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Public\Otter\Util\Math\Transform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.c">

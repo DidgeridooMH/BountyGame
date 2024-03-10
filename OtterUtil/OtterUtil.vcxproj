@@ -161,6 +161,7 @@
     <ClInclude Include="Public\Otter\Util\Math\Clamp.h" />
     <ClInclude Include="Public\Otter\Util\Math\Mat.h" />
     <ClInclude Include="Public\Otter\Util\Math\Projection.h" />
+    <ClInclude Include="Public\Otter\Util\Math\Transform.h" />
     <ClInclude Include="Public\Otter\Util\Math\Vec.h" />
     <ClInclude Include="Public\Otter\Util\export.h" />
     <ClInclude Include="Public\Otter\Util\File.h" />

@@ -108,8 +108,8 @@ static void render_frame_draw_mesh(RenderCommand* meshCommand,
     GBufferPipeline* gBufferPipeline, VkPhysicalDevice physicalDevice,
     VkDevice logicalDevice)
 {
-
-  memcpy(mvp->model, meshCommand->transform, sizeof(Mat4));
+  mat4_identity(mvp->model);
+  transform_apply(mvp->model, &meshCommand->transform);
 
   GpuBuffer* mvpBuffer = auto_array_allocate(&renderFrame->perRenderBuffers);
   if (mvpBuffer == NULL)
@@ -173,7 +173,7 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
 
   VkClearValue clearColor[]            = {{0.0f, 0.0f, 0.0f, 0.0f},
                  {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
-                 {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f}};
+                 {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}};
   VkRenderPassBeginInfo renderPassInfo = {
       .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
       .renderPass      = renderPass,
@@ -203,11 +203,9 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
 
   ModelViewProjection mvp = {0};
   mat4_identity(mvp.view);
-  mvp.view[3].x = -camera->x;
-  mvp.view[3].y = camera->y;
-  mvp.view[3].z = -camera->z;
+  mat4_translate(mvp.view, -camera->x, camera->y, -camera->z);
   projection_create_perspective(mvp.projection, 90.0f,
-      (float) extents.width / (float) extents.height, 1.0f, 0.0f);
+      (float) extents.width / (float) extents.height, 0.1f, 100.0f);
 
   for (uint32_t i = 0; i < renderFrame->renderQueue.size; i++)
   {

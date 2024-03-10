@@ -17,6 +17,7 @@ enum RenderStackLayers
   RSL_COLOR,
   RSL_MATERIAL,
   RSL_LIGHTING,
+  RSL_DEPTH,
   NUM_OF_RENDER_STACK_LAYERS
 };
 
@@ -28,7 +29,8 @@ typedef struct RenderStack
 } RenderStack;
 
 bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
-    VkExtent2D extents, VkFormat renderFormat, VkRenderPass renderPass,
-    VkPhysicalDevice physicalDevice, VkDevice logicalDevice);
+    VkImageView depthBuffer, VkExtent2D extents, VkFormat renderFormat,
+    VkRenderPass renderPass, VkPhysicalDevice physicalDevice,
+    VkDevice logicalDevice);
 
 void render_stack_destroy(RenderStack* renderStack, VkDevice logicalDevice);

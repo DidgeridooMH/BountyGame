@@ -8,6 +8,7 @@
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/RenderInstance.h"
 #include "Otter/Util/File.h"
+#include "Otter/Util/Math/Transform.h"
 #include "Otter/Util/Math/Vec.h"
 #include "Window/GameWindow.h"
 
@@ -357,15 +358,18 @@ int WINAPI wWinMain(
         }
         else
         {
-          Mat4 playerTransform;
-          mat4_identity(playerTransform);
-          mat4_translate(playerTransform, g_listOfPlayers[i].positionX, 0.0,
-              g_listOfPlayers[i].positionY);
+          // TODO: Make list of players use transform.
+          Transform playerTransform;
+          transform_identity(&playerTransform);
+          playerTransform.position.x = g_listOfPlayers[i].positionX;
+          playerTransform.position.y = 0.0;
+          playerTransform.position.z = g_listOfPlayers[i].positionY;
           render_instance_queue_mesh_draw(
-              cube, playerTransform, renderInstance);
+              cube, &playerTransform, renderInstance);
         }
       }
     }
+
     render_instance_draw(renderInstance);
 
     lastFrameTime = currentTime;

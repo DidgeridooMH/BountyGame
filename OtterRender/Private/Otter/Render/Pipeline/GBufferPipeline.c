@@ -141,6 +141,14 @@ bool g_buffer_pipeline_create(
     return false;
   }
 
+  VkPipelineDepthStencilStateCreateInfo depthStencilCreateInfo = {
+      .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
+      .depthTestEnable       = VK_TRUE,
+      .depthWriteEnable      = VK_TRUE,
+      .depthCompareOp        = VK_COMPARE_OP_GREATER,
+      .depthBoundsTestEnable = VK_FALSE,
+      .stencilTestEnable     = VK_FALSE};
+
   VkGraphicsPipelineCreateInfo pipelineCreateInfo = {
       .sType               = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO,
       .stageCount          = _countof(shaderStagesCreateInfo),
@@ -152,6 +160,7 @@ bool g_buffer_pipeline_create(
       .pMultisampleState   = &multisamplingStateCreateInfo,
       .pColorBlendState    = &colorBlendStateCreateInfo,
       .pDynamicState       = &dynamicStateCreateInfo,
+      .pDepthStencilState  = &depthStencilCreateInfo,
       .layout              = pipeline->layout,
       .renderPass          = renderPass};
 

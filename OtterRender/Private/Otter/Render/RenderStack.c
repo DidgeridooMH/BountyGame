@@ -60,8 +60,9 @@ static bool render_stack_create_render_image(VkExtent2D extents,
 }
 
 bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
-    VkExtent2D extents, VkFormat renderFormat, VkRenderPass renderPass,
-    VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
+    VkImageView depthBuffer, VkExtent2D extents, VkFormat renderFormat,
+    VkRenderPass renderPass, VkPhysicalDevice physicalDevice,
+    VkDevice logicalDevice)
 {
   if (!render_stack_create_render_image(
           extents, physicalDevice, logicalDevice, &renderStack->gBufferImage))
@@ -110,6 +111,8 @@ bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
     fprintf(stderr, "Unable to get swapchain images.\n");
     return false;
   }
+
+  renderStack->bufferAttachments[RSL_DEPTH] = depthBuffer;
 
   VkFramebufferCreateInfo framebufferCreateInfo = {
       .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,

@@ -11,9 +11,9 @@ void projection_create_perspective(
   float A = nearPlane / (farPlane - nearPlane);
   float B = farPlane * A;
 
-  matrix[0].val[0] = focalLength / aspectRatio;
-  matrix[1].val[1] = focalLength;
-  matrix[2].val[2] = A;
-  matrix[3].val[2] = B;
-  matrix[2].val[3] = -1.0f;
+  matrix[0][0] = focalLength / aspectRatio;
+  matrix[1][1] = focalLength;
+  matrix[2][2] = A;
+  matrix[3][2] = B;
+  matrix[2][3] = -1.0f;
 }

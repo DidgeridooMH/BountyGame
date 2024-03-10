@@ -10,6 +10,10 @@ typedef struct RenderSwapchain
   VkExtent2D extents;
   RenderStack* renderStacks;
   uint32_t numOfSwapchainImages;
+  
+  VkImage depthBuffer;
+  VkImageView depthBufferView;
+  VkDeviceMemory depthBufferMemory;
 } RenderSwapchain;
 
 RenderSwapchain* render_swapchain_create(uint32_t requestedNumberOfFrames,

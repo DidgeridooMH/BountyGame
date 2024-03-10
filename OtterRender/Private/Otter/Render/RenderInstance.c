@@ -92,7 +92,7 @@ static bool render_instance_check_extensions(const char* requiredExtensions[],
 }
 
 static bool render_instance_check_layers(const char** requestedLayers,
-    bool** flags, uint32_t layerCount, char** enabledLayers,
+    bool** flags, uint32_t layerCount, const char** enabledLayers,
     uint32_t* enabledLayersCount)
 {
   uint32_t propertyCount;
@@ -137,6 +137,7 @@ static bool render_instance_check_layers(const char** requestedLayers,
         {
           **flags = true;
         }
+        enabledLayers[*enabledLayersCount++] = requestedLayers[layer];
         break;
       }
     }
@@ -546,7 +547,7 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
 
 static bool render_instance_create_render_pass(RenderInstance* renderInstance)
 {
-  VkAttachmentDescription colorAttachment[] = {
+  VkAttachmentDescription attachments[] = {
       {
           .format        = VK_FORMAT_R32G32B32A32_SFLOAT,
           .samples       = VK_SAMPLE_COUNT_1_BIT,
@@ -586,15 +587,25 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
           .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
           .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
           .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      }};
+      },
+      {.format            = VK_FORMAT_D32_SFLOAT,
+          .samples        = VK_SAMPLE_COUNT_1_BIT,
+          .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
+          .storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+          .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
+          .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
+          .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
+          .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL}};
 
   VkSubpassDependency dependencies[] = {
-      {
-          .srcSubpass   = VK_SUBPASS_EXTERNAL,
+      {.srcSubpass      = VK_SUBPASS_EXTERNAL,
           .dstSubpass   = 0,
-          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-      },
+          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                        | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
+                        | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+          .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
+                         | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT},
       {
           .srcSubpass   = 0,
           .dstSubpass   = 1,
@@ -608,16 +619,18 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
       {.attachment = 2, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
       {.attachment = 3, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
 
+  VkAttachmentReference depthAttachmentRef = {.attachment = 5,
+      .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
+
   VkAttachmentReference lightingBufferAttachmentRef[] = {
       {.attachment = 4, .layout = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
       {.attachment = 0, .layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
 
   VkSubpassDescription subpassDescriptions[] = {
-      {
-          .pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS,
-          .colorAttachmentCount = _countof(gbufferAttachmentRef),
-          .pColorAttachments    = gbufferAttachmentRef,
-      },
+      {.pipelineBindPoint          = VK_PIPELINE_BIND_POINT_GRAPHICS,
+          .colorAttachmentCount    = _countof(gbufferAttachmentRef),
+          .pColorAttachments       = gbufferAttachmentRef,
+          .pDepthStencilAttachment = &depthAttachmentRef},
       {
           .pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS,
           .colorAttachmentCount = _countof(lightingBufferAttachmentRef),
@@ -626,8 +639,8 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
 
   VkRenderPassCreateInfo renderPassInfo = {
       .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-      .attachmentCount = _countof(colorAttachment),
-      .pAttachments    = colorAttachment,
+      .attachmentCount = _countof(attachments),
+      .pAttachments    = attachments,
       .subpassCount    = _countof(subpassDescriptions),
       .pSubpasses      = subpassDescriptions,
       .dependencyCount = _countof(dependencies),
@@ -940,7 +953,7 @@ void render_instance_draw(RenderInstance* renderInstance)
 }
 
 void render_instance_queue_mesh_draw(
-    Mesh* mesh, Mat4 transform, RenderInstance* renderInstance)
+    Mesh* mesh, Transform* transform, RenderInstance* renderInstance)
 {
   RenderCommand* command = auto_array_allocate(
       &renderInstance->frames[renderInstance->currentFrame].renderQueue);
@@ -952,5 +965,5 @@ void render_instance_queue_mesh_draw(
   command->vertices     = mesh->vertices.buffer;
   command->indices      = mesh->indices.buffer;
   command->numOfIndices = mesh->indices.size / sizeof(uint16_t);
-  memcpy(command->transform, transform, sizeof(Mat4));
+  command->transform    = *transform;
 }
