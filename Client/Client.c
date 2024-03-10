@@ -346,6 +346,15 @@ int WINAPI wWinMain(
                        / g_timerFrequency.QuadPart);
     game_state_update(NULL, deltaTime);
 
+    // Draw scene
+    Transform floorTransform;
+    transform_identity(&floorTransform);
+    floorTransform.position.y = 1.0f;
+    floorTransform.scale.x    = 100.0f;
+    floorTransform.scale.z    = 100.0f;
+    render_instance_queue_mesh_draw(cube, &floorTransform, renderInstance);
+
+    // Draw players
     for (int i = 0; i < MAX_PLAYERS; i++)
     {
       if (g_listOfPlayers[i].active)
