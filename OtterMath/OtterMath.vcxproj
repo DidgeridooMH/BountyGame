@@ -21,8 +21,8 @@
   <PropertyGroup Label="Globals">
     <VCProjectVersion>17.0</VCProjectVersion>
     <Keyword>Win32Proj</Keyword>
-    <ProjectGuid>{f954d441-b93b-4238-9444-c3f81f760135}</ProjectGuid>
-    <RootNamespace>OtterUtil</RootNamespace>
+    <ProjectGuid>{c2aa9376-8d0b-4af3-bc8f-9188b408a3d7}</ProjectGuid>
+    <RootNamespace>OtterMath</RootNamespace>
     <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
@@ -71,16 +71,18 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <PublicIncludeDirectories>$(ProjectDir)\Public</PublicIncludeDirectories>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>$(VC_IncludePath);$(WindowsSDK_IncludePath);</IncludePath>
     <PublicIncludeDirectories>$(ProjectDir)\Public</PublicIncludeDirectories>
   </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;_DEBUG;OTTERUTIL_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;_DEBUG;OTTERMATH_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -97,7 +99,7 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>WIN32;NDEBUG;OTTERUTIL_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>WIN32;NDEBUG;OTTERMATH_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
@@ -114,13 +116,13 @@
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>_DEBUG;OTTERUTIL_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>_DEBUG;OTTERMATH_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\Public</AdditionalIncludeDirectories>
-      <TreatWarningAsError>true</TreatWarningAsError>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <AdditionalIncludeDirectories>$(ProjectDir)\Private;$(ProjectDir)\Public;$(ProjectDir)</AdditionalIncludeDirectories>
+      <TreatWarningAsError>true</TreatWarningAsError>
       <CompileAs>CompileAsC</CompileAs>
       <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
     </ClCompile>
@@ -136,13 +138,13 @@
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <SDLCheck>true</SDLCheck>
-      <PreprocessorDefinitions>NDEBUG;OTTERUTIL_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>NDEBUG;OTTERMATH_EXPORTS;_WINDOWS;_USRDLL;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\Public</AdditionalIncludeDirectories>
-      <TreatWarningAsError>true</TreatWarningAsError>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
+      <AdditionalIncludeDirectories>$(ProjectDir)\Private;$(ProjectDir)\Public;$(ProjectDir)</AdditionalIncludeDirectories>
+      <TreatWarningAsError>true</TreatWarningAsError>
       <CompileAs>CompileAsC</CompileAs>
       <ForcedIncludeFiles>pch.h</ForcedIncludeFiles>
     </ClCompile>
@@ -156,10 +158,13 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
-    <ClInclude Include="Public\Otter\Util\AutoArray.h" />
-    <ClInclude Include="Public\Otter\Util\HashMap.h" />
-    <ClInclude Include="Public\Otter\Util\export.h" />
-    <ClInclude Include="Public\Otter\Util\File.h" />
+    <ClInclude Include="Public\Otter\Math\Clamp.h" />
+    <ClInclude Include="Public\Otter\Math\export.h" />
+    <ClInclude Include="Public\Otter\Math\Mat.h" />
+    <ClInclude Include="Public\Otter\Math\MatDef.h" />
+    <ClInclude Include="Public\Otter\Math\Projection.h" />
+    <ClInclude Include="Public\Otter\Math\Transform.h" />
+    <ClInclude Include="Public\Otter\Math\Vec.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.c">
@@ -168,12 +173,11 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
     </ClCompile>
-    <ClCompile Include="Private\Otter\Util\AutoArray.c" />
-    <ClCompile Include="Private\Otter\Util\File.c" />
-    <ClCompile Include="Private\Otter\Util\HashMap.c" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="cpp.hint" />
+    <ClCompile Include="Private\Otter\Math\Clamp.c" />
+    <ClCompile Include="Private\Otter\Math\Mat.c" />
+    <ClCompile Include="Private\Otter\Math\Projection.c" />
+    <ClCompile Include="Private\Otter\Math\Transform.c" />
+    <ClCompile Include="Private\Otter\Math\Vec.c" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

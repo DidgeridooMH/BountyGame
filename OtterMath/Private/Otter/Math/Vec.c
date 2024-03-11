@@ -1,11 +1,8 @@
-#pragma once
+#include "Otter/Math/Vec.h"
 
-#include "Otter/Util/Math/Mat.h"
-#include "Otter/Util/export.h"
+#include "Otter/Math/Mat.h"
 
-#define PI 3.1415f
-
-inline void vec4_multiply_mat4(Vec4* vec, Mat4 mat)
+void vec4_multiply_mat4(Vec4* vec, Mat4 mat)
 {
   Vec4 result = *vec;
 
@@ -20,6 +17,3 @@ inline void vec4_multiply_mat4(Vec4* vec, Mat4 mat)
 
   *vec = result;
 }
-
-OTTERUTIL_API void projection_create_perspective(
-    Mat4 matrix, float fov, float aspectRatio, float nearPlane, float farPlane);

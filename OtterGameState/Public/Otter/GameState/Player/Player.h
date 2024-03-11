@@ -16,4 +16,4 @@ typedef struct Player
   float velocityY;
 } Player;
 
-OTTERRENDER_API extern Player g_listOfPlayers[MAX_PLAYERS];
+OTTERGAMESTATE_API extern Player g_listOfPlayers[MAX_PLAYERS];

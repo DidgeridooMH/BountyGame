@@ -18,16 +18,25 @@
     <ClInclude Include="pch.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Otter\Util\File.h">
+    <ClInclude Include="Public\Otter\Math\export.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Otter\Util\export.h">
+    <ClInclude Include="Public\Otter\Math\Clamp.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Otter\Util\HashMap.h">
+    <ClInclude Include="Public\Otter\Math\Mat.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Otter\Util\AutoArray.h">
+    <ClInclude Include="Public\Otter\Math\Projection.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Math\Transform.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Math\Vec.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Math\MatDef.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -35,17 +44,20 @@
     <ClCompile Include="pch.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Private\Otter\Util\File.c">
+    <ClCompile Include="Private\Otter\Math\Projection.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Private\Otter\Util\HashMap.c">
+    <ClCompile Include="Private\Otter\Math\Mat.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Private\Otter\Util\AutoArray.c">
+    <ClCompile Include="Private\Otter\Math\Clamp.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="cpp.hint" />
+    <ClCompile Include="Private\Otter\Math\Vec.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Math\Transform.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>

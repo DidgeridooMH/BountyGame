@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Otter/GameState/export.h"
 #include "Otter/GameState/Player/PlayerInput.h"
+#include "Otter/GameState/export.h"
 
-OTTERRENDER_API void game_state_update(PlayerInput* playerInputs, float deltaTime);
+OTTERGAMESTATE_API void game_state_update(
+    PlayerInput* playerInputs, float deltaTime);

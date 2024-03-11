@@ -1,4 +1,4 @@
-#include "Otter/Util/Math/Projection.h"
+#include "Otter/Math/Projection.h"
 
 void projection_create_perspective(
     Mat4 matrix, float fov, float aspectRatio, float nearPlane, float farPlane)

@@ -1,4 +1,4 @@
-#include "Otter/Util/Math/Mat.h"
+#include "Otter/Math/Mat.h"
 
 void mat4_identity(Mat4 matrix)
 {

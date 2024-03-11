@@ -1,8 +1,8 @@
 #pragma once
 
+#include "Otter/Math/Vec.h"
 #include "Otter/Render/Memory/GpuBuffer.h"
 #include "Otter/Render/export.h"
-#include "Otter/Util/Math/Vec.h"
 
 typedef struct MeshVertex
 {

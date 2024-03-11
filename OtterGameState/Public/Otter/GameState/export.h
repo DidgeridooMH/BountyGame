@@ -1,7 +1,7 @@
 #pragma once
 
 #ifdef OTTERGAMESTATE_EXPORTS
-#define OTTERRENDER_API __declspec(dllexport)
+#define OTTERGAMESTATE_API __declspec(dllexport)
 #else
-#define OTTERRENDER_API __declspec(dllimport)
+#define OTTERGAMESTATE_API __declspec(dllimport)
 #endif

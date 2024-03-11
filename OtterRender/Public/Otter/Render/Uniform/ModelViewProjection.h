@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Otter/Util/Math/Mat.h"
+#include "Otter/Math/Mat.h"
 
 typedef struct ModelViewProjection
 {

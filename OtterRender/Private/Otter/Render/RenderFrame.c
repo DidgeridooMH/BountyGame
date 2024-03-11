@@ -1,7 +1,7 @@
 #include "Otter/Render/RenderFrame.h"
 
 #include "Otter/Render/Uniform/ModelViewProjection.h"
-#include "Otter/Util/Math/Projection.h"
+#include "Otter/Math/Projection.h"
 
 #define DESCRIPTOR_POOL_SIZE 128
 #define DESCRIPTOR_SET_LIMIT 512

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Otter/Util/Math/Transform.h"
+#include "Otter/Math/Transform.h"
 #include <vulkan/vulkan.h>
 
 typedef struct RenderCommand

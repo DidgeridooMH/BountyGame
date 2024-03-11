@@ -8,8 +8,8 @@
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/RenderInstance.h"
 #include "Otter/Util/File.h"
-#include "Otter/Util/Math/Transform.h"
-#include "Otter/Util/Math/Vec.h"
+#include "Otter/Math/Transform.h"
+#include "Otter/Math/Vec.h"
 #include "Window/GameWindow.h"
 
 #define CONFIG_WIDTH  "width"

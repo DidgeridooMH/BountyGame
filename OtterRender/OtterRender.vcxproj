@@ -200,6 +200,9 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
+    <ProjectReference Include="..\OtterMath\OtterMath.vcxproj">
+      <Project>{c2aa9376-8d0b-4af3-bc8f-9188b408a3d7}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\OtterUtil\OtterUtil.vcxproj">
       <Project>{f954d441-b93b-4238-9444-c3f81f760135}</Project>
     </ProjectReference>

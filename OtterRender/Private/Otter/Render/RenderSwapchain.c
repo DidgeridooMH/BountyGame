@@ -1,7 +1,7 @@
 #include "Otter/Render/RenderSwapchain.h"
 
 #include "Otter/Render/Memory/MemoryType.h"
-#include "Otter/Util/Math/Clamp.h"
+#include "Otter/Math/Clamp.h"
 
 static bool render_swapchain_create_swapchain(RenderSwapchain* renderSwapchain,
     uint32_t requestedNumberOfFrames, VkPhysicalDevice physicalDevice,

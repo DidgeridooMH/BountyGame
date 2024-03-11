@@ -180,6 +180,9 @@
     <ProjectReference Include="..\OtterGameState\OtterGameState.vcxproj">
       <Project>{d70f673c-d082-4ecc-a9cb-fae152c09105}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\OtterMath\OtterMath.vcxproj">
+      <Project>{c2aa9376-8d0b-4af3-bc8f-9188b408a3d7}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\OtterNetworking\OtterNetworking.vcxproj">
       <Project>{11648445-41e8-4e7b-a37e-0bc842cc576b}</Project>
     </ProjectReference>

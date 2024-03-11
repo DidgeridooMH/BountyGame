@@ -1,5 +1,8 @@
 #pragma once
 
+#include "Otter/Math/MatDef.h"
+#include "Otter/Math/export.h"
+
 typedef struct Vec2
 {
   union
@@ -41,3 +44,5 @@ typedef struct Vec4
     float val[4];
   };
 } Vec4;
+
+OTTERMATH_API void vec4_multiply_mat4(Vec4* vec, Mat4 mat);
