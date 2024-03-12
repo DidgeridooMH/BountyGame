@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Otter/Util/AutoArray.h"
 #include "Otter/Util/export.h"
 
 #define HASH_MAP_DEFAULT_BUCKETS 512
@@ -11,24 +12,20 @@ typedef struct KeyValue
   void* value;
 } KeyValue;
 
-typedef struct HashBucket
-{
-  KeyValue* contents;
-  size_t size;
-} HashBucket;
-
 typedef struct HashMap
 {
-  HashBucket* buckets;
+  AutoArray* buckets;
   size_t numOfBuckets;
   size_t coefficient;
 } HashMap;
 
+typedef void (*HashMapDestroyFn)(void*);
+
 OTTERUTIL_API HashMap* hash_map_create(size_t numOfBuckets, size_t coefficient);
 
-OTTERUTIL_API void hash_map_destroy(HashMap* map);
+OTTERUTIL_API void hash_map_destroy(HashMap* map, HashMapDestroyFn destructor);
 
 OTTERUTIL_API bool hash_map_set_value(
-    HashMap* map, const char* key, void* value, size_t valueSize);
+    HashMap* map, const char* key, void* value);
 
 OTTERUTIL_API void* hash_map_get_value(HashMap* map, const char* key);

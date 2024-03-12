@@ -81,10 +81,16 @@ HashMap* config_parse(char* config)
     }
     line[separator] = '\0';
 
-    char* key   = line;
-    char* value = &line[separator + 1];
+    char* key = line;
 
-    if (!hash_map_set_value(map, key, value, strlen(value) + 1))
+    char* value = _strdup(&line[separator + 1]);
+    if (value == NULL)
+    {
+      fprintf(stderr, "Warning: Invalid value on line %d\n", lineNumber);
+      continue;
+    }
+
+    if (!hash_map_set_value(map, key, value))
     {
       fprintf(stderr,
           "Something went horribly wrong with the HashMap. Oh its bad...\n");

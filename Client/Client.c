@@ -2,14 +2,15 @@
 #include "Otter/Config/Config.h"
 #include "Otter/GameState/GameState.h"
 #include "Otter/GameState/Player/Player.h"
+#include "Otter/Math/Transform.h"
+#include "Otter/Math/Vec.h"
 #include "Otter/Networking/Client/UdpGameClient.h"
 #include "Otter/Networking/Messages/ControlMessages.h"
 #include "Otter/Networking/Messages/EntityMessages.h"
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/RenderInstance.h"
 #include "Otter/Util/File.h"
-#include "Otter/Math/Transform.h"
-#include "Otter/Math/Vec.h"
+#include "Otter/Util/Json/Json.h"
 #include "Window/GameWindow.h"
 
 #define CONFIG_WIDTH  "width"
@@ -247,6 +248,19 @@ int WINAPI wWinMain(
 
   QueryPerformanceFrequency(&g_timerFrequency);
 
+  size_t fileLength = 0;
+  char* jsonTest    = file_load("test.json", &fileLength);
+  size_t cursor     = 0;
+  JsonValue* json   = json_parse(jsonTest, fileLength, &cursor);
+
+  if (json == NULL)
+  {
+    printf("SHIT\n");
+    return -1;
+  }
+
+  json_destroy(json);
+
   char* configStr = file_load("Config/client.ini", NULL);
   if (configStr == NULL)
   {
@@ -264,14 +278,16 @@ int WINAPI wWinMain(
 
   int width  = atoi((const char*) hash_map_get_value(config, CONFIG_WIDTH));
   int height = atoi((const char*) hash_map_get_value(config, CONFIG_HEIGHT));
+  char* host = hash_map_get_value(config, CONFIG_HOST);
+  char* port = hash_map_get_value(config, CONFIG_PORT);
 
   HWND window = game_window_create(width, height, WM_WINDOWED);
   RenderInstance* renderInstance = render_instance_create(window);
   if (renderInstance == NULL)
   {
     fprintf(stderr, "Failed to initialize render instance.\n");
+    hash_map_destroy(config, free);
     game_window_destroy(window);
-    hash_map_destroy(config);
     return -1;
   }
 
@@ -314,16 +330,14 @@ int WINAPI wWinMain(
       graphicsQueue);
   // ------
 
-  char* host = hash_map_get_value(config, CONFIG_HOST);
-  char* port = hash_map_get_value(config, CONFIG_PORT);
   UdpGameClient client;
   if (!udp_game_client_connect(&client, host, port))
   {
     MessageBox(window, L"Unable to connect to server.", L"Connection Issue!",
         MB_ICONERROR);
+    hash_map_destroy(config, free);
     render_instance_destroy(renderInstance);
     game_window_destroy(window);
-    hash_map_destroy(config);
     return -1;
   }
 
@@ -396,9 +410,9 @@ int WINAPI wWinMain(
 
   mesh_destroy(cube, renderInstance->logicalDevice);
   udp_game_client_destroy(&client);
+  hash_map_destroy(config, free);
   render_instance_destroy(renderInstance);
   game_window_destroy(window);
-  hash_map_destroy(config);
 
   return 0;
 }

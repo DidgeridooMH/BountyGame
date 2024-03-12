@@ -18,8 +18,8 @@ layout (binding = 0) uniform ModelViewProjection
 
 void main()
 {
+    outPosition = (mvp.model * vec4(inPosition, 1.0)).rgb;
     gl_Position = mvp.proj * mvp.view * mvp.model * vec4(inPosition, 1.0);
-    outPosition = inPosition;
 
     // TODO: Move inverse model to the cpu.
     outNormal = mat3(transpose(inverse(mvp.model))) * normalize(inNormal);

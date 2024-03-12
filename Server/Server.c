@@ -269,7 +269,7 @@ int main(int argc, char** argv)
   }
 
   udp_game_server_destroy(&server);
-  hash_map_destroy(config);
+  hash_map_destroy(config, NULL);
 
   return 0;
 }

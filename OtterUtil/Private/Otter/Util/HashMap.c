@@ -11,35 +11,43 @@ HashMap* hash_map_create(size_t numOfBuckets, size_t coefficient)
   map->numOfBuckets = numOfBuckets;
   map->coefficient  = coefficient;
 
-  map->buckets = calloc(numOfBuckets, sizeof(HashBucket));
+  map->buckets = malloc(numOfBuckets * sizeof(AutoArray));
   if (map->buckets == NULL)
   {
     free(map);
     return NULL;
   }
 
+  for (int i = 0; i < numOfBuckets; i++)
+  {
+    auto_array_create(&map->buckets[i], sizeof(KeyValue));
+  }
+
   return map;
 }
 
-void hash_map_destroy(HashMap* map)
+void hash_map_destroy(HashMap* map, HashMapDestroyFn destructor)
 {
   for (size_t i = 0; i < map->numOfBuckets; i++)
   {
-    if (map->buckets[i].contents != NULL)
+    for (uint32_t e = 0; e < map->buckets[i].size; e++)
     {
-      for (size_t j = 0; j < map->buckets[i].size; j++)
+      KeyValue* keyValue = auto_array_get(&map->buckets[i], e);
+      free(keyValue->key);
+
+      if (destructor != NULL)
       {
-        free(map->buckets[i].contents[j].key);
-        free(map->buckets[i].contents[j].value);
+        destructor(keyValue->value);
       }
-      free(map->buckets[i].contents);
     }
+
+    auto_array_destroy(&map->buckets[i]);
   }
   free(map->buckets);
   free(map);
 }
 
-static HashBucket* hash_map_get_bucket(HashMap* map, const char* key)
+static AutoArray* hash_map_get_bucket(HashMap* map, const char* key)
 {
   size_t hash = 0;
   while (*key != '\0')
@@ -50,54 +58,36 @@ static HashBucket* hash_map_get_bucket(HashMap* map, const char* key)
   return &map->buckets[hash % map->numOfBuckets];
 }
 
-bool hash_map_set_value(
-    HashMap* map, const char* key, void* value, size_t valueSize)
+bool hash_map_set_value(HashMap* map, const char* key, void* value)
 {
-  HashBucket* bucket = hash_map_get_bucket(map, key);
-  bucket->size += 1;
-  if (bucket->contents == NULL)
+  AutoArray* bucket  = hash_map_get_bucket(map, key);
+  KeyValue* keyValue = auto_array_allocate(bucket);
+  if (keyValue == NULL)
   {
-    bucket->contents = malloc(sizeof(KeyValue));
-  }
-  else
-  {
-    bucket->contents =
-        realloc(bucket->contents, sizeof(KeyValue) * bucket->size);
-  }
-
-  if (bucket->contents == NULL)
-  {
+    fprintf(stderr, "OOM\n");
     return false;
   }
 
-  KeyValue* keyValue = &bucket->contents[bucket->size - 1];
-
-  size_t keySize = strlen(key) + 1;
-  keyValue->key  = malloc(keySize);
+  keyValue->key = _strdup(key);
   if (keyValue->key == NULL)
   {
     return false;
   }
-  strcpy_s(keyValue->key, keySize, key);
 
-  keyValue->value = malloc(valueSize);
-  if (keyValue->value == NULL)
-  {
-    return false;
-  }
-  memcpy(keyValue->value, value, valueSize);
+  keyValue->value = value;
 
   return true;
 }
 
 void* hash_map_get_value(HashMap* map, const char* key)
 {
-  HashBucket* bucket = hash_map_get_bucket(map, key);
-  for (size_t i = 0; i < bucket->size; i++)
+  AutoArray* bucket = hash_map_get_bucket(map, key);
+  for (uint32_t i = 0; i < bucket->size; i++)
   {
-    if (strcmp(bucket->contents[i].key, key) == 0)
+    KeyValue* keyValue = auto_array_get(bucket, i);
+    if (strcmp(keyValue->key, key) == 0)
     {
-      return bucket->contents[i].value;
+      return keyValue->value;
     }
   }
   return NULL;

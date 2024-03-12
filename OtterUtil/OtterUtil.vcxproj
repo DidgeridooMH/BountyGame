@@ -118,7 +118,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\Public</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\Public;$(ProjectDir)\Private</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <CompileAs>CompileAsC</CompileAs>
@@ -140,7 +140,7 @@
       <ConformanceMode>true</ConformanceMode>
       <PrecompiledHeader>Use</PrecompiledHeader>
       <PrecompiledHeaderFile>pch.h</PrecompiledHeaderFile>
-      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\Public</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir);$(ProjectDir)\Public;$(ProjectDir)\Private</AdditionalIncludeDirectories>
       <TreatWarningAsError>true</TreatWarningAsError>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
       <CompileAs>CompileAsC</CompileAs>
@@ -156,10 +156,15 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Private\Otter\Util\Json\JsonNumber.h" />
+    <ClInclude Include="Private\Otter\Util\Json\JsonObject.h" />
+    <ClInclude Include="Private\Otter\Util\Json\JsonString.h" />
     <ClInclude Include="Public\Otter\Util\AutoArray.h" />
     <ClInclude Include="Public\Otter\Util\HashMap.h" />
     <ClInclude Include="Public\Otter\Util\export.h" />
     <ClInclude Include="Public\Otter\Util\File.h" />
+    <ClInclude Include="Public\Otter\Util\Json\Json.h" />
+    <ClInclude Include="Private\Otter\Util\Json\JsonArray.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.c">
@@ -171,6 +176,11 @@
     <ClCompile Include="Private\Otter\Util\AutoArray.c" />
     <ClCompile Include="Private\Otter\Util\File.c" />
     <ClCompile Include="Private\Otter\Util\HashMap.c" />
+    <ClCompile Include="Private\Otter\Util\Json\Json.c" />
+    <ClCompile Include="Private\Otter\Util\Json\JsonArray.c" />
+    <ClCompile Include="Private\Otter\Util\Json\JsonNumber.c" />
+    <ClCompile Include="Private\Otter\Util\Json\JsonObject.c" />
+    <ClCompile Include="Private\Otter\Util\Json\JsonString.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />

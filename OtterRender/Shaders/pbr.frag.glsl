@@ -18,31 +18,41 @@ vec3 ACESFilm(vec3 color) {
   return clamp((color*(a*color+b))/(color*(c*color+d)+e), 0.0, 1.0);
 }
 
-void main()
+vec3 calculateDirectLight(vec3 position, vec3 normal)
 {
     const vec3 lightPosition = vec3(4.0, -4.0, 4.0);
     const vec3 lightColor = vec3(1.0, 1.0, 1.0);
-    const float lightIntensity = 1.0;
+    const float lightIntensity = 2.0;
     const float lightConstant = 1.0;
-    const float lightLinear = 1.0;
-    const float lightQuadratic = 1.0;
-    const vec3 ambientLighting = vec3(0.2, 0.2, 0.2);
+    const float lightLinear = 0.09;
+    const float lightQuadratic = 0.032;
+    
+    float distance = length(lightPosition - position);
+    float attenuation = 1.0 / (
+        lightConstant +
+        lightLinear * distance +
+        lightQuadratic * (distance * distance));
+    vec3 radiance = lightColor * attenuation * lightIntensity;
 
+    vec3 lightDirection = normalize(lightPosition - position);
+    float directionDifference = max(dot(normal, lightDirection), 0.0);
+
+    return directionDifference * radiance;
+}
+
+void main()
+{
     if (subpassLoad(ainPosition).a < 1.0)
     {
         discard;
     }
 
     vec3 position = subpassLoad(ainPosition).rgb;
-
     vec3 normal = subpassLoad(ainNormal).rgb;
 
-    vec3 lightDirection = normalize(lightPosition - position);
-    float directionDifference = max(dot(normal, lightDirection), 0.0);
+    vec3 diffuse = calculateDirectLight(position, normal);
 
-    vec3 diffuse = directionDifference * lightColor;
-
-    vec3 lighting = (diffuse + ambientLighting) * subpassLoad(ainColor).rgb;
+    vec3 lighting = (diffuse) * subpassLoad(ainColor).rgb;
 
     // Tonemap lighting
     // TODO: This should be a separate step in post.
