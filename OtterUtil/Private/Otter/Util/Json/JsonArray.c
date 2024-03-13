@@ -45,7 +45,7 @@ JsonValue* json_parse_array_value(
     }
   }
 
-  if (document[*cursor] != ']')
+  if (*cursor >= documentLength)
   {
     json_destroy_array(jsonArray);
     return NULL;

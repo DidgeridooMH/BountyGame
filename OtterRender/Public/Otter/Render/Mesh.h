@@ -4,6 +4,9 @@
 #include "Otter/Render/Memory/GpuBuffer.h"
 #include "Otter/Render/export.h"
 
+// TODO: When loading assets, it would be useful to use a paging system that
+// allows an automated flow from Disk->RAM->VRAM. This would not only improve
+// load times, but also eliminate the risk of running out of VRAM.
 typedef struct MeshVertex
 {
   Vec3 position;

@@ -81,6 +81,15 @@ JsonValue* json_parse_object_value(
       *cursor += 1;
     }
   }
+
+  if (*cursor >= documentLength)
+  {
+    json_destroy_object(jsonObject);
+    return NULL;
+  }
+
+  *cursor += 1;
+
   return jsonObject;
 }
 

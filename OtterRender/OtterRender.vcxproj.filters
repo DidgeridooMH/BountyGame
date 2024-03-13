@@ -42,9 +42,6 @@
     <ClInclude Include="Public\Otter\Render\Uniform\ModelViewProjection.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Public\Otter\Render\RenderStage\GBuffer.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Public\Otter\Render\Memory\MemoryType.h">
       <Filter>Header Files</Filter>
     </ClInclude>
@@ -58,6 +55,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="Public\Otter\Render\Pipeline\PbrPipeline.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Render\Gltf\GlbAsset.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -94,6 +94,9 @@
     </ClCompile>
     <ClCompile Include="Private\Otter\Render\Pipeline\PbrPipeline.c">
       <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Render\Gltf\GlbAsset.c">
+      <Filter>Header Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

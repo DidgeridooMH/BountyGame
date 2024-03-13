@@ -164,14 +164,17 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
+    <ClCompile Include="Private\Otter\Render\Gltf\GlbAsset.c">
+      <FileType>CppCode</FileType>
+    </ClCompile>
     <ClInclude Include="Public\Otter\Render\export.h" />
+    <ClInclude Include="Public\Otter\Render\Gltf\GlbAsset.h" />
     <ClInclude Include="Public\Otter\Render\Memory\GpuBuffer.h" />
     <ClInclude Include="Public\Otter\Render\Memory\MemoryType.h" />
     <ClInclude Include="Public\Otter\Render\Mesh.h" />
     <ClInclude Include="Public\Otter\Render\Pipeline\PbrPipeline.h" />
     <ClInclude Include="Public\Otter\Render\RenderFrame.h" />
     <ClInclude Include="Public\Otter\Render\RenderStack.h" />
-    <ClInclude Include="Public\Otter\Render\RenderStage\GBuffer.h" />
     <ClInclude Include="Public\Otter\Render\Uniform\ModelViewProjection.h" />
     <ClInclude Include="Public\Otter\Render\Pipeline\GBufferPipeline.h" />
     <ClInclude Include="Public\Otter\Render\RenderInstance.h" />

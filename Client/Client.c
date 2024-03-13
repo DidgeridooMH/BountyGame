@@ -7,10 +7,10 @@
 #include "Otter/Networking/Client/UdpGameClient.h"
 #include "Otter/Networking/Messages/ControlMessages.h"
 #include "Otter/Networking/Messages/EntityMessages.h"
+#include "Otter/Render/Gltf/GlbAsset.h"
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/RenderInstance.h"
 #include "Otter/Util/File.h"
-#include "Otter/Util/Json/Json.h"
 #include "Window/GameWindow.h"
 
 #define CONFIG_WIDTH  "width"
@@ -249,17 +249,15 @@ int WINAPI wWinMain(
   QueryPerformanceFrequency(&g_timerFrequency);
 
   size_t fileLength = 0;
-  char* jsonTest    = file_load("test.json", &fileLength);
-  size_t cursor     = 0;
-  JsonValue* json   = json_parse(jsonTest, fileLength, &cursor);
-
-  if (json == NULL)
+  char* glbTest     = file_load("model.glb", &fileLength);
+  if (glbTest == NULL)
   {
-    printf("SHIT\n");
+    fprintf(stderr, "Unable to find file model.glb\n");
     return -1;
   }
 
-  json_destroy(json);
+  AutoArray asset;
+  glb_load_asset(glbTest, fileLength, &asset);
 
   char* configStr = file_load("Config/client.ini", NULL);
   if (configStr == NULL)
