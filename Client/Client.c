@@ -266,25 +266,26 @@ int WINAPI wWinMain(
     return -1;
   }
 
-  HashMap* config = config_parse(configStr);
-  free(configStr);
-  if (config == NULL)
+  HashMap config;
+  if (!config_parse(&config, configStr))
   {
+    free(configStr);
     fprintf(stderr, "Could not parse configuration.");
     return -1;
   }
+  free(configStr);
 
-  int width  = atoi((const char*) hash_map_get_value(config, CONFIG_WIDTH));
-  int height = atoi((const char*) hash_map_get_value(config, CONFIG_HEIGHT));
-  char* host = hash_map_get_value(config, CONFIG_HOST);
-  char* port = hash_map_get_value(config, CONFIG_PORT);
+  int width  = atoi((const char*) hash_map_get_value(&config, CONFIG_WIDTH));
+  int height = atoi((const char*) hash_map_get_value(&config, CONFIG_HEIGHT));
+  char* host = hash_map_get_value(&config, CONFIG_HOST);
+  char* port = hash_map_get_value(&config, CONFIG_PORT);
 
   HWND window = game_window_create(width, height, WM_WINDOWED);
   RenderInstance* renderInstance = render_instance_create(window);
   if (renderInstance == NULL)
   {
     fprintf(stderr, "Failed to initialize render instance.\n");
-    hash_map_destroy(config, free);
+    hash_map_destroy(&config, free);
     game_window_destroy(window);
     return -1;
   }
@@ -333,7 +334,7 @@ int WINAPI wWinMain(
   {
     MessageBox(window, L"Unable to connect to server.", L"Connection Issue!",
         MB_ICONERROR);
-    hash_map_destroy(config, free);
+    hash_map_destroy(&config, free);
     render_instance_destroy(renderInstance);
     game_window_destroy(window);
     return -1;
@@ -408,7 +409,7 @@ int WINAPI wWinMain(
 
   mesh_destroy(cube, renderInstance->logicalDevice);
   udp_game_client_destroy(&client);
-  hash_map_destroy(config, free);
+  hash_map_destroy(&config, free);
   render_instance_destroy(renderInstance);
   game_window_destroy(window);
 

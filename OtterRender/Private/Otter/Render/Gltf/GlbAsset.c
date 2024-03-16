@@ -55,10 +55,15 @@ OTTERRENDER_API bool glb_load_asset(
   size_t bytesParsed = 0;
   JsonValue* glbJsonData =
       json_parse(jsonChunk->data, jsonChunk->length, &bytesParsed);
+  if (glbJsonData == NULL)
+  {
+    fprintf(stderr, "Unable to parse JSON chunk\n");
+    return false;
+  }
 
   auto_array_create(nodes, sizeof(GlbNode));
-  /*JsonValue* glbNodes  = hash_map_get_value(glbJsonData->object, "nodes");
-  JsonValue* glbMeshes = hash_map_get_value(glbJsonData->object, "meshes");
+  JsonValue* glbNodes  = hash_map_get_value(&glbJsonData->object, "nodes");
+  JsonValue* glbMeshes = hash_map_get_value(&glbJsonData->object, "meshes");
   if (glbNodes != NULL && glbNodes->type == JT_ARRAY && glbMeshes != NULL
       && glbMeshes->type == JT_ARRAY)
   {
@@ -69,14 +74,14 @@ OTTERRENDER_API bool glb_load_asset(
       if (currentNode->type == JT_OBJECT)
       {
         JsonValue* currentMesh =
-            hash_map_get_value(currentNode->object, "mesh");
+            hash_map_get_value(&currentNode->object, "mesh");
         if (currentMesh != NULL && currentMesh->type == JT_NUMBER)
         {
           printf("Mesh -> %d\n", (int) currentMesh->number);
         }
       }
     }
-  }*/
+  }
 
   json_destroy(glbJsonData);
 

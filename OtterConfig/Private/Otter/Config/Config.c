@@ -51,13 +51,12 @@ static void config_trim(char* line)
   }
 }
 
-HashMap* config_parse(char* config)
+bool config_parse(HashMap* configMap, char* config)
 {
-  HashMap* map =
-      hash_map_create(HASH_MAP_DEFAULT_BUCKETS, HASH_MAP_DEFAULT_COEF);
-  if (map == NULL)
+  if (!hash_map_create(
+          configMap, HASH_MAP_DEFAULT_BUCKETS, HASH_MAP_DEFAULT_COEF))
   {
-    return NULL;
+    return false;
   }
 
   int lineNumber = 0;
@@ -90,13 +89,13 @@ HashMap* config_parse(char* config)
       continue;
     }
 
-    if (!hash_map_set_value(map, key, value))
+    if (!hash_map_set_value(configMap, key, value))
     {
       fprintf(stderr,
           "Something went horribly wrong with the HashMap. Oh its bad...\n");
-      return NULL;
+      return false;
     }
   }
 
-  return map;
+  return true;
 }

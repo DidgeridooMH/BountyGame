@@ -207,15 +207,16 @@ int main(int argc, char** argv)
     return -1;
   }
 
-  HashMap* config = config_parse(configStr);
-  free(configStr);
-  if (config == NULL)
+  HashMap config;
+  if (!config_parse(&config, configStr))
   {
+    free(configStr);
     return -1;
   }
+  free(configStr);
 
-  char* ip   = hash_map_get_value(config, "ip");
-  char* port = hash_map_get_value(config, "port");
+  char* ip   = hash_map_get_value(&config, "ip");
+  char* port = hash_map_get_value(&config, "port");
 
   UdpGameServer server;
   if (!udp_game_server_create(&server, ip, port))
@@ -269,7 +270,7 @@ int main(int argc, char** argv)
   }
 
   udp_game_server_destroy(&server);
-  hash_map_destroy(config, NULL);
+  hash_map_destroy(&config, NULL);
 
   return 0;
 }

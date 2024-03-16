@@ -1,29 +1,23 @@
 #include "Otter/Util/HashMap.h"
 
-HashMap* hash_map_create(size_t numOfBuckets, size_t coefficient)
+bool hash_map_create(HashMap* map, size_t numOfBuckets, size_t coefficient)
 {
-  HashMap* map = malloc(sizeof(HashMap));
-  if (map == NULL)
-  {
-    return NULL;
-  }
-
   map->numOfBuckets = numOfBuckets;
   map->coefficient  = coefficient;
 
-  map->buckets = malloc(numOfBuckets * sizeof(AutoArray));
+  map->buckets = malloc(numOfBuckets * sizeof(StableAutoArray));
   if (map->buckets == NULL)
   {
-    free(map);
-    return NULL;
+    return false;
   }
 
   for (int i = 0; i < numOfBuckets; i++)
   {
-    auto_array_create(&map->buckets[i], sizeof(KeyValue));
+    stable_auto_array_create(
+        &map->buckets[i], sizeof(KeyValue), SAA_DEFAULT_CHUNK_SIZE);
   }
 
-  return map;
+  return true;
 }
 
 void hash_map_destroy(HashMap* map, HashMapDestroyFn destructor)
@@ -32,7 +26,7 @@ void hash_map_destroy(HashMap* map, HashMapDestroyFn destructor)
   {
     for (uint32_t e = 0; e < map->buckets[i].size; e++)
     {
-      KeyValue* keyValue = auto_array_get(&map->buckets[i], e);
+      KeyValue* keyValue = stable_auto_array_get(&map->buckets[i], e);
       free(keyValue->key);
 
       if (destructor != NULL)
@@ -41,13 +35,12 @@ void hash_map_destroy(HashMap* map, HashMapDestroyFn destructor)
       }
     }
 
-    auto_array_destroy(&map->buckets[i]);
+    stable_auto_array_destroy(&map->buckets[i]);
   }
   free(map->buckets);
-  free(map);
 }
 
-static AutoArray* hash_map_get_bucket(HashMap* map, const char* key)
+static StableAutoArray* hash_map_get_bucket(HashMap* map, const char* key)
 {
   size_t hash = 0;
   while (*key != '\0')
@@ -60,8 +53,8 @@ static AutoArray* hash_map_get_bucket(HashMap* map, const char* key)
 
 bool hash_map_set_value(HashMap* map, const char* key, void* value)
 {
-  AutoArray* bucket  = hash_map_get_bucket(map, key);
-  KeyValue* keyValue = auto_array_allocate(bucket);
+  StableAutoArray* bucket = hash_map_get_bucket(map, key);
+  KeyValue* keyValue      = stable_auto_array_allocate(bucket);
   if (keyValue == NULL)
   {
     fprintf(stderr, "OOM\n");
@@ -81,10 +74,10 @@ bool hash_map_set_value(HashMap* map, const char* key, void* value)
 
 void* hash_map_get_value(HashMap* map, const char* key)
 {
-  AutoArray* bucket = hash_map_get_bucket(map, key);
+  StableAutoArray* bucket = hash_map_get_bucket(map, key);
   for (uint32_t i = 0; i < bucket->size; i++)
   {
-    KeyValue* keyValue = auto_array_get(bucket, i);
+    KeyValue* keyValue = stable_auto_array_get(bucket, i);
     if (strcmp(keyValue->key, key) == 0)
     {
       return keyValue->value;

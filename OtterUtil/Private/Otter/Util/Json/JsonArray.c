@@ -3,7 +3,6 @@
 JsonValue* json_parse_array_value(
     const char* document, size_t documentLength, size_t* const cursor)
 {
-  *cursor += 1;
   JsonValue* jsonArray = malloc(sizeof(JsonValue));
   if (jsonArray == NULL)
   {
@@ -13,25 +12,16 @@ JsonValue* json_parse_array_value(
   jsonArray->type = JT_ARRAY;
   auto_array_create(&jsonArray->array, sizeof(JsonValue*));
 
-  while (isspace(document[*cursor]))
+  JsonToken token;
+  do
   {
-    *cursor += 1;
-  }
-  while (*cursor < documentLength && document[*cursor] != ']')
-  {
-    while (isspace(document[*cursor]))
+    json_peek_token(&token, document, documentLength, *cursor);
+    if (token.type == JTT_RBRACKET)
     {
-      *cursor += 1;
+      json_get_token(&token, document, documentLength, cursor);
+      break;
     }
-    if (jsonArray->array.size > 0)
-    {
-      if (document[*cursor] != ',')
-      {
-        json_destroy_array(jsonArray);
-        return NULL;
-      }
-      *cursor += 1;
-    }
+
     JsonValue** arrayElement = auto_array_allocate(&jsonArray->array);
     if (arrayElement == NULL)
     {
@@ -39,18 +29,19 @@ JsonValue* json_parse_array_value(
       return NULL;
     }
     *arrayElement = json_parse(document, documentLength, cursor);
-    while (isspace(document[*cursor]))
-    {
-      *cursor += 1;
-    }
-  }
 
-  if (*cursor >= documentLength)
+    if (!json_get_token(&token, document, documentLength, cursor))
+    {
+      json_destroy_array(jsonArray);
+      return NULL;
+    }
+  } while (token.type == JTT_COMMA);
+
+  if (token.type != JTT_RBRACKET)
   {
     json_destroy_array(jsonArray);
     return NULL;
   }
-  *cursor += 1;
 
   return jsonArray;
 }

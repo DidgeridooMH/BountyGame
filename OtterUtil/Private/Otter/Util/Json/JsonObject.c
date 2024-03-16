@@ -1,11 +1,8 @@
 #include "Otter/Util/Json/JsonObject.h"
 
-#include "Otter/Util/Json/JsonString.h"
-
 JsonValue* json_parse_object_value(
     const char* document, size_t documentLength, size_t* const cursor)
 {
-  *cursor += 1;
   JsonValue* jsonObject = malloc(sizeof(JsonValue));
   if (jsonObject == NULL)
   {
@@ -13,57 +10,50 @@ JsonValue* json_parse_object_value(
     return NULL;
   }
   jsonObject->type = JT_OBJECT;
-  jsonObject->object =
-      hash_map_create(HASH_MAP_DEFAULT_BUCKETS, HASH_MAP_DEFAULT_COEF);
-  if (jsonObject->object == NULL)
+  if (!hash_map_create(
+          &jsonObject->object, HASH_MAP_DEFAULT_BUCKETS, HASH_MAP_DEFAULT_COEF))
   {
     free(jsonObject);
     return NULL;
   }
 
-  while (isspace(document[*cursor]))
-  {
-    *cursor += 1;
-  }
+  JsonToken token;
   bool firstItem = true;
-  while (*cursor < documentLength && document[*cursor] != '}')
+  while (json_get_token(&token, document, documentLength, cursor)
+         && token.type != JTT_RDRAGON)
   {
     if (!firstItem)
     {
-      if (document[*cursor] != ',')
+      if (token.type != JTT_COMMA
+          || !json_get_token(&token, document, documentLength, cursor))
       {
         json_destroy_object(jsonObject);
         return NULL;
       }
-      *cursor += 1;
-
-      while (isspace(document[*cursor]))
-      {
-        *cursor += 1;
-      }
     }
     firstItem = false;
 
-    char* key = json_parse_string(document, documentLength, cursor);
+    if (token.type != JTT_STRING)
+    {
+      json_destroy_object(jsonObject);
+      return NULL;
+    }
+    char* key = malloc(token.tokenStringLength + 1);
     if (key == NULL)
     {
       json_destroy_object(jsonObject);
-      free(key);
       return NULL;
     }
+    strncpy_s(key, token.tokenStringLength + 1, token.tokenString,
+        token.tokenStringLength);
 
-    while (isspace(document[*cursor]))
-    {
-      *cursor += 1;
-    }
-
-    if (document[*cursor] != ':')
+    if (!json_get_token(&token, document, documentLength, cursor)
+        || token.type != JTT_COLON)
     {
       json_destroy_object(jsonObject);
       free(key);
       return NULL;
     }
-    *cursor += 1;
 
     JsonValue* value = json_parse(document, documentLength, cursor);
     if (value == NULL)
@@ -73,27 +63,20 @@ JsonValue* json_parse_object_value(
       return NULL;
     }
 
-    hash_map_set_value(jsonObject->object, key, value);
+    hash_map_set_value(&jsonObject->object, key, value);
     free(key);
-
-    while (isspace(document[*cursor]))
-    {
-      *cursor += 1;
-    }
   }
 
-  if (*cursor >= documentLength)
+  if (token.type == JTT_ERROR)
   {
     json_destroy_object(jsonObject);
     return NULL;
   }
-
-  *cursor += 1;
 
   return jsonObject;
 }
 
 void json_destroy_object(JsonValue* value)
 {
-  hash_map_destroy(value->object, json_destroy);
+  hash_map_destroy(&value->object, json_destroy);
 }

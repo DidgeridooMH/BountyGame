@@ -2,7 +2,7 @@
 
 #include "Otter/Util/export.h"
 
-// TODO: Implement size optimization algorithm.
+// TODO: Implement size optimization algorithm
 
 typedef struct AutoArray
 {

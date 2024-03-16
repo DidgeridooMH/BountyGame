@@ -36,13 +36,10 @@
     <ClInclude Include="Private\Otter\Util\Json\JsonArray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="Private\Otter\Util\Json\JsonString.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
-    <ClInclude Include="Private\Otter\Util\Json\JsonNumber.h">
-      <Filter>Header Files</Filter>
-    </ClInclude>
     <ClInclude Include="Private\Otter\Util\Json\JsonObject.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Public\Otter\Util\StableAutoArray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -65,13 +62,10 @@
     <ClCompile Include="Private\Otter\Util\Json\JsonArray.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="Private\Otter\Util\Json\JsonString.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="Private\Otter\Util\Json\JsonNumber.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="Private\Otter\Util\Json\JsonObject.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Util\StableAutoArray.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

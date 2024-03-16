@@ -3,4 +3,4 @@
 #include "Otter/Config/export.h"
 #include "Otter/Util/HashMap.h"
 
-OTTERCONFIG_API HashMap* config_parse(char* config);
+OTTERCONFIG_API bool config_parse(HashMap* map, char* config);

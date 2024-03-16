@@ -20,12 +20,12 @@ void* auto_array_allocate(AutoArray* array)
   if (array->size == array->capacity)
   {
     void* newBuffer =
-        realloc(array->buffer, (array->capacity + ARRAY_INCREMENT_SIZE)
-                                   * sizeof(array->sizeOfElement));
+        realloc(array->buffer, ((size_t) array->capacity + ARRAY_INCREMENT_SIZE)
+                                   * array->sizeOfElement);
     if (newBuffer == NULL)
     {
       fprintf(stderr,
-          "WARN: Unable to increase array size. Not allocating element.");
+          "WARN: Unable to increase array size. Not allocating element.\n");
       return NULL;
     }
     array->buffer = newBuffer;

@@ -44,6 +44,7 @@
     <UseDebugLibraries>true</UseDebugLibraries>
     <PlatformToolset>v143</PlatformToolset>
     <CharacterSet>Unicode</CharacterSet>
+    <EnableASAN>false</EnableASAN>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
     <ConfigurationType>DynamicLibrary</ConfigurationType>
@@ -51,6 +52,7 @@
     <PlatformToolset>v143</PlatformToolset>
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
+    <EnableASAN>false</EnableASAN>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
   <ImportGroup Label="ExtensionSettings">
@@ -156,15 +158,14 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClInclude Include="pch.h" />
-    <ClInclude Include="Private\Otter\Util\Json\JsonNumber.h" />
     <ClInclude Include="Private\Otter\Util\Json\JsonObject.h" />
-    <ClInclude Include="Private\Otter\Util\Json\JsonString.h" />
     <ClInclude Include="Public\Otter\Util\AutoArray.h" />
     <ClInclude Include="Public\Otter\Util\HashMap.h" />
     <ClInclude Include="Public\Otter\Util\export.h" />
     <ClInclude Include="Public\Otter\Util\File.h" />
     <ClInclude Include="Public\Otter\Util\Json\Json.h" />
     <ClInclude Include="Private\Otter\Util\Json\JsonArray.h" />
+    <ClInclude Include="Public\Otter\Util\StableAutoArray.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.c">
@@ -178,9 +179,8 @@
     <ClCompile Include="Private\Otter\Util\HashMap.c" />
     <ClCompile Include="Private\Otter\Util\Json\Json.c" />
     <ClCompile Include="Private\Otter\Util\Json\JsonArray.c" />
-    <ClCompile Include="Private\Otter\Util\Json\JsonNumber.c" />
     <ClCompile Include="Private\Otter\Util\Json\JsonObject.c" />
-    <ClCompile Include="Private\Otter\Util\Json\JsonString.c" />
+    <ClCompile Include="Private\Otter\Util\StableAutoArray.c" />
   </ItemGroup>
   <ItemGroup>
     <None Include="cpp.hint" />
