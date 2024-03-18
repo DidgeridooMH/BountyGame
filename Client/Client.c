@@ -256,8 +256,12 @@ int WINAPI wWinMain(
     return -1;
   }
 
-  AutoArray asset;
-  glb_load_asset(glbTest, fileLength, &asset);
+  GlbAsset asset;
+  if (!glb_load_asset(glbTest, fileLength, &asset))
+  {
+    fprintf(stderr, "Unable to parse model.glb\n");
+    return -1;
+  }
 
   char* configStr = file_load("Config/client.ini", NULL);
   if (configStr == NULL)
@@ -323,10 +327,23 @@ int WINAPI wWinMain(
   vkGetDeviceQueue(renderInstance->logicalDevice,
       renderInstance->graphicsQueueFamily, 0, &graphicsQueue);
 
+  // TODO: Move copy command to outside of mesh create to allow for batching.
   Mesh* cube = mesh_create(vertices, _countof(vertices), sizeof(MeshVertex),
       indices, _countof(indices), renderInstance->physicalDevice,
       renderInstance->logicalDevice, renderInstance->commandPool,
       graphicsQueue);
+
+  AutoArray buildingMesh;
+  auto_array_create(&buildingMesh, sizeof(Mesh*));
+  for (uint32_t i = 0; i < asset.meshes.size; i++)
+  {
+    Mesh** mesh             = auto_array_allocate(&buildingMesh);
+    GlbAssetMesh* assetMesh = auto_array_get(&asset.meshes, i);
+    *mesh = mesh_create(assetMesh->vertices, sizeof(MeshVertex),
+        assetMesh->numOfVertices, assetMesh->indices, assetMesh->numOfIndices,
+        renderInstance->physicalDevice, renderInstance->logicalDevice,
+        renderInstance->commandPool, graphicsQueue);
+  }
   // ------
 
   UdpGameClient client;
@@ -366,6 +383,15 @@ int WINAPI wWinMain(
     floorTransform.scale.x    = 100.0f;
     floorTransform.scale.z    = 100.0f;
     render_instance_queue_mesh_draw(cube, &floorTransform, renderInstance);
+
+    for (uint32_t i = 0; i < buildingMesh.size; i++)
+    {
+      // TODO: Properly package assets
+      Mesh** assetMesh       = auto_array_get(&buildingMesh, i);
+      GlbAssetMesh* glbAsset = auto_array_get(&asset.meshes, i);
+      render_instance_queue_mesh_draw(
+          *assetMesh, &glbAsset->transform, renderInstance);
+    }
 
     // Draw players
     for (int i = 0; i < MAX_PLAYERS; i++)

@@ -169,6 +169,7 @@
     </ClCompile>
     <ClInclude Include="Public\Otter\Render\export.h" />
     <ClInclude Include="Public\Otter\Render\Gltf\GlbAsset.h" />
+    <ClInclude Include="Private\Otter\Render\Gltf\GlbJsonChunk.h" />
     <ClInclude Include="Public\Otter\Render\Memory\GpuBuffer.h" />
     <ClInclude Include="Public\Otter\Render\Memory\MemoryType.h" />
     <ClInclude Include="Public\Otter\Render\Mesh.h" />
@@ -188,6 +189,7 @@
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
       <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
     </ClCompile>
+    <ClCompile Include="Private\Otter\Render\Gltf\GlbJsonChunk.c" />
     <ClCompile Include="Private\Otter\Render\Memory\GpuBuffer.c" />
     <ClCompile Include="Private\Otter\Render\Memory\MemoryType.c" />
     <ClCompile Include="Private\Otter\Render\Mesh.c" />

@@ -60,6 +60,9 @@
     <ClInclude Include="Public\Otter\Render\Gltf\GlbAsset.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Private\Otter\Render\Gltf\GlbJsonChunk.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.c">
@@ -97,6 +100,9 @@
     </ClCompile>
     <ClCompile Include="Private\Otter\Render\Gltf\GlbAsset.c">
       <Filter>Header Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Render\Gltf\GlbJsonChunk.c">
+      <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

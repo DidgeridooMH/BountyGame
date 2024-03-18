@@ -69,17 +69,17 @@ bool json_get_token(JsonToken* token, const char* document,
     token->tokenFloat = strtof(&document[*cursor - 1], &endOfNumber);
     *cursor += (endOfNumber - &document[*cursor - 1]) - 1;
   }
-  else if (strcmp(&document[*cursor - 1], "true") == 0)
+  else if (strncmp(&document[*cursor - 1], "true", strlen("true")) == 0)
   {
     token->type = JTT_TRUE;
     *cursor += strlen("true") - 1;
   }
-  else if (strcmp(&document[*cursor - 1], "false") == 0)
+  else if (strncmp(&document[*cursor - 1], "false", strlen("false")) == 0)
   {
     token->type = JTT_FALSE;
     *cursor += strlen("false") - 1;
   }
-  else if (strcmp(&document[*cursor - 1], "null") == 0)
+  else if (strncmp(&document[*cursor - 1], "null", strlen("null")) == 0)
   {
     token->type = JTT_NULL;
     *cursor += strlen("null") - 1;
@@ -140,15 +140,15 @@ void json_peek_token(JsonToken* token, const char* document,
   {
     token->type = JTT_NUMBER;
   }
-  else if (strcmp(&document[cursor - 1], "true") == 0)
+  else if (strncmp(&document[cursor], "true", strlen("true")) == 0)
   {
     token->type = JTT_TRUE;
   }
-  else if (strcmp(&document[cursor - 1], "false") == 0)
+  else if (strncmp(&document[cursor], "false", strlen("false")) == 0)
   {
     token->type = JTT_FALSE;
   }
-  else if (strcmp(&document[cursor - 1], "null") == 0)
+  else if (strncmp(&document[cursor], "null", strlen("null")) == 0)
   {
     token->type = JTT_NULL;
   }

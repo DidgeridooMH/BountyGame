@@ -1,10 +1,9 @@
 #include "Otter/Render/Gltf/GlbAsset.h"
 
+#include "Otter/Render/Gltf/GlbJsonChunk.h"
 #include "Otter/Util/Json/Json.h"
 
-#define GLB_MAGIC                0x46546C67
-#define GLB_ARRAY_BUFFER         0x8891
-#define GLB_ELEMENT_ARRAY_BUFFER 0x8893
+#define GLB_MAGIC 0x46546C67
 
 typedef struct GlbHeader
 {
@@ -29,7 +28,7 @@ typedef struct GlbChunk
 // TODO: More closely examine where you're reading from content and ensure it
 // doesn't go over the contentSize.
 OTTERRENDER_API bool glb_load_asset(
-    char* content, size_t contentSize, AutoArray* nodes)
+    char* content, size_t contentSize, GlbAsset* asset)
 {
   if (contentSize < sizeof(GlbHeader))
   {
@@ -61,28 +60,84 @@ OTTERRENDER_API bool glb_load_asset(
     return false;
   }
 
-  auto_array_create(nodes, sizeof(GlbNode));
-  JsonValue* glbNodes  = hash_map_get_value(&glbJsonData->object, "nodes");
-  JsonValue* glbMeshes = hash_map_get_value(&glbJsonData->object, "meshes");
-  if (glbNodes != NULL && glbNodes->type == JT_ARRAY && glbMeshes != NULL
-      && glbMeshes->type == JT_ARRAY)
+  GlbJsonChunk parsedJsonChunk = {0};
+  if (!glb_json_chunk_parse(glbJsonData, &parsedJsonChunk))
   {
-    for (uint32_t i = 0; i < glbNodes->array.size; i++)
+    json_destroy(glbJsonData);
+    return false;
+  }
+
+  GlbChunk* binaryChunk = (GlbChunk*) (jsonChunk->data + jsonChunk->length);
+  if (binaryChunk->type != GCT_BIN)
+  {
+    fprintf(stderr, "Second chunk must be a binary chunk.\n");
+    json_destroy(glbJsonData);
+    return false;
+  }
+
+  auto_array_create(&asset->meshes, sizeof(GlbAssetMesh));
+  for (uint32_t i = 0; i < parsedJsonChunk.nodes.size; i++)
+  {
+    GlbNode* node = auto_array_get(&parsedJsonChunk.nodes, i);
+    GlbMesh* mesh = auto_array_get(&parsedJsonChunk.meshes, node->mesh);
+    for (uint32_t p = 0; p < mesh->primitives.size; p++)
     {
-      JsonValue* currentNode =
-          *(JsonValue**) auto_array_get(&glbNodes->array, i);
-      if (currentNode->type == JT_OBJECT)
+      // TODO: Do some checks to verify integrity.
+      GlbMeshPrimitive* primitive = auto_array_get(&mesh->primitives, p);
+      GlbAccessor* positionAccessor =
+          auto_array_get(&parsedJsonChunk.accessors, primitive->position);
+      GlbAccessor* normalAccessor =
+          auto_array_get(&parsedJsonChunk.accessors, primitive->normal);
+      GlbAccessor* uvAccessor =
+          auto_array_get(&parsedJsonChunk.accessors, primitive->uv);
+      GlbAccessor* indexAccessor =
+          auto_array_get(&parsedJsonChunk.accessors, primitive->indices);
+
+      GlbBufferView* positionBuffer = auto_array_get(
+          &parsedJsonChunk.bufferViews, positionAccessor->bufferView);
+      GlbBufferView* normalBuffer = auto_array_get(
+          &parsedJsonChunk.bufferViews, normalAccessor->bufferView);
+      GlbBufferView* uvBuffer =
+          auto_array_get(&parsedJsonChunk.bufferViews, uvAccessor->bufferView);
+      GlbBufferView* indicesBuffer = auto_array_get(
+          &parsedJsonChunk.bufferViews, indexAccessor->bufferView);
+
+      // TODO: Figure out how multiple buffers would work.
+      Vec3* positions   = (Vec3*) &binaryChunk->data[positionBuffer->offset];
+      Vec3* normals     = (Vec3*) &binaryChunk->data[normalBuffer->offset];
+      Vec2* uvs         = (Vec2*) &binaryChunk->data[uvBuffer->offset];
+      uint16_t* indices = (uint16_t*) &binaryChunk->data[indicesBuffer->offset];
+
+      GlbAssetMesh* assetMesh = auto_array_allocate(&asset->meshes);
+
+      assetMesh->vertices =
+          malloc(sizeof(MeshVertex) * positionAccessor->count);
+      assetMesh->numOfVertices = positionAccessor->count;
+
+      assetMesh->indices      = malloc(sizeof(uint16_t) * indexAccessor->count);
+      assetMesh->numOfIndices = indexAccessor->count;
+
+      for (uint32_t attribute = 0; attribute < positionAccessor->count;
+           attribute++)
       {
-        JsonValue* currentMesh =
-            hash_map_get_value(&currentNode->object, "mesh");
-        if (currentMesh != NULL && currentMesh->type == JT_NUMBER)
-        {
-          printf("Mesh -> %d\n", (int) currentMesh->number);
-        }
+        // TODO: Take into consideration the buffer index.
+        assetMesh->vertices[attribute].position = positions[attribute];
+        assetMesh->vertices[attribute].normal   = normals[attribute];
+        assetMesh->vertices[attribute].uv       = uvs[attribute];
       }
+
+      for (uint32_t index = 0; index < indexAccessor->count; index++)
+      {
+        assetMesh->indices[index] = indices[index];
+      }
+
+      assetMesh->transform = node->transform;
+      assetMesh->transform.position.y *= -1;
+      assetMesh->transform.scale.y *= -1;
     }
   }
 
+  glb_json_chunk_destroy(&parsedJsonChunk);
   json_destroy(glbJsonData);
 
   return true;

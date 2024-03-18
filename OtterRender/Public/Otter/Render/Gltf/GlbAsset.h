@@ -5,23 +5,19 @@
 #include "Otter/Render/export.h"
 #include "Otter/Util/AutoArray.h"
 
-typedef struct GlbMesh
+typedef struct GlbAssetMesh
 {
-  MeshVertex vertices;
+  MeshVertex* vertices;
   uint32_t numOfVertices;
-} GlbMesh;
-
-typedef struct GlbNode
-{
-  uint32_t mesh;
+  uint16_t* indices;
+  uint32_t numOfIndices;
   Transform transform;
-} GlbNode;
+} GlbAssetMesh;
 
-struct GlbAsset
+typedef struct GlbAsset
 {
-  GlbMesh meshes;
-  uint32_t numOfMeshes;
-};
+  AutoArray meshes;
+} GlbAsset;
 
 OTTERRENDER_API bool glb_load_asset(
-    char* content, size_t contentSize, AutoArray* nodes);
+    char* content, size_t contentSize, GlbAsset* asset);

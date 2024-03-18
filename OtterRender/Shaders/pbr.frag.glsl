@@ -20,9 +20,9 @@ vec3 ACESFilm(vec3 color) {
 
 vec3 calculateDirectLight(vec3 position, vec3 normal)
 {
-    const vec3 lightPosition = vec3(4.0, -4.0, 4.0);
+    const vec3 lightPosition = vec3(16.0, -16.0, 16.0);
     const vec3 lightColor = vec3(1.0, 1.0, 1.0);
-    const float lightIntensity = 2.0;
+    const float lightIntensity = 15.0;
     const float lightConstant = 1.0;
     const float lightLinear = 0.09;
     const float lightQuadratic = 0.032;
@@ -52,7 +52,7 @@ void main()
 
     vec3 diffuse = calculateDirectLight(position, normal);
 
-    vec3 lighting = (diffuse) * subpassLoad(ainColor).rgb;
+    vec3 lighting = max(diffuse, 0.1) * subpassLoad(ainColor).rgb;
 
     // Tonemap lighting
     // TODO: This should be a separate step in post.
