@@ -15,5 +15,6 @@
 // clang-format on
 
 #include <Objbase.h>
+#include <shellscalingapi.h>
 
 #include <Windows.h>

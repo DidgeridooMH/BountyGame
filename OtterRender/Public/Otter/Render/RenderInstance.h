@@ -25,6 +25,7 @@ typedef struct RenderCapabilities
 typedef struct RenderSettings
 {
   bool hdr;
+  bool vsync;
 } RenderSettings;
 
 typedef struct RenderInstance

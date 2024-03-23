@@ -17,3 +17,17 @@ void vec4_multiply_mat4(Vec4* vec, Mat4 mat)
 
   *vec = result;
 }
+
+void vec3_add(Vec3* result, const Vec3* operand)
+{
+  result->x += operand->x;
+  result->y += operand->y;
+  result->z += operand->z;
+}
+
+void vec3_divide(Vec3* result, float operand)
+{
+  result->x /= operand;
+  result->y /= operand;
+  result->z /= operand;
+}

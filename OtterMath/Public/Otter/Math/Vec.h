@@ -34,6 +34,8 @@ typedef struct Vec4
 {
   union
   {
+    float val[4];
+    Vec3 xyz;
     struct
     {
       float x;
@@ -41,8 +43,11 @@ typedef struct Vec4
       float z;
       float w;
     };
-    float val[4];
   };
 } Vec4;
 
 OTTERMATH_API void vec4_multiply_mat4(Vec4* vec, Mat4 mat);
+
+OTTERMATH_API void vec3_add(Vec3* result, const Vec3* operand);
+
+OTTERMATH_API void vec3_divide(Vec3* result, float operand);

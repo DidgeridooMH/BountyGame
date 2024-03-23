@@ -1,7 +1,8 @@
 #include "Otter/Render/RenderFrame.h"
 
-#include "Otter/Render/Uniform/ModelViewProjection.h"
 #include "Otter/Math/Projection.h"
+#include "Otter/Render/Raytracing/BoundingVolumeHierarchy.h"
+#include "Otter/Render/Uniform/ModelViewProjection.h"
 
 #define DESCRIPTOR_POOL_SIZE 128
 #define DESCRIPTOR_SET_LIMIT 512
@@ -66,12 +67,16 @@ bool render_frame_create(
   auto_array_create(&renderFrame->renderQueue, sizeof(RenderCommand));
   auto_array_create(&renderFrame->perRenderBuffers, sizeof(GpuBuffer));
 
+  bounding_volume_hierarchy_create(&renderFrame->bvh);
+
   return true;
 }
 
 void render_frame_destroy(
     RenderFrame* renderFrame, VkCommandPool commandPool, VkDevice logicalDevice)
 {
+  bounding_volume_hierarchy_destroy(&renderFrame->bvh);
+
   for (uint32_t i = 0; i < renderFrame->perRenderBuffers.size; i++)
   {
     gpu_buffer_free(
@@ -201,6 +206,8 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
   vkCmdBindPipeline(renderFrame->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       gBufferPipeline->pipeline);
 
+  bounding_volume_hierarchy_reset(&renderFrame->bvh);
+
   ModelViewProjection mvp = {0};
   mat4_identity(mvp.view);
   mat4_translate(mvp.view, -camera->x, camera->y, -camera->z);
@@ -209,9 +216,15 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
 
   for (uint32_t i = 0; i < renderFrame->renderQueue.size; i++)
   {
-    render_frame_draw_mesh(auto_array_get(&renderFrame->renderQueue, i),
-        renderFrame, &mvp, gBufferPipeline, physicalDevice, logicalDevice);
+    RenderCommand* meshCommand = auto_array_get(&renderFrame->renderQueue, i);
+    render_frame_draw_mesh(meshCommand, renderFrame, &mvp, gBufferPipeline,
+        physicalDevice, logicalDevice);
+    bounding_volume_hierarchy_add_primitives(meshCommand->cpuVertices,
+        meshCommand->numOfVertices, meshCommand->cpuIndices,
+        meshCommand->numOfIndices, &meshCommand->transform, &renderFrame->bvh);
   }
+
+  bounding_volume_hierarchy_build(&renderFrame->bvh);
 
   // Lighting subpass
   vkCmdNextSubpass(renderFrame->commandBuffer, VK_SUBPASS_CONTENTS_INLINE);

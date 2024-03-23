@@ -328,7 +328,7 @@ int WINAPI wWinMain(
       renderInstance->graphicsQueueFamily, 0, &graphicsQueue);
 
   // TODO: Move copy command to outside of mesh create to allow for batching.
-  Mesh* cube = mesh_create(vertices, _countof(vertices), sizeof(MeshVertex),
+  Mesh* cube = mesh_create(vertices, sizeof(MeshVertex), _countof(vertices),
       indices, _countof(indices), renderInstance->physicalDevice,
       renderInstance->logicalDevice, renderInstance->commandPool,
       graphicsQueue);

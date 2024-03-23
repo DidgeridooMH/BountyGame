@@ -62,6 +62,8 @@ HWND game_window_create(int width, int height, enum WindowMode windowMode)
 {
   static const wchar_t CLASS_NAME[] = L"SampleWindowClass";
 
+  SetProcessDpiAwareness(PROCESS_PER_MONITOR_DPI_AWARE);
+
   HINSTANCE instance = GetModuleHandle(NULL);
 
   WNDCLASS wc      = {0};

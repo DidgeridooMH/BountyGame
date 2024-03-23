@@ -484,8 +484,7 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
 
   VkPresentModeKHR presentMode = VK_PRESENT_MODE_IMMEDIATE_KHR;
   // TODO: Handle VSync settings.
-  // if (GetVSync())
-  if (true)
+  if (renderInstance->settings.vsync)
   {
     uint32_t presentModeCount = 0;
     if (vkGetPhysicalDeviceSurfacePresentModesKHR(
@@ -962,8 +961,12 @@ void render_instance_queue_mesh_draw(
     return;
   }
 
-  command->vertices     = mesh->vertices.buffer;
-  command->indices      = mesh->indices.buffer;
-  command->numOfIndices = mesh->indices.size / sizeof(uint16_t);
-  command->transform    = *transform;
+  // TODO: Probably just use mesh reference.
+  command->vertices      = mesh->vertices.buffer;
+  command->indices       = mesh->indices.buffer;
+  command->numOfIndices  = mesh->indices.size / sizeof(uint16_t);
+  command->cpuVertices   = mesh->cpuVertices;
+  command->numOfVertices = mesh->vertices.size / sizeof(MeshVertex);
+  command->cpuIndices    = mesh->cpuIndices;
+  command->transform     = *transform;
 }
