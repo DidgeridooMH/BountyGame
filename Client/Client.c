@@ -11,6 +11,7 @@
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/RenderInstance.h"
 #include "Otter/Util/File.h"
+#include "Otter/Util/Profiler.h"
 #include "Window/GameWindow.h"
 
 #define CONFIG_WIDTH  "width"
@@ -248,11 +249,14 @@ int WINAPI wWinMain(
 
   QueryPerformanceFrequency(&g_timerFrequency);
 
+  profiler_init(g_timerFrequency);
+
   size_t fileLength = 0;
   char* glbTest     = file_load("model.glb", &fileLength);
   if (glbTest == NULL)
   {
     fprintf(stderr, "Unable to find file model.glb\n");
+    profiler_destroy();
     return -1;
   }
 
@@ -260,6 +264,7 @@ int WINAPI wWinMain(
   if (!glb_load_asset(glbTest, fileLength, &asset))
   {
     fprintf(stderr, "Unable to parse model.glb\n");
+    profiler_destroy();
     return -1;
   }
 
@@ -267,6 +272,7 @@ int WINAPI wWinMain(
   if (configStr == NULL)
   {
     fprintf(stderr, "Unable to find file config.ini\n");
+    profiler_destroy();
     return -1;
   }
 
@@ -275,6 +281,7 @@ int WINAPI wWinMain(
   {
     free(configStr);
     fprintf(stderr, "Could not parse configuration.");
+    profiler_destroy();
     return -1;
   }
   free(configStr);
@@ -291,6 +298,7 @@ int WINAPI wWinMain(
     fprintf(stderr, "Failed to initialize render instance.\n");
     hash_map_destroy(&config, free);
     game_window_destroy(window);
+    profiler_destroy();
     return -1;
   }
 
@@ -354,6 +362,7 @@ int WINAPI wWinMain(
     hash_map_destroy(&config, free);
     render_instance_destroy(renderInstance);
     game_window_destroy(window);
+    profiler_destroy();
     return -1;
   }
 
@@ -365,7 +374,11 @@ int WINAPI wWinMain(
   QueryPerformanceCounter(&connection.lastHeartbeatTime);
   connection.lastStateTime    = connection.lastHeartbeatTime;
   LARGE_INTEGER lastFrameTime = connection.lastStateTime;
+  LARGE_INTEGER lastStatTime  = connection.lastStateTime;
 
+  renderInstance->cameraPosition.x = 100.0f;
+  renderInstance->cameraPosition.y = 4.0f;
+  renderInstance->cameraPosition.z = 100.0f;
   while (!game_window_process_message())
   {
     handle_connection(&connection, &client);
@@ -420,6 +433,21 @@ int WINAPI wWinMain(
 
     render_instance_draw(renderInstance);
 
+    // TODO: Make a timer utility. THis is just getting ridiculous.
+    if ((float) (currentTime.QuadPart - lastStatTime.QuadPart)
+            / g_timerFrequency.QuadPart
+        > 1.0f)
+    {
+      const char* keys[] = {"bvh_init", "bvh_build", "bvh_create",
+          "cpu_shadow_rt", "cpu_buffer_copy", "render_submit"};
+      for (int i = 0; i < _countof(keys); i++)
+      {
+        float time = profiler_clock_get(keys[i]);
+        printf("[%s]        \t%f ms\n", keys[i], time * 1000.0f);
+      }
+      lastStatTime = currentTime;
+    }
+
     lastFrameTime = currentTime;
   }
 
@@ -430,6 +458,7 @@ int WINAPI wWinMain(
     {
       udp_game_client_send_message(&client, disconnectMessage);
       message_destroy(disconnectMessage);
+      profiler_destroy();
     }
   }
 
@@ -438,6 +467,7 @@ int WINAPI wWinMain(
   hash_map_destroy(&config, free);
   render_instance_destroy(renderInstance);
   game_window_destroy(window);
+  profiler_destroy();
 
   return 0;
 }

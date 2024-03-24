@@ -1,13 +1,12 @@
 #version 450 core
 
-layout (location = 0) in vec3 inPosition;
-
 layout (location = 0) out vec4 outColor;
 
 layout (input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput ainPosition;
 layout (input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput ainNormal;
 layout (input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput ainColor;
 layout (input_attachment_index = 3, set = 0, binding = 3) uniform subpassInput ainMaterial;
+layout (input_attachment_index = 4, set = 0, binding = 4) uniform subpassInput ainShadowMap;
 
 vec3 ACESFilm(vec3 color) {
   float a = 2.51;
@@ -42,6 +41,8 @@ vec3 calculateDirectLight(vec3 position, vec3 normal)
 
 void main()
 {
+    outColor = vec4(subpassLoad(ainShadowMap).r, 0.0, 0.0, 1.0);
+    return;
     if (subpassLoad(ainPosition).a < 1.0)
     {
         discard;

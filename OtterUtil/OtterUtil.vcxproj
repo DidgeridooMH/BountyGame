@@ -165,6 +165,7 @@
     <ClInclude Include="Public\Otter\Util\File.h" />
     <ClInclude Include="Public\Otter\Util\Json\Json.h" />
     <ClInclude Include="Private\Otter\Util\Json\JsonArray.h" />
+    <ClInclude Include="Public\Otter\Util\Profiler.h" />
     <ClInclude Include="Public\Otter\Util\StableAutoArray.h" />
   </ItemGroup>
   <ItemGroup>
@@ -180,6 +181,7 @@
     <ClCompile Include="Private\Otter\Util\Json\Json.c" />
     <ClCompile Include="Private\Otter\Util\Json\JsonArray.c" />
     <ClCompile Include="Private\Otter\Util\Json\JsonObject.c" />
+    <ClCompile Include="Private\Otter\Util\Profiler.c" />
     <ClCompile Include="Private\Otter\Util\StableAutoArray.c" />
   </ItemGroup>
   <ItemGroup>

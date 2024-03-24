@@ -1,5 +1,7 @@
 #include "Otter/Render/Raytracing/BoundingVolumeHierarchy.h"
 
+#define SUBDIVISION_LIMIT 5
+
 // TODO: Move to separate file.
 static void aabb_adjust_bounds(AABB* bounds, Vec3* position)
 {
@@ -34,8 +36,7 @@ void bounding_volume_hierarchy_add_primitives(MeshVertex* vertices,
 
   // TODO: Fix allocation checks.
   // TODO: Rework auto array to allow for chunk allocation.
-  size_t newVertexSize =
-      sizeof(MeshVertex) * (numOfVertices + bvh->numOfVertices);
+  size_t newVertexSize = sizeof(Vec4) * (numOfVertices + bvh->numOfVertices);
   if (newVertexSize > bvh->capacityOfVertices)
   {
     bvh->vertices           = realloc(bvh->vertices, newVertexSize);
@@ -49,20 +50,24 @@ void bounding_volume_hierarchy_add_primitives(MeshVertex* vertices,
   }
 
   BoundingVolumeNode* rootNode = stable_auto_array_get(&bvh->nodes, 0);
-  MeshVertex* vertexRoot       = &bvh->vertices[bvh->numOfVertices];
+  Vec4* vertexRoot             = &bvh->vertices[bvh->numOfVertices];
   for (size_t i = 0; i < numOfVertices; i++)
   {
-    vertexRoot[i] = vertices[i];
-    Vec4 position = {vertexRoot[i].position.x, vertexRoot[i].position.y,
-        vertexRoot[i].position.z, 1.0f};
-    vec4_multiply_mat4(&position, transformMat);
-    vertexRoot[i].position = position.xyz;
-    aabb_adjust_bounds(&rootNode->bounds, &vertices[i].position);
+    vertexRoot[i].xyz = vertices[i].position;
+    vec4_multiply_mat4(&vertexRoot[i], transformMat);
+    aabb_adjust_bounds(&rootNode->bounds, &vertexRoot[i].xyz);
   }
 
   size_t* indicesRoot = &bvh->indices[bvh->numOfIndices];
   for (size_t i = 0; i < numOfIndices; i++)
   {
+    if (i % 3 == 0)
+    {
+      Vec3 center = vertexRoot[indices[i]].xyz;
+      vec3_add(&center, &vertexRoot[indices[i + 1]].xyz);
+      vec3_add(&center, &vertexRoot[indices[i + 2]].xyz);
+      aabb_adjust_bounds(&rootNode->centerBounds, &center);
+    }
     indicesRoot[i] = (size_t) indices[i] + bvh->numOfVertices;
   }
 
@@ -81,12 +86,19 @@ static void bounding_volume_hierarchy_subdivide(
 {
   if (node->numOfPrimitives <= 1 || subdivideLimit == 0)
   {
+#ifdef DEBUG_BVH
+    for (int i = 0; i < SUBDIVISION_LIMIT - subdivideLimit; i++)
+    {
+      printf("\t");
+    }
+    printf("Split has %lld prims\n", node->numOfPrimitives);
+#endif
     return;
   }
 
-  Vec3 axisRange   = {node->bounds.x.val[1] - node->bounds.x.val[0],
-        node->bounds.y.val[1] - node->bounds.y.val[0],
-        node->bounds.z.val[1] - node->bounds.z.val[0]};
+  Vec3 axisRange   = {node->centerBounds.x.val[1] - node->centerBounds.x.val[0],
+        node->centerBounds.y.val[1] - node->centerBounds.y.val[0],
+        node->centerBounds.z.val[1] - node->centerBounds.z.val[0]};
   size_t splitAxis = 0;
   if (axisRange.val[splitAxis] < axisRange.y)
   {
@@ -97,8 +109,8 @@ static void bounding_volume_hierarchy_subdivide(
     splitAxis = 2;
   }
 
-  float splitPoint = (node->bounds.axis[splitAxis].val[1]
-                         + node->bounds.axis[splitAxis].val[0])
+  float splitPoint = (node->centerBounds.axis[splitAxis].val[1]
+                         + node->centerBounds.axis[splitAxis].val[0])
                    / 2.0f;
 
   node->left = stable_auto_array_allocate(&bvh->nodes);
@@ -113,12 +125,13 @@ static void bounding_volume_hierarchy_subdivide(
   size_t* cursor = node->primitives;
   while (cursor < node->right->primitives)
   {
-    size_t prim = *cursor;
-    float center =
-        (bvh->vertices[bvh->indices[prim * 3]].position.val[splitAxis]
-            + bvh->vertices[bvh->indices[prim * 3 + 1]].position.val[splitAxis]
-            + bvh->vertices[bvh->indices[prim * 3 + 2]].position.val[splitAxis])
-        / 3.0f;
+    size_t prim     = *cursor;
+    Vec3 primCenter = bvh->vertices[bvh->indices[prim * 3]].xyz;
+    vec3_add(&primCenter, &bvh->vertices[bvh->indices[prim * 3 + 1]].xyz);
+    vec3_add(&primCenter, &bvh->vertices[bvh->indices[prim * 3 + 2]].xyz);
+
+    float center = primCenter.val[splitAxis] / 3.0f;
+    vec3_divide(&primCenter, 3.0f);
 
     if (center > splitPoint)
     {
@@ -127,15 +140,44 @@ static void bounding_volume_hierarchy_subdivide(
       *node->right->primitives = prim;
       node->right->numOfPrimitives += 1;
       node->left->numOfPrimitives -= 1;
+
+      aabb_adjust_bounds(
+          &node->right->bounds, &bvh->vertices[bvh->indices[prim * 3]].xyz);
+      aabb_adjust_bounds(
+          &node->right->bounds, &bvh->vertices[bvh->indices[prim * 3 + 1]].xyz);
+      aabb_adjust_bounds(
+          &node->right->bounds, &bvh->vertices[bvh->indices[prim * 3 + 2]].xyz);
+      aabb_adjust_bounds(&node->right->centerBounds, &primCenter);
     }
     else
     {
+      aabb_adjust_bounds(
+          &node->left->bounds, &bvh->vertices[bvh->indices[prim * 3]].xyz);
+      aabb_adjust_bounds(
+          &node->left->bounds, &bvh->vertices[bvh->indices[prim * 3 + 1]].xyz);
+      aabb_adjust_bounds(
+          &node->left->bounds, &bvh->vertices[bvh->indices[prim * 3 + 2]].xyz);
+      aabb_adjust_bounds(&node->left->centerBounds, &primCenter);
       cursor += 1;
     }
   }
 
-  bounding_volume_hierarchy_subdivide(node->left, bvh, subdivideLimit - 1);
-  bounding_volume_hierarchy_subdivide(node->right, bvh, subdivideLimit - 1);
+#ifdef DEBUG_BVH
+  for (int i = 0; i < SUBDIVISION_LIMIT - subdivideLimit; i++)
+  {
+    printf("\t");
+  }
+  printf("Split has %lld prims\n", node->numOfPrimitives);
+#endif
+
+  if (node->left->numOfPrimitives > 0)
+  {
+    bounding_volume_hierarchy_subdivide(node->left, bvh, subdivideLimit - 1);
+  }
+  if (node->right->numOfPrimitives > 0)
+  {
+    bounding_volume_hierarchy_subdivide(node->right, bvh, subdivideLimit - 1);
+  }
 }
 
 void bounding_volume_hierarchy_build(BoundingVolumeHierarchy* bvh)
@@ -144,7 +186,7 @@ void bounding_volume_hierarchy_build(BoundingVolumeHierarchy* bvh)
   root->primitives         = bvh->primitives.buffer;
   root->numOfPrimitives    = bvh->primitives.size;
 
-  bounding_volume_hierarchy_subdivide(root, bvh, 3);
+  bounding_volume_hierarchy_subdivide(root, bvh, SUBDIVISION_LIMIT);
 }
 
 void bounding_volume_hierarchy_reset(BoundingVolumeHierarchy* bvh)

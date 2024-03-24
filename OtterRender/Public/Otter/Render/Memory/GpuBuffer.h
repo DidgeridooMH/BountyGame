@@ -8,6 +8,7 @@ typedef struct GpuBuffer
   VkBuffer buffer;
   VkDeviceMemory memory;
   VkDeviceSize size;
+  void* mapped;
 } GpuBuffer;
 
 OTTERRENDER_API bool gpu_buffer_allocate(GpuBuffer* buffer, VkDeviceSize size,
@@ -21,3 +22,9 @@ OTTERRENDER_API bool gpu_buffer_write(GpuBuffer* buffer, uint8_t* data,
 
 OTTERRENDER_API void gpu_buffer_transfer(
     GpuBuffer* source, GpuBuffer* destination, VkCommandBuffer commandBuffer);
+
+OTTERRENDER_API void gpu_buffer_map_all(
+    GpuBuffer* buffer, VkDevice logicalDevice);
+
+OTTERRENDER_API void gpu_buffer_unmap(
+    GpuBuffer* buffer, VkDevice logicalDevice);

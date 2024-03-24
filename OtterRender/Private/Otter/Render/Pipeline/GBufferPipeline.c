@@ -85,7 +85,8 @@ bool g_buffer_pipeline_create(
   VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = {
       .sType     = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
       .cullMode  = VK_CULL_MODE_BACK_BIT,
-      .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE};
+      .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+      .lineWidth = 1.0f};
 
   VkPipelineMultisampleStateCreateInfo multisamplingStateCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
@@ -109,7 +110,8 @@ bool g_buffer_pipeline_create(
         | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT;
   }
   VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = {
-      .logicOpEnable   = false,
+      .sType         = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+      .logicOpEnable = false,
       .attachmentCount = _countof(colorBlendAttachment),
       .pAttachments    = colorBlendAttachment};
 

@@ -42,6 +42,9 @@
     <ClInclude Include="Public\Otter\Util\StableAutoArray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Public\Otter\Util\Profiler.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.c">
@@ -66,6 +69,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="Private\Otter\Util\StableAutoArray.c">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="Private\Otter\Util\Profiler.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

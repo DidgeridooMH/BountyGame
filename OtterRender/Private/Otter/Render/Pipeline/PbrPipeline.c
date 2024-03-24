@@ -66,7 +66,8 @@ bool pbr_pipeline_create(
       .scissorCount  = 1};
 
   VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = {
-      .sType = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO};
+      .sType     = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
+      .lineWidth = 1.0};
 
   VkPipelineMultisampleStateCreateInfo multisamplingStateCreateInfo = {
       .sType = VK_STRUCTURE_TYPE_PIPELINE_MULTISAMPLE_STATE_CREATE_INFO,
@@ -85,7 +86,8 @@ bool pbr_pipeline_create(
                       | VK_COLOR_COMPONENT_B_BIT | VK_COLOR_COMPONENT_A_BIT};
 
   VkPipelineColorBlendStateCreateInfo colorBlendStateCreateInfo = {
-      .logicOpEnable   = false,
+      .sType         = VK_STRUCTURE_TYPE_PIPELINE_COLOR_BLEND_STATE_CREATE_INFO,
+      .logicOpEnable = false,
       .attachmentCount = 1,
       .pAttachments    = &colorBlendAttachment};
 
@@ -103,6 +105,10 @@ bool pbr_pipeline_create(
           .descriptorType  = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
           .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT},
       {.binding            = 3,
+          .descriptorCount = 1,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT},
+      {.binding            = 4,
           .descriptorCount = 1,
           .descriptorType  = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
           .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}};
@@ -198,10 +204,13 @@ void pbr_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
           .sampler   = VK_NULL_HANDLE},
       {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
           .imageView = renderStack->bufferAttachments[RSL_MATERIAL],
+          .sampler   = VK_NULL_HANDLE},
+      {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+          .imageView = renderStack->bufferAttachments[RSL_SHADOWMAP],
           .sampler   = VK_NULL_HANDLE}};
 
-  VkWriteDescriptorSet attachmentWrites[G_BUFFER_LAYERS] = {0};
-  for (uint32_t i = 0; i < G_BUFFER_LAYERS; i++)
+  VkWriteDescriptorSet attachmentWrites[_countof(attachmentDescriptors)] = {0};
+  for (uint32_t i = 0; i < _countof(attachmentDescriptors); i++)
   {
     attachmentWrites[i].sType          = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
     attachmentWrites[i].descriptorType = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;

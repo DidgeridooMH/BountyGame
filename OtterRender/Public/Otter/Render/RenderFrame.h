@@ -32,8 +32,8 @@ void render_frame_destroy(RenderFrame* renderFrame, VkCommandPool commandPool,
 
 void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     GBufferPipeline* gBufferPipeline, PbrPipeline* pbrPipeline,
-    Mesh* fullscreenQuad, Vec3* camera, VkExtent2D extents,
-    VkRenderPass renderPass, VkQueue queue, VkPhysicalDevice physicalDevice,
+    Mesh* fullscreenQuad, Vec3* camera, VkRenderPass renderPass, VkQueue queue,
+    VkCommandPool commandPool, VkPhysicalDevice physicalDevice,
     VkDevice logicalDevice);
 
 void render_frame_clear_buffers(

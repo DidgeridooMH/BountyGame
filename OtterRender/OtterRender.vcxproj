@@ -163,6 +163,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="Private\Otter\Render\Raytracing\Ray.c" />
+    <ClCompile Include="Private\Otter\Render\Texture\RenderImage.c" />
     <ClInclude Include="pch.h" />
     <ClCompile Include="Private\Otter\Render\Gltf\GlbAsset.c">
       <FileType>CppCode</FileType>
@@ -175,8 +177,10 @@
     <ClInclude Include="Public\Otter\Render\Mesh.h" />
     <ClInclude Include="Public\Otter\Render\Pipeline\PbrPipeline.h" />
     <ClInclude Include="Public\Otter\Render\Raytracing\BoundingVolumeHierarchy.h" />
+    <ClInclude Include="Public\Otter\Render\Raytracing\Ray.h" />
     <ClInclude Include="Public\Otter\Render\RenderFrame.h" />
     <ClInclude Include="Public\Otter\Render\RenderStack.h" />
+    <ClInclude Include="Public\Otter\Render\Texture\RenderImage.h" />
     <ClInclude Include="Public\Otter\Render\Uniform\ModelViewProjection.h" />
     <ClInclude Include="Public\Otter\Render\Pipeline\GBufferPipeline.h" />
     <ClInclude Include="Public\Otter\Render\RenderInstance.h" />

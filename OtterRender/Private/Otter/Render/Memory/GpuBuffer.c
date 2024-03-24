@@ -6,7 +6,8 @@ bool gpu_buffer_allocate(GpuBuffer* buffer, VkDeviceSize size,
     VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
 {
-  buffer->size = size;
+  buffer->size   = size;
+  buffer->mapped = NULL;
 
   VkBufferCreateInfo createInfo = {
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
@@ -91,4 +92,16 @@ void gpu_buffer_transfer(
 
   vkCmdCopyBuffer(
       commandBuffer, source->buffer, destination->buffer, 1, &region);
+}
+
+void gpu_buffer_map_all(GpuBuffer* buffer, VkDevice logicalDevice)
+{
+  // TODO: Check for error.
+  vkMapMemory(
+      logicalDevice, buffer->memory, 0, buffer->size, 0, &buffer->mapped);
+}
+
+void gpu_buffer_unmap(GpuBuffer* buffer, VkDevice logicalDevice)
+{
+  vkUnmapMemory(logicalDevice, buffer->memory);
 }

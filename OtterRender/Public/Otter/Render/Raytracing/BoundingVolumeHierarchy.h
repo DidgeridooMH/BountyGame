@@ -23,6 +23,7 @@ typedef struct AABB
 typedef struct BoundingVolumeNode
 {
   AABB bounds;
+  AABB centerBounds;
 
   size_t* primitives;
   size_t numOfPrimitives;
@@ -36,7 +37,7 @@ typedef struct BoundingVolumeHierarchy
   StableAutoArray nodes;
   AutoArray primitives;
 
-  MeshVertex* vertices;
+  Vec4* vertices;
   size_t numOfVertices;
   size_t capacityOfVertices;
   size_t* indices;
