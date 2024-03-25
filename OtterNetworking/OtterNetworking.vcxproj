@@ -177,7 +177,7 @@
     <ClInclude Include="pch.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="dllmain.c" />
+    <ClCompile Include="Private\Otter\Networking\dllmain.c" />
     <ClInclude Include="Public\Otter\Networking\Client\UdpGameClient.h" />
     <ClInclude Include="Public\Otter\Networking\Messages\ControlMessages.h" />
     <ClCompile Include="Private\Otter\Networking\Client\TcpGameClient.c" />

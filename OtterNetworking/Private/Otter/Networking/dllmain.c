@@ -6,6 +6,7 @@ BOOL APIENTRY DllMain(
   switch (ul_reason_for_call)
   {
   case DLL_PROCESS_ATTACH:
+    DisableThreadLibraryCalls(hModule);
     WSADATA wsaData;
     if (WSAStartup(MAKEWORD(2, 2), &wsaData) != 0)
     {

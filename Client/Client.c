@@ -1,4 +1,5 @@
 #include "Input/Input.h"
+#include "Otter/Async/Scheduler.h"
 #include "Otter/Config/Config.h"
 #include "Otter/GameState/GameState.h"
 #include "Otter/GameState/Player/Player.h"
@@ -249,14 +250,11 @@ int WINAPI wWinMain(
 
   QueryPerformanceFrequency(&g_timerFrequency);
 
-  profiler_init(g_timerFrequency);
-
   size_t fileLength = 0;
   char* glbTest     = file_load("model.glb", &fileLength);
   if (glbTest == NULL)
   {
     fprintf(stderr, "Unable to find file model.glb\n");
-    profiler_destroy();
     return -1;
   }
 
@@ -264,7 +262,6 @@ int WINAPI wWinMain(
   if (!glb_load_asset(glbTest, fileLength, &asset))
   {
     fprintf(stderr, "Unable to parse model.glb\n");
-    profiler_destroy();
     return -1;
   }
 
@@ -272,7 +269,6 @@ int WINAPI wWinMain(
   if (configStr == NULL)
   {
     fprintf(stderr, "Unable to find file config.ini\n");
-    profiler_destroy();
     return -1;
   }
 
@@ -281,7 +277,6 @@ int WINAPI wWinMain(
   {
     free(configStr);
     fprintf(stderr, "Could not parse configuration.");
-    profiler_destroy();
     return -1;
   }
   free(configStr);
@@ -291,6 +286,8 @@ int WINAPI wWinMain(
   char* host = hash_map_get_value(&config, CONFIG_HOST);
   char* port = hash_map_get_value(&config, CONFIG_PORT);
 
+  task_scheduler_init();
+  profiler_init(g_timerFrequency);
   HWND window = game_window_create(width, height, WM_WINDOWED);
   RenderInstance* renderInstance = render_instance_create(window);
   if (renderInstance == NULL)
@@ -299,6 +296,7 @@ int WINAPI wWinMain(
     hash_map_destroy(&config, free);
     game_window_destroy(window);
     profiler_destroy();
+    task_scheduler_destroy();
     return -1;
   }
 
@@ -363,6 +361,7 @@ int WINAPI wWinMain(
     render_instance_destroy(renderInstance);
     game_window_destroy(window);
     profiler_destroy();
+    task_scheduler_destroy();
     return -1;
   }
 
@@ -458,10 +457,10 @@ int WINAPI wWinMain(
     {
       udp_game_client_send_message(&client, disconnectMessage);
       message_destroy(disconnectMessage);
-      profiler_destroy();
     }
   }
 
+  task_scheduler_destroy();
   mesh_destroy(cube, renderInstance->logicalDevice);
   udp_game_client_destroy(&client);
   hash_map_destroy(&config, free);

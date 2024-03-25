@@ -34,6 +34,7 @@ typedef struct BoundingVolumeNode
 
 typedef struct BoundingVolumeHierarchy
 {
+  CRITICAL_SECTION nodesLock;
   StableAutoArray nodes;
   AutoArray primitives;
 

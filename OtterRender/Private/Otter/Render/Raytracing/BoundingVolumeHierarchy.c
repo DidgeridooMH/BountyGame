@@ -1,5 +1,7 @@
 #include "Otter/Render/Raytracing/BoundingVolumeHierarchy.h"
 
+#include "Otter/Async/Scheduler.h"
+
 #define SUBDIVISION_LIMIT 5
 
 // TODO: Move to separate file.
@@ -24,6 +26,8 @@ void bounding_volume_hierarchy_create(BoundingVolumeHierarchy* bvh)
 
   // TODO: Adjust API to allow for larger resizes.
   auto_array_create(&bvh->primitives, sizeof(size_t));
+
+  InitializeCriticalSection(&bvh->nodesLock);
 }
 
 void bounding_volume_hierarchy_add_primitives(MeshVertex* vertices,
@@ -81,10 +85,16 @@ void bounding_volume_hierarchy_add_primitives(MeshVertex* vertices,
   }
 }
 
-static void bounding_volume_hierarchy_subdivide(
-    BoundingVolumeNode* node, BoundingVolumeHierarchy* bvh, int subdivideLimit)
+typedef struct BVHSubdivideData
 {
-  if (node->numOfPrimitives <= 1 || subdivideLimit == 0)
+  BoundingVolumeNode* node;
+  BoundingVolumeHierarchy* bvh;
+  int subdivideLimit;
+} BVHSubdivideData;
+
+static void bounding_volume_hierarchy_subdivide(BVHSubdivideData* bvhData)
+{
+  if (bvhData->node->numOfPrimitives <= 1 || bvhData->subdivideLimit == 0)
   {
 #ifdef DEBUG_BVH
     for (int i = 0; i < SUBDIVISION_LIMIT - subdivideLimit; i++)
@@ -96,9 +106,12 @@ static void bounding_volume_hierarchy_subdivide(
     return;
   }
 
-  Vec3 axisRange   = {node->centerBounds.x.val[1] - node->centerBounds.x.val[0],
-        node->centerBounds.y.val[1] - node->centerBounds.y.val[0],
-        node->centerBounds.z.val[1] - node->centerBounds.z.val[0]};
+  Vec3 axisRange   = {bvhData->node->centerBounds.x.val[1]
+                          - bvhData->node->centerBounds.x.val[0],
+        bvhData->node->centerBounds.y.val[1]
+            - bvhData->node->centerBounds.y.val[0],
+        bvhData->node->centerBounds.z.val[1]
+            - bvhData->node->centerBounds.z.val[0]};
   size_t splitAxis = 0;
   if (axisRange.val[splitAxis] < axisRange.y)
   {
@@ -109,55 +122,62 @@ static void bounding_volume_hierarchy_subdivide(
     splitAxis = 2;
   }
 
-  float splitPoint = (node->centerBounds.axis[splitAxis].val[1]
-                         + node->centerBounds.axis[splitAxis].val[0])
+  float splitPoint = (bvhData->node->centerBounds.axis[splitAxis].val[1]
+                         + bvhData->node->centerBounds.axis[splitAxis].val[0])
                    / 2.0f;
 
-  node->left = stable_auto_array_allocate(&bvh->nodes);
-  memset(node->left, 0, sizeof(BoundingVolumeNode));
-  node->left->primitives      = node->primitives;
-  node->left->numOfPrimitives = node->numOfPrimitives;
+  EnterCriticalSection(&bvhData->bvh->nodesLock);
+  bvhData->node->left  = stable_auto_array_allocate(&bvhData->bvh->nodes);
+  bvhData->node->right = stable_auto_array_allocate(&bvhData->bvh->nodes);
+  LeaveCriticalSection(&bvhData->bvh->nodesLock);
 
-  node->right = stable_auto_array_allocate(&bvh->nodes);
-  memset(node->right, 0, sizeof(BoundingVolumeNode));
-  node->right->primitives = &node->primitives[node->numOfPrimitives];
+  memset(bvhData->node->left, 0, sizeof(BoundingVolumeNode));
+  bvhData->node->left->primitives      = bvhData->node->primitives;
+  bvhData->node->left->numOfPrimitives = bvhData->node->numOfPrimitives;
 
-  size_t* cursor = node->primitives;
-  while (cursor < node->right->primitives)
+  memset(bvhData->node->right, 0, sizeof(BoundingVolumeNode));
+  bvhData->node->right->primitives =
+      &bvhData->node->primitives[bvhData->node->numOfPrimitives];
+
+  size_t* cursor = bvhData->node->primitives;
+  while (cursor < bvhData->node->right->primitives)
   {
-    size_t prim     = *cursor;
-    Vec3 primCenter = bvh->vertices[bvh->indices[prim * 3]].xyz;
-    vec3_add(&primCenter, &bvh->vertices[bvh->indices[prim * 3 + 1]].xyz);
-    vec3_add(&primCenter, &bvh->vertices[bvh->indices[prim * 3 + 2]].xyz);
+    size_t prim = *cursor;
+    Vec3 primCenter =
+        bvhData->bvh->vertices[bvhData->bvh->indices[prim * 3]].xyz;
+    vec3_add(&primCenter,
+        &bvhData->bvh->vertices[bvhData->bvh->indices[prim * 3 + 1]].xyz);
+    vec3_add(&primCenter,
+        &bvhData->bvh->vertices[bvhData->bvh->indices[prim * 3 + 2]].xyz);
 
     float center = primCenter.val[splitAxis] / 3.0f;
     vec3_divide(&primCenter, 3.0f);
 
     if (center > splitPoint)
     {
-      node->right->primitives -= 1;
-      *cursor                  = *node->right->primitives;
-      *node->right->primitives = prim;
-      node->right->numOfPrimitives += 1;
-      node->left->numOfPrimitives -= 1;
+      bvhData->node->right->primitives -= 1;
+      *cursor                           = *bvhData->node->right->primitives;
+      *bvhData->node->right->primitives = prim;
+      bvhData->node->right->numOfPrimitives += 1;
+      bvhData->node->left->numOfPrimitives -= 1;
 
-      aabb_adjust_bounds(
-          &node->right->bounds, &bvh->vertices[bvh->indices[prim * 3]].xyz);
-      aabb_adjust_bounds(
-          &node->right->bounds, &bvh->vertices[bvh->indices[prim * 3 + 1]].xyz);
-      aabb_adjust_bounds(
-          &node->right->bounds, &bvh->vertices[bvh->indices[prim * 3 + 2]].xyz);
-      aabb_adjust_bounds(&node->right->centerBounds, &primCenter);
+      aabb_adjust_bounds(&bvhData->node->right->bounds,
+          &bvhData->bvh->vertices[bvhData->bvh->indices[prim * 3]].xyz);
+      aabb_adjust_bounds(&bvhData->node->right->bounds,
+          &bvhData->bvh->vertices[bvhData->bvh->indices[prim * 3 + 1]].xyz);
+      aabb_adjust_bounds(&bvhData->node->right->bounds,
+          &bvhData->bvh->vertices[bvhData->bvh->indices[prim * 3 + 2]].xyz);
+      aabb_adjust_bounds(&bvhData->node->right->centerBounds, &primCenter);
     }
     else
     {
-      aabb_adjust_bounds(
-          &node->left->bounds, &bvh->vertices[bvh->indices[prim * 3]].xyz);
-      aabb_adjust_bounds(
-          &node->left->bounds, &bvh->vertices[bvh->indices[prim * 3 + 1]].xyz);
-      aabb_adjust_bounds(
-          &node->left->bounds, &bvh->vertices[bvh->indices[prim * 3 + 2]].xyz);
-      aabb_adjust_bounds(&node->left->centerBounds, &primCenter);
+      aabb_adjust_bounds(&bvhData->node->left->bounds,
+          &bvhData->bvh->vertices[bvhData->bvh->indices[prim * 3]].xyz);
+      aabb_adjust_bounds(&bvhData->node->left->bounds,
+          &bvhData->bvh->vertices[bvhData->bvh->indices[prim * 3 + 1]].xyz);
+      aabb_adjust_bounds(&bvhData->node->left->bounds,
+          &bvhData->bvh->vertices[bvhData->bvh->indices[prim * 3 + 2]].xyz);
+      aabb_adjust_bounds(&bvhData->node->left->centerBounds, &primCenter);
       cursor += 1;
     }
   }
@@ -170,14 +190,27 @@ static void bounding_volume_hierarchy_subdivide(
   printf("Split has %lld prims\n", node->numOfPrimitives);
 #endif
 
-  if (node->left->numOfPrimitives > 0)
+  HANDLE tasks[2] = {NULL};
+  uint32_t count  = 0;
+  if (bvhData->node->left->numOfPrimitives > 0)
   {
-    bounding_volume_hierarchy_subdivide(node->left, bvh, subdivideLimit - 1);
+    BVHSubdivideData* data = malloc(sizeof(BVHSubdivideData));
+    data->bvh              = bvhData->bvh;
+    data->node             = bvhData->node->left;
+    data->subdivideLimit   = bvhData->subdivideLimit - 1;
+    tasks[count++] = task_scheduler_enqueue(bounding_volume_hierarchy_subdivide,
+        data, TASK_FLAGS_FREE_DATA_ON_COMPLETE);
   }
-  if (node->right->numOfPrimitives > 0)
+  if (bvhData->node->right->numOfPrimitives > 0)
   {
-    bounding_volume_hierarchy_subdivide(node->right, bvh, subdivideLimit - 1);
+    BVHSubdivideData* data = malloc(sizeof(BVHSubdivideData));
+    data->bvh              = bvhData->bvh;
+    data->node             = bvhData->node->right;
+    data->subdivideLimit   = bvhData->subdivideLimit - 1;
+    tasks[count++] = task_scheduler_enqueue(bounding_volume_hierarchy_subdivide,
+        data, TASK_FLAGS_FREE_DATA_ON_COMPLETE);
   }
+  WaitForMultipleObjects(count, tasks, true, INFINITE);
 }
 
 void bounding_volume_hierarchy_build(BoundingVolumeHierarchy* bvh)
@@ -186,7 +219,13 @@ void bounding_volume_hierarchy_build(BoundingVolumeHierarchy* bvh)
   root->primitives         = bvh->primitives.buffer;
   root->numOfPrimitives    = bvh->primitives.size;
 
-  bounding_volume_hierarchy_subdivide(root, bvh, SUBDIVISION_LIMIT);
+  BVHSubdivideData* data = malloc(sizeof(BVHSubdivideData));
+  data->bvh              = bvh;
+  data->node             = root;
+  data->subdivideLimit   = SUBDIVISION_LIMIT;
+  HANDLE task = task_scheduler_enqueue(bounding_volume_hierarchy_subdivide,
+      data, TASK_FLAGS_FREE_DATA_ON_COMPLETE);
+  WaitForSingleObject(task, INFINITE);
 }
 
 void bounding_volume_hierarchy_reset(BoundingVolumeHierarchy* bvh)
@@ -207,4 +246,6 @@ void bounding_volume_hierarchy_destroy(BoundingVolumeHierarchy* bvh)
   auto_array_destroy(&bvh->primitives);
   free(bvh->vertices);
   free(bvh->indices);
+
+  DeleteCriticalSection(&bvh->nodesLock);
 }

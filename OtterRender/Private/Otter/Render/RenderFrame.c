@@ -1,5 +1,6 @@
 #include "Otter/Render/RenderFrame.h"
 
+#include "Otter/Async/Scheduler.h"
 #include "Otter/Math/Projection.h"
 #include "Otter/Render/Raytracing/BoundingVolumeHierarchy.h"
 #include "Otter/Render/Raytracing/Ray.h"
@@ -230,7 +231,7 @@ static void render_frame_draw_shadows(
   const float fieldOfView = 90.0f;
   const float view        = tanf((float) M_PI * 0.5f * fieldOfView / 180.0f);
 
-  HANDLE threads[MAXTHREADS];
+  HANDLE completions[MAXTHREADS];
   RenderShadowKernel* threadData[MAXTHREADS];
   for (int i = 0; i < MAXTHREADS; i++)
   {
@@ -245,11 +246,16 @@ static void render_frame_draw_shadows(
     threadData[i]->startHeight = i * screenSize.height / MAXTHREADS;
     threadData[i]->endHeight   = (i + 1) * screenSize.height / MAXTHREADS;
 
-    threads[i] = CreateThread(
-        NULL, 0, render_frame_draw_shadow_thread, threadData[i], 0, NULL);
+    completions[i] = task_scheduler_enqueue(render_frame_draw_shadow_thread,
+        threadData[i], TASK_FLAGS_FREE_DATA_ON_COMPLETE);
   }
 
-  WaitForMultipleObjects(MAXTHREADS, threads, TRUE, INFINITE);
+  WaitForMultipleObjects(MAXTHREADS, completions, true, INFINITE);
+
+  for (int i = 0; i < MAXTHREADS; i++)
+  {
+    CloseHandle(completions[i]);
+  }
 }
 
 static void render_frame_submit_cpu_frames(RenderFrame* renderFrame,

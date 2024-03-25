@@ -47,7 +47,7 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="dllmain.c">
+    <ClCompile Include="Private\Otter\Networking\dllmain.c">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="pch.c">
