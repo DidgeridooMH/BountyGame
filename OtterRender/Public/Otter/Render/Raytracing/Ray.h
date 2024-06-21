@@ -14,5 +14,4 @@ typedef struct Ray
 OTTERRENDER_API void ray_create(
     Ray* ray, const Vec3* origin, const Vec3* direction);
 
-OTTERRENDER_API bool ray_cast(
-    Ray* ray, BoundingVolumeHierarchy* bvh, Vec3* hitPosition);
+OTTERRENDER_API bool ray_cast(Ray* ray, BoundingVolumeHierarchy* bvh);

@@ -2,6 +2,8 @@
 
 #include "Otter/Render/Memory/MemoryType.h"
 
+// TODO: We should really be only allocating one buffer for the MVP, then
+// binding different locations for each model.
 bool gpu_buffer_allocate(GpuBuffer* buffer, VkDeviceSize size,
     VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice)

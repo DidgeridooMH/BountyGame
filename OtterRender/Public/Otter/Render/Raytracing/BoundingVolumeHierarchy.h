@@ -3,30 +3,25 @@
 #include "Otter/Math/Transform.h"
 #include "Otter/Math/Vec.h"
 #include "Otter/Render/Mesh.h"
+#include "Otter/Render/Raytracing/AABB.h"
 #include "Otter/Util/AutoArray.h"
 #include "Otter/Util/StableAutoArray.h"
 
-typedef struct AABB
+typedef struct Triangle
 {
-  union
-  {
-    struct
-    {
-      Vec2 x;
-      Vec2 y;
-      Vec2 z;
-    };
-    Vec2 axis[3];
-  };
-} AABB;
+  size_t a;
+  size_t b;
+  size_t c;
+} Triangle;
 
 typedef struct BoundingVolumeNode
 {
   AABB bounds;
   AABB centerBounds;
+  Vec3 centerCluster;
 
-  size_t* primitives;
-  size_t numOfPrimitives;
+  Triangle* tris;
+  size_t numOfTris;
 
   struct BoundingVolumeNode* left;
   struct BoundingVolumeNode* right;
@@ -36,14 +31,12 @@ typedef struct BoundingVolumeHierarchy
 {
   CRITICAL_SECTION nodesLock;
   StableAutoArray nodes;
-  AutoArray primitives;
 
-  Vec4* vertices;
-  size_t numOfVertices;
-  size_t capacityOfVertices;
-  size_t* indices;
-  size_t numOfIndices;
-  size_t capacityOfIndices;
+  // Vec4
+  AutoArray vertices;
+
+  // Triangle
+  AutoArray tris;
 } BoundingVolumeHierarchy;
 
 OTTERRENDER_API void bounding_volume_hierarchy_create(

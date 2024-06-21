@@ -72,6 +72,9 @@
     <ClInclude Include="Public\Otter\Render\Raytracing\Ray.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="Public\Otter\Render\Raytracing\AABB.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="pch.c">
@@ -122,6 +125,7 @@
     <ClCompile Include="Private\Otter\Render\Raytracing\Ray.c">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="Private\Otter\Render\Raytracing\AABB.c" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="Shaders\pbr.vert.glsl" />

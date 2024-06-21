@@ -8,7 +8,15 @@
 #include "Otter/Util/Profiler.h"
 
 #define DESCRIPTOR_POOL_SIZE 128
-#define DESCRIPTOR_SET_LIMIT 512
+#define DESCRIPTOR_SET_LIMIT 16 * 1024
+
+// TODO: Get rid  of this.
+Mesh* cube;
+__declspec(dllexport) void render_frame_set_cube(Mesh* c)
+{
+  cube = c;
+}
+//
 
 bool render_frame_create(
     RenderFrame* renderFrame, VkDevice logicalDevice, VkCommandPool commandPool)
@@ -178,84 +186,110 @@ static void render_frame_initialize_bvh(RenderFrame* renderFrame)
 typedef struct RenderShadowKernel
 {
   VkExtent2D screenSize;
-  Vec2 unitSize;
-  float view;
-  float aspectRatio;
-  Vec3* camera;
+  Vec2 pixelUnit;
+  Vec3 pixelTopLeft;
+  Vec3 camera;
   BoundingVolumeHierarchy* bvh;
   float* shadowMap;
-  uint32_t startHeight;
-  uint32_t endHeight;
+  size_t pixelChunk;
+  size_t chunkSize;
 } RenderShadowKernel;
 
 static DWORD WINAPI render_frame_draw_shadow_thread(RenderShadowKernel* kernel)
 {
-  for (uint32_t y = kernel->startHeight; y < kernel->endHeight; y++)
+  size_t chunkStart = kernel->pixelChunk * kernel->chunkSize;
+  size_t chunkEnd   = (kernel->pixelChunk + 1) * kernel->chunkSize;
+  for (size_t pixel = chunkStart; pixel < chunkEnd; pixel++)
   {
-    for (uint32_t x = 0; x < kernel->screenSize.width; x++)
+    const size_t x = pixel % kernel->screenSize.width;
+    const size_t y = pixel / kernel->screenSize.width;
+
+    Vec3 rayDirection = kernel->pixelTopLeft;
+    Vec3 pixelOffset = {x * kernel->pixelUnit.x, y * kernel->pixelUnit.y, 0.0f};
+    vec3_add(&rayDirection, &pixelOffset);
+    vec3_subtract(&rayDirection, &kernel->camera);
+
+    vec3_normalize(&rayDirection);
+
+    Ray primaryRay;
+    ray_create(&primaryRay, &kernel->camera, &rayDirection);
+
+    // Vec3 primaryHit;
+    if (ray_cast(&primaryRay, kernel->bvh))
     {
-      Vec3 worldSpace = {2.0f * (x + 0.5f) * kernel->unitSize.x - 1.0f,
-          1.0f - 2.0f * (y + 0.5f) * kernel->unitSize.y};
-      worldSpace.x *= kernel->view * kernel->aspectRatio;
-      worldSpace.y *= kernel->view;
-      worldSpace.z = -1;
-
-      vec3_normalize(&worldSpace);
-
-      Ray primaryRay;
-      ray_create(&primaryRay, kernel->camera, &worldSpace);
-
-      Vec3 primaryHit;
-      if (ray_cast(&primaryRay, kernel->bvh, &primaryHit))
-      {
-        kernel->shadowMap[x + y * kernel->screenSize.width] = 1.0f;
-      }
-      else
-      {
-        kernel->shadowMap[x + y * kernel->screenSize.width] = 0.0f;
-      }
+      kernel->shadowMap[x + y * kernel->screenSize.width] = 1.0f;
+    }
+    else
+    {
+      kernel->shadowMap[x + y * kernel->screenSize.width] = 0.0f;
     }
   }
+
   return 0;
 }
-
-#define MAXTHREADS 16
 
 static void render_frame_draw_shadows(
     RenderStack* renderStack, BoundingVolumeHierarchy* bvh, Vec3* camera)
 {
   float* shadowMap            = renderStack->cpuShadowMapBuffer.mapped;
   const VkExtent2D screenSize = renderStack->cpuShadowMap.size;
-  const Vec2 unitSize     = {1.0f / screenSize.width, 1.0f / screenSize.height};
-  const float aspectRatio = (float) screenSize.width / screenSize.height;
-  const float fieldOfView = 90.0f;
-  const float view        = tanf((float) M_PI * 0.5f * fieldOfView / 180.0f);
+  const float aspectRatio     = (float) screenSize.width / screenSize.height;
+  const float fieldOfView     = 90.0f * (float) M_PI / 180.0f;
+  const float focalLength     = 1.0f / tanf(fieldOfView / 2.0f);
+  const size_t numOfPixels    = (size_t) screenSize.height * screenSize.width;
+  const size_t chunkSize      = 512;
+  const size_t pixelChunks    = numOfPixels / chunkSize;
 
-  HANDLE completions[MAXTHREADS];
-  RenderShadowKernel* threadData[MAXTHREADS];
-  for (int i = 0; i < MAXTHREADS; i++)
+  Vec3 viewport = {1.0f, 1.0f / aspectRatio, 0.0f};
+
+  Vec2 pixelUnit = {
+      viewport.x / screenSize.width, viewport.y / screenSize.height};
+
+  Vec3 pixelTopLeft      = *camera;
+  Vec3 viewportTransform = {
+      1.0f / 2.0f, 1.0f / (2.0f * aspectRatio), focalLength};
+  vec3_subtract(&pixelTopLeft, &viewportTransform);
+
+  Vec3 centeringOffset = {0.5f * pixelUnit.x, 0.5f * pixelUnit.y, 0.0f};
+  vec3_add(&pixelTopLeft, &centeringOffset);
+
+  HANDLE* completions = malloc(pixelChunks * sizeof(HANDLE));
+  RenderShadowKernel* threadData =
+      malloc(pixelChunks * sizeof(RenderShadowKernel));
+  if (completions == NULL || threadData == NULL)
   {
-    threadData[i]              = malloc(sizeof(RenderShadowKernel));
-    threadData[i]->screenSize  = screenSize;
-    threadData[i]->unitSize    = unitSize;
-    threadData[i]->view        = view;
-    threadData[i]->aspectRatio = aspectRatio;
-    threadData[i]->camera      = camera;
-    threadData[i]->bvh         = bvh;
-    threadData[i]->shadowMap   = shadowMap;
-    threadData[i]->startHeight = i * screenSize.height / MAXTHREADS;
-    threadData[i]->endHeight   = (i + 1) * screenSize.height / MAXTHREADS;
-
-    completions[i] = task_scheduler_enqueue(render_frame_draw_shadow_thread,
-        threadData[i], TASK_FLAGS_FREE_DATA_ON_COMPLETE);
+    free(completions);
+    free(threadData);
+    return;
   }
 
-  WaitForMultipleObjects(MAXTHREADS, completions, true, INFINITE);
+  for (int i = 0; i < pixelChunks; i++)
+  {
+    threadData[i].screenSize   = screenSize;
+    threadData[i].pixelUnit    = pixelUnit;
+    threadData[i].pixelTopLeft = pixelTopLeft;
+    threadData[i].camera       = *camera;
+    threadData[i].bvh          = bvh;
+    threadData[i].shadowMap    = shadowMap;
+    threadData[i].pixelChunk   = i;
+    threadData[i].chunkSize    = chunkSize;
 
-  for (int i = 0; i < MAXTHREADS; i++)
+    completions[i] = task_scheduler_enqueue(
+        render_frame_draw_shadow_thread, &threadData[i], 0);
+  }
+
+  for (int i = 0; i < pixelChunks; i += MAXIMUM_WAIT_OBJECTS)
+  {
+    WaitForMultipleObjects(min(MAXIMUM_WAIT_OBJECTS, (DWORD) (pixelChunks - i)),
+        completions + i, true, INFINITE);
+  }
+
+  for (int i = 0; i < pixelChunks; i++)
   {
     CloseHandle(completions[i]);
   }
+  free(completions);
+  free(threadData);
 }
 
 static void render_frame_submit_cpu_frames(RenderFrame* renderFrame,
@@ -482,6 +516,46 @@ static void render_frame_render_lighting(RenderFrame* renderFrame,
       (uint32_t) fullscreenQuad->indices.size / sizeof(uint16_t), 1, 0, 0, 0);
 }
 
+static void render_bvh(RenderFrame* renderFrame, BoundingVolumeNode* node)
+{
+  /*if (node->left != NULL || node->right != NULL)
+  {
+    if (node->left != NULL && node->left->numOfTris > 0)
+    {
+      render_bvh(renderFrame, node->left);
+    }
+    if (node->right != NULL && node->right->numOfTris > 0)
+    {
+      render_bvh(renderFrame, node->right);
+    }
+  }
+  else
+  {*/
+  RenderCommand* command = auto_array_allocate(&renderFrame->renderQueue);
+  if (command == NULL)
+  {
+    return;
+  }
+
+  // TODO: Probably just use mesh reference.
+  command->vertices      = cube->vertices.buffer;
+  command->indices       = cube->indices.buffer;
+  command->numOfIndices  = cube->indices.size / sizeof(uint16_t);
+  command->cpuVertices   = cube->cpuVertices;
+  command->numOfVertices = cube->vertices.size / sizeof(MeshVertex);
+  command->cpuIndices    = cube->cpuIndices;
+  transform_identity(&command->transform);
+
+  vec3_add(&command->transform.position, &node->bounds.max);
+  vec3_add(&command->transform.position, &node->bounds.min);
+  vec3_divide(&command->transform.position, 2.0f);
+
+  vec3_multiply(&command->transform.scale, 0.0f);
+  vec3_add(&command->transform.scale, &node->bounds.max);
+  vec3_subtract(&command->transform.scale, &node->bounds.min);
+  //}
+}
+
 void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     GBufferPipeline* gBufferPipeline, PbrPipeline* pbrPipeline,
     Mesh* fullscreenQuad, Vec3* camera, VkRenderPass renderPass, VkQueue queue,
@@ -500,6 +574,12 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
   render_frame_submit_cpu_frames(
       renderFrame, renderStack, commandPool, logicalDevice, queue);
   profiler_clock_end("cpu_buffer_copy");
+
+  // *****************
+  // TODO: Remove
+  BoundingVolumeNode* node = stable_auto_array_get(&renderFrame->bvh.nodes, 0);
+  render_bvh(renderFrame, node);
+  // ******************
 
   profiler_clock_start("render_submit");
   render_frame_start_render(

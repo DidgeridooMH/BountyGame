@@ -52,6 +52,8 @@ OTTERMATH_API void vec3_add(Vec3* result, const Vec3* operand);
 
 OTTERMATH_API void vec3_subtract(Vec3* result, const Vec3* operand);
 
+OTTERMATH_API void vec3_multiply(Vec3* result, float operand);
+
 OTTERMATH_API void vec3_divide(Vec3* result, float operand);
 
 OTTERMATH_API void vec3_normalize(Vec3* result);
@@ -59,6 +61,8 @@ OTTERMATH_API void vec3_normalize(Vec3* result);
 OTTERMATH_API void vec3_cross(Vec3* result, const Vec3* operand);
 
 OTTERMATH_API float vec3_dot(const Vec3* result, const Vec3* operand);
+
+OTTERMATH_API size_t vec3_max_index(const Vec3* result);
 
 OTTERMATH_API void vec2_subtract_scalar(Vec2* result, float operand);
 

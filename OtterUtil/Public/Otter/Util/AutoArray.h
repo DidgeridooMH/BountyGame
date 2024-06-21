@@ -6,27 +6,31 @@
 
 typedef struct AutoArray
 {
-  uint32_t sizeOfElement;
-  uint32_t size;
-  uint32_t capacity;
+  size_t sizeOfElement;
+  size_t size;
+  size_t capacity;
   void* buffer;
 } AutoArray;
 
-OTTERUTIL_API void auto_array_create(AutoArray* array, uint32_t elementSize);
+OTTERUTIL_API void auto_array_create(AutoArray* array, size_t elementSize);
 
 OTTERUTIL_API void auto_array_destroy(AutoArray* array);
 
 OTTERUTIL_API void* auto_array_allocate(AutoArray* array);
 
+OTTERUTIL_API void* auto_array_allocate_many(
+    AutoArray* array, size_t elementCount);
+
 OTTERUTIL_API void auto_array_clear(AutoArray* array);
 
-OTTERUTIL_API inline void* auto_array_get(AutoArray* array, uint32_t index)
+OTTERUTIL_API inline void* auto_array_get(AutoArray* array, size_t index)
 {
 #ifdef _DEBUG
   if (index >= array->size)
   {
-    fprintf(stderr, "WARN: Out of bounds read of index %d on array of size %d",
-        index, array->size);
+    fprintf(stderr,
+        "WARN: Out of bounds read of index %zd on array of size %zd", index,
+        array->size);
     return NULL;
   }
 #endif

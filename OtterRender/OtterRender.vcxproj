@@ -176,6 +176,7 @@
     <ClInclude Include="Public\Otter\Render\Memory\MemoryType.h" />
     <ClInclude Include="Public\Otter\Render\Mesh.h" />
     <ClInclude Include="Public\Otter\Render\Pipeline\PbrPipeline.h" />
+    <ClInclude Include="Public\Otter\Render\Raytracing\AABB.h" />
     <ClInclude Include="Public\Otter\Render\Raytracing\BoundingVolumeHierarchy.h" />
     <ClInclude Include="Public\Otter\Render\Raytracing\Ray.h" />
     <ClInclude Include="Public\Otter\Render\RenderFrame.h" />
@@ -275,6 +276,9 @@
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)/Shaders/%(Filename).spv</Outputs>
     </CustomBuild>
+    <ClCompile Include="Private\Otter\Render\Raytracing\AABB.c">
+      <FileType>CppCode</FileType>
+    </ClCompile>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

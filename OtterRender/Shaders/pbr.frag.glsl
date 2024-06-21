@@ -41,8 +41,12 @@ vec3 calculateDirectLight(vec3 position, vec3 normal)
 
 void main()
 {
-    outColor = vec4(subpassLoad(ainShadowMap).r, 0.0, 0.0, 1.0);
-    return;
+    if (subpassLoad(ainShadowMap).r > 0.0)
+    {
+        outColor = vec4(1.0, 0.0, 0.0, 1.0);
+        return;
+    }
+
     if (subpassLoad(ainPosition).a < 1.0)
     {
         discard;

@@ -240,6 +240,7 @@ int main()
   wWinMain(GetModuleHandle(NULL), NULL, L"", 1);
 }
 
+__declspec(dllimport) void render_frame_set_cube(Mesh* cube);
 int WINAPI wWinMain(
     HINSTANCE instance, HINSTANCE prevInstance, LPWSTR cmdLine, int cmdShow)
 {
@@ -338,6 +339,7 @@ int WINAPI wWinMain(
       indices, _countof(indices), renderInstance->physicalDevice,
       renderInstance->logicalDevice, renderInstance->commandPool,
       graphicsQueue);
+  render_frame_set_cube(cube);
 
   AutoArray buildingMesh;
   auto_array_create(&buildingMesh, sizeof(Mesh*));
@@ -391,7 +393,7 @@ int WINAPI wWinMain(
     // Draw scene
     Transform floorTransform;
     transform_identity(&floorTransform);
-    floorTransform.position.y = 1.0f;
+    floorTransform.position.y = 10.0f;
     floorTransform.scale.x    = 100.0f;
     floorTransform.scale.z    = 100.0f;
     render_instance_queue_mesh_draw(cube, &floorTransform, renderInstance);

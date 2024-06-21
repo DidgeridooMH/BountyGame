@@ -193,6 +193,7 @@ void g_buffer_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
     VkDescriptorPool descriptorPool, VkDevice logicalDevice,
     GpuBuffer* mvpBuffer, GBufferPipeline* pipeline)
 {
+  // TODO: Move out of this to make a bulk allocation
   VkDescriptorSetAllocateInfo mvpDescriptorSetAllocInfo = {
       .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
       .descriptorPool     = descriptorPool,
