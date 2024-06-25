@@ -2,8 +2,9 @@
 
 char* file_load(const char* path, uint64_t* fileLength)
 {
+  // TODO: Switch this to UNICODE standard.
   HANDLE file = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL,
-      OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, NULL);
+      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
   if (file == INVALID_HANDLE_VALUE)
   {
     return NULL;
@@ -42,3 +43,4 @@ char* file_load(const char* path, uint64_t* fileLength)
 
   return text;
 }
+

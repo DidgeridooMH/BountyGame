@@ -1,9 +1,5 @@
 #include "GameWindow.h"
 
-#include "Client.h"
-#include "Input/Input.h"
-#include "Otter/GameState/Player/Player.h"
-
 #define PLAYER_RECT_SIZE 50
 
 static LRESULT CALLBACK game_window_process(
@@ -11,20 +7,14 @@ static LRESULT CALLBACK game_window_process(
 {
   switch (message)
   {
+    // TODO: Make an input binding system.
   case WM_KEYDOWN:
     switch (wParam)
     {
     case 'A':
-      g_input.left = true;
-      break;
     case 'D':
-      g_input.right = true;
-      break;
     case 'W':
-      g_input.up = true;
-      break;
     case 'S':
-      g_input.down = true;
       break;
     }
     break;
@@ -32,16 +22,9 @@ static LRESULT CALLBACK game_window_process(
     switch (wParam)
     {
     case 'A':
-      g_input.left = false;
-      break;
     case 'D':
-      g_input.right = false;
-      break;
     case 'W':
-      g_input.up = false;
-      break;
     case 'S':
-      g_input.down = false;
       break;
     }
     break;

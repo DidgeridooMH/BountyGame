@@ -1,0 +1,26 @@
+set(SOURCE
+  Source/Window/GameWindow.c
+  Source/Main.c
+)
+
+set(HEADERS
+  Source/Window/GameWindow.h
+  Source/pch.h
+)
+
+find_package(Vulkan REQUIRED)
+
+add_executable(${PROJECT_NAME} ${SOURCE} ${HEADERS})
+target_include_directories(${PROJECT_NAME} PRIVATE Source)
+target_link_libraries(${PROJECT_NAME} PRIVATE
+  OtterRender
+  OtterAsync
+  OtterMath
+  OtterConfig
+  OtterUtil
+  Vulkan::Vulkan)
+target_precompile_headers(${PROJECT_NAME} PRIVATE Source/pch.h)
+
+if (WIN32)
+  target_link_libraries(${PROJECT_NAME} PRIVATE shcore.lib)
+endif()
