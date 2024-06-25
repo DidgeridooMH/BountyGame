@@ -13,7 +13,7 @@ bool tcp_game_client_connect(
   struct addrinfo* resolvedAddress;
   if (getaddrinfo(host, port, &serverAddress, &resolvedAddress))
   {
-    fprintf(stderr, "Unable to resolve address %s:%s because %d", host, port,
+    fprintf(stderr, "Unable to resolve address %s:%s because %lu", host, port,
         GetLastError());
     return false;
   }
@@ -23,7 +23,7 @@ bool tcp_game_client_connect(
 
   if (client->socket == INVALID_SOCKET)
   {
-    fprintf(stderr, "(%d) Unable to open socket.", GetLastError());
+    fprintf(stderr, "(%lu) Unable to open socket.", GetLastError());
     freeaddrinfo(resolvedAddress);
     return false;
   }
@@ -32,13 +32,13 @@ bool tcp_game_client_connect(
           (int) resolvedAddress->ai_addrlen)
       == SOCKET_ERROR)
   {
-    fprintf(stderr, "(%d) Unable to connect to server.", GetLastError());
+    fprintf(stderr, "(%lu) Unable to connect to server.", GetLastError());
     freeaddrinfo(resolvedAddress);
     return false;
   }
 
   uint32_t mode = 1;
-  ioctlsocket(client->socket, FIONBIO, &mode);
+  ioctlsocket(client->socket, FIONBIO, (u_long*) &mode);
 
   freeaddrinfo(resolvedAddress);
 

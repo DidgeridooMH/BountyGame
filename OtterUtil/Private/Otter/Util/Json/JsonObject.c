@@ -78,5 +78,5 @@ JsonValue* json_parse_object_value(
 
 void json_destroy_object(JsonValue* value)
 {
-  hash_map_destroy(&value->object, json_destroy);
+  hash_map_destroy(&value->object, (void (*)(void*)) json_destroy);
 }

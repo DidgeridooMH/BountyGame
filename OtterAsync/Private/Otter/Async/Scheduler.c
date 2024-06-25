@@ -86,8 +86,8 @@ static DWORD WINAPI task_scheduler(void* unused)
     threadData[i].threadIdle    = CreateEvent(NULL, true, false, NULL);
 
     threadEvent[i + 1] = threadData[i].threadIdle;
-    threadHandles[i] =
-        CreateThread(NULL, 0, task_process, &threadData[i], 0, NULL);
+    threadHandles[i]   = CreateThread(NULL, 0,
+          (LPTHREAD_START_ROUTINE) task_process, &threadData[i], 0, NULL);
   }
 
   while (true)

@@ -1,6 +1,5 @@
 #include "Otter/Networking/Server/UdpGameServer.h"
 
-#include "Otter/Networking/Messages/ControlMessages.h"
 #include "Otter/Networking/Shared/GameNetworking.h"
 
 bool udp_game_server_create(
@@ -14,7 +13,7 @@ bool udp_game_server_create(
   struct addrinfo* resolvedAddress;
   if (getaddrinfo(host, port, &serverAddress, &resolvedAddress))
   {
-    fprintf(stderr, "Unable to resolve address %s:%s because %d", host, port,
+    fprintf(stderr, "Unable to resolve address %s:%s because %lu", host, port,
         GetLastError());
     return false;
   }
@@ -24,18 +23,18 @@ bool udp_game_server_create(
 
   if (server->socket == INVALID_SOCKET)
   {
-    fprintf(stderr, "(%d) Unable to open socket.", GetLastError());
+    fprintf(stderr, "(%lu) Unable to open socket.", GetLastError());
     freeaddrinfo(resolvedAddress);
     return false;
   }
 
   uint32_t mode = 1;
-  ioctlsocket(server->socket, FIONBIO, &mode);
+  ioctlsocket(server->socket, FIONBIO, (u_long*) &mode);
 
   if (bind(server->socket, resolvedAddress->ai_addr,
           (int) resolvedAddress->ai_addrlen))
   {
-    fprintf(stderr, "(%d) Unable to bind socket.", GetLastError());
+    fprintf(stderr, "(%lu) Unable to bind socket.", GetLastError());
     freeaddrinfo(resolvedAddress);
     return false;
   }

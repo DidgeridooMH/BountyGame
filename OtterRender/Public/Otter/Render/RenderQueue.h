@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Otter/Math/Transform.h"
+#include "Otter/Render/Mesh.h"
 #include <vulkan/vulkan.h>
 
 typedef struct RenderCommand
@@ -13,3 +14,4 @@ typedef struct RenderCommand
   uint16_t* cpuIndices;
   Transform transform;
 } RenderCommand;
+                

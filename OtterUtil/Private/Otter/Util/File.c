@@ -10,7 +10,7 @@ char* file_load(const char* path, uint64_t* fileLength)
   }
 
   LARGE_INTEGER fileSize = {0};
-  fileSize.LowPart       = GetFileSize(file, &fileSize.HighPart);
+  fileSize.LowPart       = GetFileSize(file, (LPDWORD) &fileSize.HighPart);
 
   if (fileLength != NULL)
   {
@@ -29,7 +29,7 @@ char* file_load(const char* path, uint64_t* fileLength)
   uint64_t totalRead = 0;
   while (fileSize.QuadPart > 0)
   {
-    int bytesRead = 0;
+    ULONG bytesRead = 0;
     if (!ReadFile(file, &text[totalRead], fileSize.LowPart, &bytesRead, NULL))
     {
       free(text);

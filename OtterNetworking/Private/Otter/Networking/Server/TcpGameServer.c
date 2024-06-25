@@ -1,6 +1,5 @@
 #include "Otter/Networking/Server/TcpGameServer.h"
 
-#include "Otter/Networking/Messages/ControlMessages.h"
 #include "Otter/Networking/Shared/GameNetworking.h"
 
 static SOCKET game_server_accept_client(TcpGameServer* server)
@@ -17,12 +16,12 @@ static SOCKET game_server_accept_client(TcpGameServer* server)
   }
 
   uint32_t mode = 1;
-  ioctlsocket(client, FIONBIO, &mode);
+  ioctlsocket(client, FIONBIO, (u_long*) &mode);
 
   wchar_t clientIp[] = L"000.000.000.000:00000";
   int clientIpLength = sizeof(clientIp) - 2;
   if (WSAAddressToString((struct sockaddr*) &clientAddress, addressLength, NULL,
-          clientIp, &clientIpLength)
+          clientIp, (u_long*) &clientIpLength)
       == SOCKET_ERROR)
   {
     fprintf(stderr, "(E%d) There was an issue getting the IP of the client\n",
@@ -110,7 +109,7 @@ bool tcp_game_server_create(TcpGameServer* server, const char* host,
   struct addrinfo* resolvedAddress;
   if (getaddrinfo(host, port, &serverAddress, &resolvedAddress))
   {
-    fprintf(stderr, "Unable to resolve address %s:%s because %d", host, port,
+    fprintf(stderr, "Unable to resolve address %s:%s because %lu", host, port,
         GetLastError());
     return false;
   }
@@ -120,7 +119,7 @@ bool tcp_game_server_create(TcpGameServer* server, const char* host,
 
   if (server->socket == INVALID_SOCKET)
   {
-    fprintf(stderr, "(%d) Unable to open socket.", GetLastError());
+    fprintf(stderr, "(%lu) Unable to open socket.", GetLastError());
     freeaddrinfo(resolvedAddress);
     return false;
   }
@@ -128,7 +127,7 @@ bool tcp_game_server_create(TcpGameServer* server, const char* host,
   if (bind(server->socket, resolvedAddress->ai_addr,
           (int) resolvedAddress->ai_addrlen))
   {
-    fprintf(stderr, "(%d) Unable to bind socket.", GetLastError());
+    fprintf(stderr, "(%lu) Unable to bind socket.", GetLastError());
     freeaddrinfo(resolvedAddress);
     return false;
   }
@@ -137,7 +136,7 @@ bool tcp_game_server_create(TcpGameServer* server, const char* host,
 
   if (listen(server->socket, SOMAXCONN) == SOCKET_ERROR)
   {
-    fprintf(stderr, "(%d) Unable to listen to socket.", GetLastError());
+    fprintf(stderr, "(%lu) Unable to listen to socket.", GetLastError());
     closesocket(server->socket);
     return false;
   }
@@ -149,8 +148,8 @@ bool tcp_game_server_create(TcpGameServer* server, const char* host,
 
   server->disconnectCb = disconnectCb;
 
-  server->acceptThread =
-      CreateThread(NULL, 0, game_server_accept_thread, server, 0, NULL);
+  server->acceptThread = CreateThread(NULL, 0,
+      (LPTHREAD_START_ROUTINE) game_server_accept_thread, server, 0, NULL);
 
   return true;
 }
@@ -219,3 +218,4 @@ void tcp_game_server_destroy(TcpGameServer* server)
   WaitForSingleObject(server->acceptThread, 60000);
   closesocket(server->socket);
 }
+

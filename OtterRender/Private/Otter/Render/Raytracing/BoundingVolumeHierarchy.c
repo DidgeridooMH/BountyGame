@@ -188,8 +188,8 @@ void bounding_volume_hierarchy_build(BoundingVolumeHierarchy* bvh)
   BVHSubdivideData data = {
       .bvh = bvh, .node = root, .subdivideLimit = SUBDIVISION_LIMIT};
 
-  HANDLE task =
-      task_scheduler_enqueue(bounding_volume_hierarchy_subdivide, &data, 0);
+  HANDLE task = task_scheduler_enqueue(
+      (void (*)(void*)) bounding_volume_hierarchy_subdivide, &data, 0);
 
   WaitForSingleObject(task, INFINITE);
   CloseHandle(task);

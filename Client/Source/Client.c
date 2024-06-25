@@ -282,8 +282,13 @@ int WINAPI wWinMain(
   }
   free(configStr);
 
-  int width  = atoi((const char*) hash_map_get_value(&config, CONFIG_WIDTH));
-  int height = atoi((const char*) hash_map_get_value(&config, CONFIG_HEIGHT));
+  char* widthStr  = hash_map_get_value(&config, CONFIG_WIDTH);
+  char* heightStr = hash_map_get_value(&config, CONFIG_HEIGHT);
+
+  printf("Setting window to (%s, %s)\n", widthStr, heightStr);
+
+  int width  = atoi(widthStr);
+  int height = atoi(heightStr);
   char* host = hash_map_get_value(&config, CONFIG_HOST);
   char* port = hash_map_get_value(&config, CONFIG_PORT);
 
@@ -339,7 +344,6 @@ int WINAPI wWinMain(
       indices, _countof(indices), renderInstance->physicalDevice,
       renderInstance->logicalDevice, renderInstance->commandPool,
       graphicsQueue);
-  render_frame_set_cube(cube);
 
   AutoArray buildingMesh;
   auto_array_create(&buildingMesh, sizeof(Mesh*));

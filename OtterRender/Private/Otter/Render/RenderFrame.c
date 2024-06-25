@@ -1,22 +1,12 @@
 #include "Otter/Render/RenderFrame.h"
 
-#include "Otter/Async/Scheduler.h"
 #include "Otter/Math/Projection.h"
-#include "Otter/Render/Raytracing/BoundingVolumeHierarchy.h"
-#include "Otter/Render/Raytracing/Ray.h"
+#include "Otter/Render/RenderQueue.h"
 #include "Otter/Render/Uniform/ModelViewProjection.h"
 #include "Otter/Util/Profiler.h"
 
 #define DESCRIPTOR_POOL_SIZE 128
 #define DESCRIPTOR_SET_LIMIT 16 * 1024
-
-// TODO: Get rid  of this.
-Mesh* cube;
-__declspec(dllexport) void render_frame_set_cube(Mesh* c)
-{
-  cube = c;
-}
-//
 
 bool render_frame_create(
     RenderFrame* renderFrame, VkDevice logicalDevice, VkCommandPool commandPool)
@@ -78,16 +68,12 @@ bool render_frame_create(
   auto_array_create(&renderFrame->renderQueue, sizeof(RenderCommand));
   auto_array_create(&renderFrame->perRenderBuffers, sizeof(GpuBuffer));
 
-  bounding_volume_hierarchy_create(&renderFrame->bvh);
-
   return true;
 }
 
 void render_frame_destroy(
     RenderFrame* renderFrame, VkCommandPool commandPool, VkDevice logicalDevice)
 {
-  bounding_volume_hierarchy_destroy(&renderFrame->bvh);
-
   for (uint32_t i = 0; i < renderFrame->perRenderBuffers.size; i++)
   {
     gpu_buffer_free(
@@ -164,132 +150,6 @@ static void render_frame_draw_mesh(RenderCommand* meshCommand,
       VK_INDEX_TYPE_UINT16);
   vkCmdDrawIndexed(renderFrame->commandBuffer,
       (uint32_t) meshCommand->numOfIndices, 1, 0, 0, 0);
-}
-
-static void render_frame_initialize_bvh(RenderFrame* renderFrame)
-{
-  profiler_clock_start("bvh_init");
-  bounding_volume_hierarchy_reset(&renderFrame->bvh);
-  for (uint32_t i = 0; i < renderFrame->renderQueue.size; i++)
-  {
-    RenderCommand* meshCommand = auto_array_get(&renderFrame->renderQueue, i);
-    bounding_volume_hierarchy_add_primitives(meshCommand->cpuVertices,
-        meshCommand->numOfVertices, meshCommand->cpuIndices,
-        meshCommand->numOfIndices, &meshCommand->transform, &renderFrame->bvh);
-  }
-  profiler_clock_end("bvh_init");
-  profiler_clock_start("bvh_build");
-  bounding_volume_hierarchy_build(&renderFrame->bvh);
-  profiler_clock_end("bvh_build");
-}
-
-typedef struct RenderShadowKernel
-{
-  VkExtent2D screenSize;
-  Vec2 pixelUnit;
-  Vec3 pixelTopLeft;
-  Vec3 camera;
-  BoundingVolumeHierarchy* bvh;
-  float* shadowMap;
-  size_t pixelChunk;
-  size_t chunkSize;
-} RenderShadowKernel;
-
-static DWORD WINAPI render_frame_draw_shadow_thread(RenderShadowKernel* kernel)
-{
-  size_t chunkStart = kernel->pixelChunk * kernel->chunkSize;
-  size_t chunkEnd   = (kernel->pixelChunk + 1) * kernel->chunkSize;
-  for (size_t pixel = chunkStart; pixel < chunkEnd; pixel++)
-  {
-    const size_t x = pixel % kernel->screenSize.width;
-    const size_t y = pixel / kernel->screenSize.width;
-
-    Vec3 rayDirection = kernel->pixelTopLeft;
-    Vec3 pixelOffset = {x * kernel->pixelUnit.x, y * kernel->pixelUnit.y, 0.0f};
-    vec3_add(&rayDirection, &pixelOffset);
-    vec3_subtract(&rayDirection, &kernel->camera);
-
-    vec3_normalize(&rayDirection);
-
-    Ray primaryRay;
-    ray_create(&primaryRay, &kernel->camera, &rayDirection);
-
-    // Vec3 primaryHit;
-    if (ray_cast(&primaryRay, kernel->bvh))
-    {
-      kernel->shadowMap[x + y * kernel->screenSize.width] = 1.0f;
-    }
-    else
-    {
-      kernel->shadowMap[x + y * kernel->screenSize.width] = 0.0f;
-    }
-  }
-
-  return 0;
-}
-
-static void render_frame_draw_shadows(
-    RenderStack* renderStack, BoundingVolumeHierarchy* bvh, Vec3* camera)
-{
-  float* shadowMap            = renderStack->cpuShadowMapBuffer.mapped;
-  const VkExtent2D screenSize = renderStack->cpuShadowMap.size;
-  const float aspectRatio     = (float) screenSize.width / screenSize.height;
-  const float fieldOfView     = 90.0f * (float) M_PI / 180.0f;
-  const float focalLength     = 1.0f / tanf(fieldOfView / 2.0f);
-  const size_t numOfPixels    = (size_t) screenSize.height * screenSize.width;
-  const size_t chunkSize      = 512;
-  const size_t pixelChunks    = numOfPixels / chunkSize;
-
-  Vec3 viewport = {1.0f, 1.0f / aspectRatio, 0.0f};
-
-  Vec2 pixelUnit = {
-      viewport.x / screenSize.width, viewport.y / screenSize.height};
-
-  Vec3 pixelTopLeft      = *camera;
-  Vec3 viewportTransform = {
-      1.0f / 2.0f, 1.0f / (2.0f * aspectRatio), focalLength};
-  vec3_subtract(&pixelTopLeft, &viewportTransform);
-
-  Vec3 centeringOffset = {0.5f * pixelUnit.x, 0.5f * pixelUnit.y, 0.0f};
-  vec3_add(&pixelTopLeft, &centeringOffset);
-
-  HANDLE* completions = malloc(pixelChunks * sizeof(HANDLE));
-  RenderShadowKernel* threadData =
-      malloc(pixelChunks * sizeof(RenderShadowKernel));
-  if (completions == NULL || threadData == NULL)
-  {
-    free(completions);
-    free(threadData);
-    return;
-  }
-
-  for (int i = 0; i < pixelChunks; i++)
-  {
-    threadData[i].screenSize   = screenSize;
-    threadData[i].pixelUnit    = pixelUnit;
-    threadData[i].pixelTopLeft = pixelTopLeft;
-    threadData[i].camera       = *camera;
-    threadData[i].bvh          = bvh;
-    threadData[i].shadowMap    = shadowMap;
-    threadData[i].pixelChunk   = i;
-    threadData[i].chunkSize    = chunkSize;
-
-    completions[i] = task_scheduler_enqueue(
-        render_frame_draw_shadow_thread, &threadData[i], 0);
-  }
-
-  for (int i = 0; i < pixelChunks; i += MAXIMUM_WAIT_OBJECTS)
-  {
-    WaitForMultipleObjects(min(MAXIMUM_WAIT_OBJECTS, (DWORD) (pixelChunks - i)),
-        completions + i, true, INFINITE);
-  }
-
-  for (int i = 0; i < pixelChunks; i++)
-  {
-    CloseHandle(completions[i]);
-  }
-  free(completions);
-  free(threadData);
 }
 
 static void render_frame_submit_cpu_frames(RenderFrame* renderFrame,
@@ -516,71 +376,12 @@ static void render_frame_render_lighting(RenderFrame* renderFrame,
       (uint32_t) fullscreenQuad->indices.size / sizeof(uint16_t), 1, 0, 0, 0);
 }
 
-static void render_bvh(RenderFrame* renderFrame, BoundingVolumeNode* node)
-{
-  /*if (node->left != NULL || node->right != NULL)
-  {
-    if (node->left != NULL && node->left->numOfTris > 0)
-    {
-      render_bvh(renderFrame, node->left);
-    }
-    if (node->right != NULL && node->right->numOfTris > 0)
-    {
-      render_bvh(renderFrame, node->right);
-    }
-  }
-  else
-  {*/
-  RenderCommand* command = auto_array_allocate(&renderFrame->renderQueue);
-  if (command == NULL)
-  {
-    return;
-  }
-
-  // TODO: Probably just use mesh reference.
-  command->vertices      = cube->vertices.buffer;
-  command->indices       = cube->indices.buffer;
-  command->numOfIndices  = cube->indices.size / sizeof(uint16_t);
-  command->cpuVertices   = cube->cpuVertices;
-  command->numOfVertices = cube->vertices.size / sizeof(MeshVertex);
-  command->cpuIndices    = cube->cpuIndices;
-  transform_identity(&command->transform);
-
-  vec3_add(&command->transform.position, &node->bounds.max);
-  vec3_add(&command->transform.position, &node->bounds.min);
-  vec3_divide(&command->transform.position, 2.0f);
-
-  vec3_multiply(&command->transform.scale, 0.0f);
-  vec3_add(&command->transform.scale, &node->bounds.max);
-  vec3_subtract(&command->transform.scale, &node->bounds.min);
-  //}
-}
-
 void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     GBufferPipeline* gBufferPipeline, PbrPipeline* pbrPipeline,
     Mesh* fullscreenQuad, Vec3* camera, VkRenderPass renderPass, VkQueue queue,
     VkCommandPool commandPool, VkPhysicalDevice physicalDevice,
     VkDevice logicalDevice)
 {
-  profiler_clock_start("bvh_create");
-  render_frame_initialize_bvh(renderFrame);
-  profiler_clock_end("bvh_create");
-
-  profiler_clock_start("cpu_shadow_rt");
-  render_frame_draw_shadows(renderStack, &renderFrame->bvh, camera);
-  profiler_clock_end("cpu_shadow_rt");
-
-  profiler_clock_start("cpu_buffer_copy");
-  render_frame_submit_cpu_frames(
-      renderFrame, renderStack, commandPool, logicalDevice, queue);
-  profiler_clock_end("cpu_buffer_copy");
-
-  // *****************
-  // TODO: Remove
-  BoundingVolumeNode* node = stable_auto_array_get(&renderFrame->bvh.nodes, 0);
-  render_bvh(renderFrame, node);
-  // ******************
-
   profiler_clock_start("render_submit");
   render_frame_start_render(
       renderFrame, renderPass, renderStack, logicalDevice);
@@ -606,3 +407,4 @@ void render_frame_clear_buffers(
   }
   auto_array_clear(&renderFrame->perRenderBuffers);
 }
+

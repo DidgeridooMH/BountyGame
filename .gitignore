@@ -62,3 +62,5 @@ RCa*
 
 *.user
 x64/
+build/
+.cache

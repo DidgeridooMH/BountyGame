@@ -1,7 +1,6 @@
 #include "Otter/Render/RenderInstance.h"
 
-#include "Otter/Render/Memory/GpuBuffer.h"
-#include "Otter/Render/Uniform/ModelViewProjection.h"
+#include "Otter/Render/RenderQueue.h"
 
 #define VK_VALIDATION_LAYER_NAME   "VK_LAYER_KHRONOS_validation"
 #define REQUESTED_NUMBER_OF_FRAMES 3
@@ -182,7 +181,7 @@ static bool render_instance_create_instance(RenderInstance* renderInstance)
   if (!render_instance_check_extensions(requiredExtensions,
           _countof(requiredExtensions), optionalExtensions,
           optionalExtensionFlags, _countof(optionalExtensions),
-          enabledExtensions, &enabledExtensionCount))
+          (const char**) enabledExtensions, &enabledExtensionCount))
   {
     return false;
   }
@@ -200,16 +199,18 @@ static bool render_instance_create_instance(RenderInstance* renderInstance)
   bool* flags[_countof(optionalLayers)] = {&validationFound};
 
   render_instance_check_layers(optionalLayers, flags, _countof(optionalLayers),
-      enabledLayers, &enabledLayersCount);
+      (const char**) (const char**) (const char**) (const char**) (const char**) (const char**) (const char**) (const char**) (const char**)
+          enabledLayers,
+      &enabledLayersCount);
 #endif
 
   VkInstanceCreateInfo createInfo = {
       .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
       .pApplicationInfo        = &applicationInfo,
       .enabledExtensionCount   = enabledExtensionCount,
-      .ppEnabledExtensionNames = enabledExtensions,
+      .ppEnabledExtensionNames = (const char* const*) enabledExtensions,
       .enabledLayerCount       = enabledLayersCount,
-      .ppEnabledLayerNames     = enabledLayers};
+      .ppEnabledLayerNames     = (const char* const*) enabledLayers};
 
   if (vkCreateInstance(&createInfo, NULL, &renderInstance->instance)
       != VK_SUCCESS)
@@ -455,8 +456,8 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
     return false;
   }
 
-  const VkFormat HdrColorSpace = VK_COLOR_SPACE_HDR10_ST2084_EXT;
-  VkSurfaceFormatKHR format    = formats[0];
+  const VkColorSpaceKHR HdrColorSpace = VK_COLOR_SPACE_HDR10_ST2084_EXT;
+  VkSurfaceFormatKHR format           = formats[0];
   if (renderInstance->settings.hdr)
   {
     for (uint32_t i = 0; i < formatCount; i++)
@@ -468,7 +469,7 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
       }
     }
 
-    if (format.format != HdrColorSpace)
+    if (format.colorSpace != HdrColorSpace)
     {
       renderInstance->capabilities.hdr = false;
       renderInstance->settings.hdr     = false;
@@ -986,3 +987,4 @@ void render_instance_queue_mesh_draw(
   command->cpuIndices    = mesh->cpuIndices;
   command->transform     = *transform;
 }
+

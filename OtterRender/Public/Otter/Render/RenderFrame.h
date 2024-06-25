@@ -1,11 +1,8 @@
 #pragma once
 
-#include "Otter/Render/Memory/GpuBuffer.h"
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/Pipeline/GBufferPipeline.h"
 #include "Otter/Render/Pipeline/PbrPipeline.h"
-#include "Otter/Render/Raytracing/BoundingVolumeHierarchy.h"
-#include "Otter/Render/RenderQueue.h"
 #include "Otter/Render/RenderStack.h"
 #include "Otter/Util/AutoArray.h"
 #include <vulkan/vulkan.h>
@@ -20,8 +17,6 @@ typedef struct RenderFrame
 
   AutoArray renderQueue;
   AutoArray perRenderBuffers;
-
-  BoundingVolumeHierarchy bvh;
 } RenderFrame;
 
 bool render_frame_create(RenderFrame* renderFrame, VkDevice logicalDevice,
