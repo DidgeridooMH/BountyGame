@@ -27,7 +27,7 @@ void hash_map_destroy(HashMap* map, HashMapDestroyFn destructor)
     for (uint32_t e = 0; e < map->buckets[i].size; e++)
     {
       KeyValue* keyValue = stable_auto_array_get(&map->buckets[i], e);
-      free(keyValue->key);
+      free(keyValue->key.key);
 
       if (destructor != NULL)
       {
@@ -40,48 +40,72 @@ void hash_map_destroy(HashMap* map, HashMapDestroyFn destructor)
   free(map->buckets);
 }
 
-static StableAutoArray* hash_map_get_bucket(HashMap* map, const char* key)
+static StableAutoArray* hash_map_get_bucket(
+    HashMap* map, const void* key, size_t keyLength)
 {
   size_t hash = 0;
-  while (*key != '\0')
+  while (keyLength > 0)
   {
-    hash = ((hash << 2) + *key) * map->coefficient;
+    hash = ((hash << 2) + *(char*) key) * map->coefficient;
     key++;
+    keyLength--;
   }
   return &map->buckets[hash % map->numOfBuckets];
 }
 
-bool hash_map_set_value(HashMap* map, const char* key, void* value)
+static KeyValue* hash_map_get_key_value(
+    HashMap* map, const void* key, size_t keyLength)
 {
-  StableAutoArray* bucket = hash_map_get_bucket(map, key);
-  KeyValue* keyValue      = stable_auto_array_allocate(bucket);
+  StableAutoArray* bucket = hash_map_get_bucket(map, key, keyLength);
+  for (uint32_t i = 0; i < bucket->size; i++)
+  {
+    KeyValue* keyValue = stable_auto_array_get(bucket, i);
+    if (keyLength == keyValue->key.keyLength
+        && memcmp(keyValue->key.key, key, keyLength) == 0)
+    {
+      return keyValue;
+    }
+  }
+  return NULL;
+}
+
+bool hash_map_set_value(
+    HashMap* map, const void* key, size_t keyLength, void* value)
+{
+  KeyValue* keyValue = hash_map_get_key_value(map, key, keyLength);
+  if (keyValue != NULL)
+  {
+    keyValue->value = value;
+    return true;
+  }
+
+  StableAutoArray* bucket = hash_map_get_bucket(map, key, keyLength);
+  keyValue                = stable_auto_array_allocate(bucket);
   if (keyValue == NULL)
   {
     fprintf(stderr, "OOM\n");
     return false;
   }
 
-  keyValue->key = _strdup(key);
-  if (keyValue->key == NULL)
+  keyValue->key.key = malloc(keyLength);
+  if (keyValue->key.key == NULL)
   {
     return false;
   }
+  memcpy(keyValue->key.key, key, keyLength);
+  keyValue->key.keyLength = keyLength;
 
   keyValue->value = value;
 
   return true;
 }
 
-void* hash_map_get_value(HashMap* map, const char* key)
+void* hash_map_get_value(HashMap* map, const void* key, size_t keyLength)
 {
-  StableAutoArray* bucket = hash_map_get_bucket(map, key);
-  for (uint32_t i = 0; i < bucket->size; i++)
+  KeyValue* keyValue = hash_map_get_key_value(map, key, keyLength);
+  if (keyValue != NULL)
   {
-    KeyValue* keyValue = stable_auto_array_get(bucket, i);
-    if (strcmp(keyValue->key, key) == 0)
-    {
-      return keyValue->value;
-    }
+    return keyValue->value;
   }
   return NULL;
 }

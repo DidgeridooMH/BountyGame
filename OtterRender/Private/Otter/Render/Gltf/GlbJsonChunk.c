@@ -36,7 +36,8 @@ static bool glb_json_chunk_parse_nodes(JsonValue* nodes, AutoArray* array)
       continue;
     }
 
-    JsonValue* meshIndex = hash_map_get_value(&nodeElement->object, "mesh");
+    JsonValue* meshIndex =
+        hash_map_get_value(&nodeElement->object, "mesh", strlen("mesh"));
     if (meshIndex == NULL || meshIndex->type != JT_NUMBER)
     {
       continue;
@@ -46,20 +47,22 @@ static bool glb_json_chunk_parse_nodes(JsonValue* nodes, AutoArray* array)
     newNode->mesh    = (uint32_t) meshIndex->number;
     transform_identity(&newNode->transform);
 
-    JsonValue* translation =
-        hash_map_get_value(&nodeElement->object, "translation");
+    JsonValue* translation = hash_map_get_value(
+        &nodeElement->object, "translation", strlen("translation"));
     if (translation != NULL)
     {
       glb_json_chunk_parse_vec3(translation, &newNode->transform.position);
     }
 
-    JsonValue* rotation = hash_map_get_value(&nodeElement->object, "rotation");
+    JsonValue* rotation = hash_map_get_value(
+        &nodeElement->object, "rotation", strlen("rotation"));
     if (rotation != NULL)
     {
       glb_json_chunk_parse_vec3(rotation, &newNode->transform.rotation);
     }
 
-    JsonValue* scale = hash_map_get_value(&nodeElement->object, "scale");
+    JsonValue* scale =
+        hash_map_get_value(&nodeElement->object, "scale", strlen("scale"));
     if (scale != NULL)
     {
       glb_json_chunk_parse_vec3(scale, &newNode->transform.scale);
@@ -81,8 +84,8 @@ static bool glb_json_chunk_parse_meshes(JsonValue* meshes, AutoArray* array)
       continue;
     }
 
-    JsonValue* primitives =
-        hash_map_get_value(&meshElement->object, "primitives");
+    JsonValue* primitives = hash_map_get_value(
+        &meshElement->object, "primitives", strlen("primitives"));
     if (primitives == NULL || primitives->type != JT_ARRAY)
     {
       return false;
@@ -99,9 +102,10 @@ static bool glb_json_chunk_parse_meshes(JsonValue* meshes, AutoArray* array)
         fprintf(stderr, "Primitive was not an object.\n");
         return false;
       }
-      JsonValue* attributes =
-          hash_map_get_value(&primitive->object, "attributes");
-      JsonValue* indices = hash_map_get_value(&primitive->object, "indices");
+      JsonValue* attributes = hash_map_get_value(
+          &primitive->object, "attributes", strlen("attributes"));
+      JsonValue* indices =
+          hash_map_get_value(&primitive->object, "indices", strlen("indices"));
       if (attributes == NULL || attributes->type != JT_OBJECT || indices == NULL
           || indices->type != JT_NUMBER)
       {
@@ -109,9 +113,12 @@ static bool glb_json_chunk_parse_meshes(JsonValue* meshes, AutoArray* array)
         return false;
       }
 
-      JsonValue* position = hash_map_get_value(&attributes->object, "POSITION");
-      JsonValue* normal   = hash_map_get_value(&attributes->object, "NORMAL");
-      JsonValue* uv = hash_map_get_value(&attributes->object, "TEXCOORD_0");
+      JsonValue* position = hash_map_get_value(
+          &attributes->object, "POSITION", strlen("POSITION"));
+      JsonValue* normal =
+          hash_map_get_value(&attributes->object, "NORMAL", strlen("NORMAL"));
+      JsonValue* uv = hash_map_get_value(
+          &attributes->object, "TEXCOORD_0", strlen("TEXCOORD_0"));
       if (position == NULL || position->type != JT_NUMBER || normal == NULL
           || normal->type != JT_NUMBER || uv == NULL || uv->type != JT_NUMBER)
       {
@@ -146,12 +153,14 @@ static bool glb_json_chunk_parse_accessors(
       return false;
     }
 
-    JsonValue* bufferView =
-        hash_map_get_value(&accessorElement->object, "bufferView");
-    JsonValue* componentType =
-        hash_map_get_value(&accessorElement->object, "componentType");
-    JsonValue* count = hash_map_get_value(&accessorElement->object, "count");
-    JsonValue* type  = hash_map_get_value(&accessorElement->object, "type");
+    JsonValue* bufferView = hash_map_get_value(
+        &accessorElement->object, "bufferView", strlen("bufferView"));
+    JsonValue* componentType = hash_map_get_value(
+        &accessorElement->object, "componentType", strlen("componentType"));
+    JsonValue* count =
+        hash_map_get_value(&accessorElement->object, "count", strlen("count"));
+    JsonValue* type =
+        hash_map_get_value(&accessorElement->object, "type", strlen("type"));
     if (bufferView == NULL || bufferView->type != JT_NUMBER
         || componentType == NULL || componentType->type != JT_NUMBER
         || count == NULL || count->type != JT_NUMBER || type == NULL
@@ -201,8 +210,10 @@ static bool glb_json_chunk_parse_accessors(
     }
 
     accessor->useBounds = false;
-    JsonValue* max      = hash_map_get_value(&accessorElement->object, "max");
-    JsonValue* min      = hash_map_get_value(&accessorElement->object, "min");
+    JsonValue* max =
+        hash_map_get_value(&accessorElement->object, "max", strlen("max"));
+    JsonValue* min =
+        hash_map_get_value(&accessorElement->object, "min", strlen("min"));
     if (min != NULL && glb_json_chunk_parse_vec3(min, &accessor->min)
         && max != NULL && glb_json_chunk_parse_vec3(max, &accessor->max))
     {
@@ -228,12 +239,12 @@ static bool glb_json_chunk_parse_buffer_views(
       return false;
     }
 
-    JsonValue* buffer =
-        hash_map_get_value(&bufferViewElement->object, "buffer");
-    JsonValue* length =
-        hash_map_get_value(&bufferViewElement->object, "byteLength");
-    JsonValue* offset =
-        hash_map_get_value(&bufferViewElement->object, "byteOffset");
+    JsonValue* buffer = hash_map_get_value(
+        &bufferViewElement->object, "buffer", strlen("buffer"));
+    JsonValue* length = hash_map_get_value(
+        &bufferViewElement->object, "byteLength", strlen("byteLength"));
+    JsonValue* offset = hash_map_get_value(
+        &bufferViewElement->object, "byteOffset", strlen("byteOffset"));
     if (buffer == NULL || buffer->type != JT_NUMBER || length == NULL
         || length->type != JT_NUMBER || offset == NULL
         || offset->type != JT_NUMBER)
@@ -265,8 +276,8 @@ bool glb_json_chunk_parse_buffers(JsonValue* buffers, AutoArray* array)
       return false;
     }
 
-    JsonValue* length =
-        hash_map_get_value(&bufferElement->object, "byteLength");
+    JsonValue* length = hash_map_get_value(
+        &bufferElement->object, "byteLength", strlen("byteLength"));
     if (length == NULL || length->type != JT_NUMBER)
     {
       fprintf(stderr, "Buffer length not found.\n");
@@ -288,11 +299,16 @@ bool glb_json_chunk_parse(JsonValue* json, GlbJsonChunk* jsonChunk)
     return false;
   }
 
-  JsonValue* nodes       = hash_map_get_value(&json->object, "nodes");
-  JsonValue* meshes      = hash_map_get_value(&json->object, "meshes");
-  JsonValue* accessors   = hash_map_get_value(&json->object, "accessors");
-  JsonValue* bufferViews = hash_map_get_value(&json->object, "bufferViews");
-  JsonValue* buffers     = hash_map_get_value(&json->object, "buffers");
+  JsonValue* nodes =
+      hash_map_get_value(&json->object, "nodes", strlen("nodes"));
+  JsonValue* meshes =
+      hash_map_get_value(&json->object, "meshes", strlen("meshes"));
+  JsonValue* accessors =
+      hash_map_get_value(&json->object, "accessors", strlen("accessors"));
+  JsonValue* bufferViews =
+      hash_map_get_value(&json->object, "bufferViews", strlen("bufferViews"));
+  JsonValue* buffers =
+      hash_map_get_value(&json->object, "buffers", strlen("buffers"));
   if (nodes == NULL || nodes->type != JT_ARRAY || meshes == NULL
       || meshes->type != JT_ARRAY || accessors == NULL
       || accessors->type != JT_ARRAY || bufferViews == NULL
@@ -331,3 +347,4 @@ void glb_json_chunk_destroy(GlbJsonChunk* jsonChunk)
   }
   auto_array_destroy(&jsonChunk->meshes);
 }
+

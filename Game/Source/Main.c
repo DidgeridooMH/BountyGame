@@ -61,10 +61,12 @@ int WINAPI wWinMain(
   }
   free(configStr);
 
-  char* widthStr  = hash_map_get_value(&config, CONFIG_WIDTH);
-  char* heightStr = hash_map_get_value(&config, CONFIG_HEIGHT);
-  int width       = widthStr != NULL ? atoi(widthStr) : 1920;
-  int height      = heightStr != NULL ? atoi(heightStr) : 1080;
+  char* widthStr =
+      hash_map_get_value(&config, CONFIG_WIDTH, strlen(CONFIG_WIDTH));
+  char* heightStr =
+      hash_map_get_value(&config, CONFIG_HEIGHT, strlen(CONFIG_HEIGHT));
+  int width  = widthStr != NULL ? atoi(widthStr) : 1920;
+  int height = heightStr != NULL ? atoi(heightStr) : 1080;
   printf("Setting window to (%d, %d)\n", width, height);
 
   task_scheduler_init();
@@ -194,4 +196,3 @@ int WINAPI wWinMain(
 
   return 0;
 }
-

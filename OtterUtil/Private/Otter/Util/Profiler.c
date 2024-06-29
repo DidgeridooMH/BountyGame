@@ -38,12 +38,13 @@ void profiler_destroy()
 
 void profiler_clock_start(const char* key)
 {
-  ProfileTime* profileTime = hash_map_get_value(&g_clockTimes, key);
+  ProfileTime* profileTime =
+      hash_map_get_value(&g_clockTimes, key, strlen(key));
   if (profileTime == NULL)
   {
     profileTime = calloc(1, sizeof(ProfileTime));
     if (profileTime == NULL
-        || !hash_map_set_value(&g_clockTimes, key, profileTime))
+        || !hash_map_set_value(&g_clockTimes, key, strlen(key), profileTime))
     {
       return;
     }
@@ -53,7 +54,8 @@ void profiler_clock_start(const char* key)
 
 void profiler_clock_end(const char* key)
 {
-  ProfileTime* profileTime = hash_map_get_value(&g_clockTimes, key);
+  ProfileTime* profileTime =
+      hash_map_get_value(&g_clockTimes, key, strlen(key));
   if (profileTime == NULL)
   {
     return;
@@ -72,10 +74,12 @@ void profiler_clock_end(const char* key)
 
 float profiler_clock_get(const char* key)
 {
-  ProfileTime* profileTime = hash_map_get_value(&g_clockTimes, key);
+  ProfileTime* profileTime =
+      hash_map_get_value(&g_clockTimes, key, strlen(key));
   if (profileTime == NULL)
   {
     return INFINITY;
   }
   return profileTime->totalTime / profileTime->numOfSamples;
 }
+

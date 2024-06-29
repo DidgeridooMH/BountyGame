@@ -6,9 +6,15 @@
 #define HASH_MAP_DEFAULT_BUCKETS 512
 #define HASH_MAP_DEFAULT_COEF    769
 
-typedef struct KeyValue
+typedef struct Key
 {
   char* key;
+  size_t keyLength;
+} Key;
+
+typedef struct KeyValue
+{
+  Key key;
   void* value;
 } KeyValue;
 
@@ -27,6 +33,7 @@ OTTERUTIL_API bool hash_map_create(
 OTTERUTIL_API void hash_map_destroy(HashMap* map, HashMapDestroyFn destructor);
 
 OTTERUTIL_API bool hash_map_set_value(
-    HashMap* map, const char* key, void* value);
+    HashMap* map, const void* key, size_t keyLength, void* value);
 
-OTTERUTIL_API void* hash_map_get_value(HashMap* map, const char* key);
+OTTERUTIL_API void* hash_map_get_value(
+    HashMap* map, const void* key, size_t keyLength);

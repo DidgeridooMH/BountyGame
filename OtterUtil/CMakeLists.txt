@@ -24,13 +24,17 @@ set(PUBLIC_HEADERS
   Public/Otter/Util/StableAutoArray.h
 )
 
-if (BUILD_STATIC)
-  add_library(OtterUtil STATIC ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
-else()
-  add_library(OtterUtil SHARED ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
-endif()
-
+add_library(OtterUtil SHARED ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
 target_compile_definitions(OtterUtil PRIVATE OTTERUTIL_EXPORTS)
 target_precompile_headers(OtterUtil PRIVATE Private/pch.h)
 target_include_directories(OtterUtil PUBLIC Public PRIVATE Private)
+
+add_library(OtterUtil_static STATIC ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
+target_compile_definitions(OtterUtil_static PUBLIC OTTERUTIL_STATIC)
+target_precompile_headers(OtterUtil_static PRIVATE Private/pch.h)
+target_include_directories(OtterUtil_static PUBLIC Public PRIVATE Private)
+
+if (BUILD_TESTS)
+  add_subdirectory(Test)
+endif()
 

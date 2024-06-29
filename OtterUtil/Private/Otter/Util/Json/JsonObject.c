@@ -63,7 +63,7 @@ JsonValue* json_parse_object_value(
       return NULL;
     }
 
-    hash_map_set_value(&jsonObject->object, key, value);
+    hash_map_set_value(&jsonObject->object, key, strlen(key), value);
     free(key);
   }
 
