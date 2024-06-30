@@ -1,5 +1,7 @@
 #include "GameWindow.h"
 
+#include <stdio.h>
+
 #define PLAYER_RECT_SIZE 50
 
 static LRESULT CALLBACK game_window_process(
@@ -9,23 +11,45 @@ static LRESULT CALLBACK game_window_process(
   {
     // TODO: Make an input binding system.
   case WM_KEYDOWN:
-    switch (wParam)
     {
-    case 'A':
-    case 'D':
-    case 'W':
-    case 'S':
+      GET_KEYSTATE_LPARAM(lParam);
+      if ((lParam & KF_REPEAT) == 0)
+      {
+        // TODO: Register the action.
+      }
       break;
     }
-    break;
   case WM_KEYUP:
-    switch (wParam)
     {
-    case 'A':
-    case 'D':
-    case 'W':
-    case 'S':
+      // TODO: Register the action.
       break;
+    }
+  case WM_LBUTTONDOWN:
+    break;
+  case WM_LBUTTONUP:
+    break;
+  case WM_RBUTTONDOWN:
+    break;
+  case WM_RBUTTONUP:
+    break;
+  case WM_MBUTTONDOWN:
+    break;
+  case WM_MBUTTONUP:
+    break;
+  case WM_XBUTTONDOWN:
+    if (GET_XBUTTON_WPARAM(wParam) == XBUTTON1)
+    {
+    }
+    else if (GET_XBUTTON_WPARAM(wParam) == XBUTTON2)
+    {
+    }
+    break;
+  case WM_XBUTTONUP:
+    if (GET_XBUTTON_WPARAM(wParam) == XBUTTON1)
+    {
+    }
+    else if (GET_XBUTTON_WPARAM(wParam) == XBUTTON2)
+    {
     }
     break;
   case WM_CLOSE:
@@ -102,3 +126,4 @@ bool game_window_process_message()
   }
   return msg.message == WM_QUIT;
 }
+
