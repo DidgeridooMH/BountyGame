@@ -1,5 +1,7 @@
 #include "Input/InputMap.h"
 
+#include <xinput.h>
+
 bool input_map_create(InputMap* map)
 {
   return hash_map_create(&map->sourceToActions, HASH_MAP_DEFAULT_BUCKETS,
@@ -63,18 +65,86 @@ void input_map_remove_action(InputMap* map, InputEventSource source)
   // stable list to have a remove.
 }
 
+static void input_map_update_action(
+    InputMap* map, InputEventSource source, float value)
+{
+  const char* action = hash_map_get_value(
+      &map->sourceToActions, &source, sizeof(InputEventSource));
+  if (action != NULL)
+  {
+    printf("Action %s -> %f\n", action, value);
+    hash_map_set_value_float(
+        &map->actionValues, action, strlen(action) + 1, value);
+  }
+}
+
 void input_map_update_actions(InputMap* map, AutoArray* inputs)
 {
   for (size_t i = 0; i < inputs->size; ++i)
   {
     const InputEvent* event = auto_array_get(inputs, i);
-    const char* action      = hash_map_get_value(
-        &map->sourceToActions, &event->source, sizeof(InputEventSource));
-    if (action != NULL)
+    input_map_update_action(map, event->source, event->value);
+  }
+}
+
+static void input_map_update_button_bitmap(
+    InputMap* map, WORD buttons, const ControllerInputIndex sources[])
+{
+  for (size_t i = 0; i < 16; ++i)
+  {
+    float value = (buttons & (1 << i)) ? 1.0f : 0.0f;
+    input_map_update_action(
+        map, (InputEventSource){INPUT_TYPE_CONTROLLER, sources[i]}, value);
+  }
+}
+
+static void input_map_update_axis(InputMap* map, float value,
+    ControllerInputIndex source, float maxValue, float threshold)
+{
+  input_map_update_action(map,
+      (InputEventSource){INPUT_TYPE_CONTROLLER, source},
+      (value > threshold) ? (value / maxValue) : 0.0f);
+}
+
+void input_map_update_controller_actions(InputMap* map)
+{
+  AutoArray inputs;
+  auto_array_create(&inputs, sizeof(InputEvent));
+
+  XINPUT_STATE state;
+  for (DWORD i = 0; i < XUSER_MAX_COUNT; ++i)
+  {
+    if (XInputGetState(i, &state) == ERROR_SUCCESS)
     {
-      printf("Action %s -> %f\n", action, event->value);
-      hash_map_set_value_float(
-          &map->actionValues, action, strlen(action) + 1, event->value);
+      input_map_update_button_bitmap(map, state.Gamepad.wButtons,
+          (ControllerInputIndex[]){CII_A, CII_B, CII_X, CII_Y,
+              CII_LEFT_SHOULDER, CII_RIGHT_SHOULDER, CII_LEFT_THUMB,
+              CII_RIGHT_THUMB, CII_BACK, CII_START, CII_DPAD_UP, CII_DPAD_DOWN,
+              CII_DPAD_LEFT, CII_DPAD_RIGHT, CII_LEFT_TRIGGER,
+              CII_RIGHT_TRIGGER});
+
+      input_map_update_axis(map, (float) state.Gamepad.bLeftTrigger,
+          CII_LEFT_TRIGGER, 127.0f, 0.0f);
+      input_map_update_axis(map, (float) state.Gamepad.bRightTrigger,
+          CII_RIGHT_TRIGGER, 127, 0.0f);
+
+      input_map_update_axis(map, (float) -state.Gamepad.sThumbLX,
+          CII_LEFT_THUMB_X_NEG, 32768, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+      input_map_update_axis(map, (float) state.Gamepad.sThumbLX,
+          CII_LEFT_THUMB_X_POS, 32767, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+      input_map_update_axis(map, (float) -state.Gamepad.sThumbLY,
+          CII_LEFT_THUMB_Y_NEG, 32768, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+      input_map_update_axis(map, (float) state.Gamepad.sThumbLY,
+          CII_LEFT_THUMB_Y_POS, 32767, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE);
+
+      input_map_update_axis(map, (float) -state.Gamepad.sThumbRX,
+          CII_RIGHT_THUMB_X_NEG, 32768, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+      input_map_update_axis(map, (float) state.Gamepad.sThumbRX,
+          CII_RIGHT_THUMB_X_POS, 32767, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+      input_map_update_axis(map, (float) -state.Gamepad.sThumbRY,
+          CII_RIGHT_THUMB_Y_NEG, 32768, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
+      input_map_update_axis(map, (float) state.Gamepad.sThumbRY,
+          CII_RIGHT_THUMB_Y_POS, 32767, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE);
     }
   }
 }

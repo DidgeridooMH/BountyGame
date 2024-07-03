@@ -24,5 +24,5 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
 target_precompile_headers(${PROJECT_NAME} PRIVATE Source/pch.h)
 
 if (WIN32)
-  target_link_libraries(${PROJECT_NAME} PRIVATE shcore.lib)
+  target_link_libraries(${PROJECT_NAME} PRIVATE shcore.lib xinput.lib)
 endif()

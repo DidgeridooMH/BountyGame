@@ -1,6 +1,8 @@
 #include "Window/GameWindow.h"
 
 #include <stdio.h>
+#include <winuser.h>
+#include <xinput.h>
 
 #include "Input/InputMap.h"
 #include "Otter/Util/AutoArray.h"
@@ -113,6 +115,8 @@ static LRESULT CALLBACK game_window_process(
       event->value         = 0.0f;
     }
     break;
+  case WM_ACTIVATEAPP:
+    XInputEnable(wParam);
     break;
   case WM_CLOSE:
     DestroyWindow(window);
@@ -202,5 +206,7 @@ bool game_window_process_message(HWND window)
     TranslateMessage(&msg);
     DispatchMessage(&msg);
   }
+
   return msg.message == WM_QUIT;
 }
+ 

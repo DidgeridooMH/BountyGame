@@ -218,6 +218,7 @@ int WINAPI wWinMain(
 
     AutoArray* inputs = (AutoArray*) GetWindowLongPtr(window, GWLP_USERDATA);
     input_map_update_actions(&inputMap, inputs);
+    input_map_update_controller_actions(&inputMap);
 
     pseudoOnUpdate(&inputMap, renderInstance, deltaTime);
 

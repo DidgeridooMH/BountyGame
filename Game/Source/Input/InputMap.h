@@ -18,6 +18,34 @@ typedef enum InputSource : uint16_t
   INPUT_TYPE_CONTROLLER,
 } InputSource;
 
+typedef enum ControllerInputIndex
+{
+  CII_DPAD_UP,
+  CII_DPAD_DOWN,
+  CII_DPAD_LEFT,
+  CII_DPAD_RIGHT,
+  CII_START,
+  CII_BACK,
+  CII_LEFT_THUMB,
+  CII_RIGHT_THUMB,
+  CII_LEFT_SHOULDER,
+  CII_RIGHT_SHOULDER,
+  CII_A,
+  CII_B,
+  CII_X,
+  CII_Y,
+  CII_LEFT_TRIGGER,
+  CII_RIGHT_TRIGGER,
+  CII_LEFT_THUMB_X_NEG, // 16
+  CII_LEFT_THUMB_X_POS,
+  CII_LEFT_THUMB_Y_NEG,
+  CII_LEFT_THUMB_Y_POS,
+  CII_RIGHT_THUMB_X_NEG,
+  CII_RIGHT_THUMB_X_POS,
+  CII_RIGHT_THUMB_Y_NEG,
+  CII_RIGHT_THUMB_Y_POS
+} ControllerInputIndex;
+
 typedef struct InputEventSource
 {
   // @brief A type of input source, such as keyboard, mouse, or controller.
@@ -83,6 +111,13 @@ void input_map_remove_action(InputMap* map, InputEventSource source);
  * @param inputs The input events to update the actions with.
  */
 void input_map_update_actions(InputMap* map, AutoArray* inputs);
+
+/**
+ * @brief Update the controller actions in the input map.
+ *
+ * @param map The input map to update the controller actions with.
+ */
+void input_map_update_controller_actions(InputMap* map);
 
 /**
  * @brief Get the value of an action in the input map.
