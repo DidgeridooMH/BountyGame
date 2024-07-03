@@ -1,3 +1,4 @@
+#include "Input/InputMap.h"
 #include "Otter/Async/Scheduler.h"
 #include "Otter/Config/Config.h"
 #include "Otter/Math/Transform.h"
@@ -18,6 +19,24 @@ static LARGE_INTEGER g_timerFrequency;
 int main()
 {
   wWinMain(GetModuleHandle(NULL), NULL, L"", 1);
+}
+
+static void pseudoOnUpdate(
+    InputMap* map, RenderInstance* renderInstance, float deltaTime)
+{
+  const float SPEED = 200.0f;
+
+  float moveForward  = input_map_get_action_value(map, "move_forward");
+  float moveBackward = input_map_get_action_value(map, "move_backward");
+
+  renderInstance->cameraPosition.z -=
+      (moveForward - moveBackward) * deltaTime * SPEED;
+
+  float moveRight = input_map_get_action_value(map, "move_right");
+  float moveLeft  = input_map_get_action_value(map, "move_left");
+
+  renderInstance->cameraPosition.x -=
+      (moveRight - moveLeft) * deltaTime * SPEED;
 }
 
 int WINAPI wWinMain(
@@ -139,15 +158,40 @@ int WINAPI wWinMain(
   QueryPerformanceCounter(&lastFrameTime);
   LARGE_INTEGER lastStatTime = lastFrameTime;
 
+  InputMap inputMap;
+  if (!input_map_create(&inputMap))
+  {
+    hash_map_destroy(&config, free);
+    render_instance_destroy(renderInstance);
+    game_window_destroy(window);
+    profiler_destroy();
+    task_scheduler_destroy();
+    return -1;
+  }
+
+  input_map_add_action(
+      &inputMap, (InputEventSource){INPUT_TYPE_KEYBOARD, 'W'}, "move_forward");
+  input_map_add_action(
+      &inputMap, (InputEventSource){INPUT_TYPE_KEYBOARD, 'S'}, "move_backward");
+  input_map_add_action(
+      &inputMap, (InputEventSource){INPUT_TYPE_KEYBOARD, 'A'}, "move_right");
+  input_map_add_action(
+      &inputMap, (InputEventSource){INPUT_TYPE_KEYBOARD, 'D'}, "move_left");
+
   renderInstance->cameraPosition.x = 100.0f;
   renderInstance->cameraPosition.y = 4.0f;
   renderInstance->cameraPosition.z = 100.0f;
-  while (!game_window_process_message())
+  while (!game_window_process_message(window))
   {
     LARGE_INTEGER currentTime;
     QueryPerformanceCounter(&currentTime);
     float deltaTime = ((float) (currentTime.QuadPart - lastFrameTime.QuadPart)
                        / g_timerFrequency.QuadPart);
+
+    AutoArray* inputs = (AutoArray*) GetWindowLongPtr(window, GWLP_USERDATA);
+    input_map_update_actions(&inputMap, inputs);
+
+    pseudoOnUpdate(&inputMap, renderInstance, deltaTime);
 
     // Draw scene
     Transform floorTransform;
@@ -173,20 +217,21 @@ int WINAPI wWinMain(
             / g_timerFrequency.QuadPart
         > 1.0f)
     {
-      // Read profil keys from config file and overlay them with imgui.
-      const char* keys[] = {"bvh_init", "bvh_build", "bvh_create",
-          "cpu_shadow_rt", "cpu_buffer_copy", "render_submit"};
-      for (int i = 0; i < _countof(keys); i++)
-      {
-        float time = profiler_clock_get(keys[i]);
-        printf("[%s]        \t%f ms\n", keys[i], time * 1000.0f);
-      }
+      // Read profile keys from config file and overlay them with imgui.
+      // const char* keys[] = {"bvh_init", "bvh_build", "bvh_create",
+      //     "cpu_shadow_rt", "cpu_buffer_copy", "render_submit"};
+      // for (int i = 0; i < _countof(keys); i++)
+      // {
+      //   float time = profiler_clock_get(keys[i]);
+      //   printf("[%s]        \t%f ms\n", keys[i], time * 1000.0f);
+      // }
       lastStatTime = currentTime;
     }
 
     lastFrameTime = currentTime;
   }
 
+  input_map_destroy(&inputMap);
   task_scheduler_destroy();
   mesh_destroy(cube, renderInstance->logicalDevice);
   hash_map_destroy(&config, free);
@@ -196,3 +241,4 @@ int WINAPI wWinMain(
 
   return 0;
 }
+

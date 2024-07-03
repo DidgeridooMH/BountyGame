@@ -21,10 +21,12 @@ IncludeCategories:
   - Regex:           '^<WinIoCtl\.h>$'
     Priority:        3
     SortPriority:    4
-  - Regex:           '^<__.*\.hpp>$'
+  - Regex:           '^<__.*\.h>$'
     Priority:        2
-  - Regex:           '\.hpp[>"]$'
+  - Regex:           '\.h(pp)?>$'
     Priority:        5
+  - Regex:           '\.h(pp)?"$'
+    Priority:        6
   - Regex:           '.*'
     Priority:        2
 IndentCaseBlocks: true

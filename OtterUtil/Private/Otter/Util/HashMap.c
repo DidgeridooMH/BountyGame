@@ -1,5 +1,7 @@
 #include "Otter/Util/HashMap.h"
 
+#include <math.h>
+
 bool hash_map_create(HashMap* map, size_t numOfBuckets, size_t coefficient)
 {
   map->numOfBuckets = numOfBuckets;
@@ -31,7 +33,7 @@ void hash_map_destroy(HashMap* map, HashMapDestroyFn destructor)
 
       if (destructor != NULL)
       {
-        destructor(keyValue->value);
+        destructor(keyValue->ptrValue);
       }
     }
 
@@ -43,13 +45,7 @@ void hash_map_destroy(HashMap* map, HashMapDestroyFn destructor)
 static StableAutoArray* hash_map_get_bucket(
     HashMap* map, const void* key, size_t keyLength)
 {
-  size_t hash = 0;
-  while (keyLength > 0)
-  {
-    hash = ((hash << 2) + *(char*) key) * map->coefficient;
-    key++;
-    keyLength--;
-  }
+  size_t hash = hash_key(key, keyLength, map->coefficient);
   return &map->buckets[hash % map->numOfBuckets];
 }
 
@@ -75,7 +71,7 @@ bool hash_map_set_value(
   KeyValue* keyValue = hash_map_get_key_value(map, key, keyLength);
   if (keyValue != NULL)
   {
-    keyValue->value = value;
+    keyValue->ptrValue = value;
     return true;
   }
 
@@ -95,7 +91,7 @@ bool hash_map_set_value(
   memcpy(keyValue->key.key, key, keyLength);
   keyValue->key.keyLength = keyLength;
 
-  keyValue->value = value;
+  keyValue->ptrValue = value;
 
   return true;
 }
@@ -105,7 +101,48 @@ void* hash_map_get_value(HashMap* map, const void* key, size_t keyLength)
   KeyValue* keyValue = hash_map_get_key_value(map, key, keyLength);
   if (keyValue != NULL)
   {
-    return keyValue->value;
+    return keyValue->ptrValue;
   }
   return NULL;
+}
+
+bool hash_map_set_value_float(
+    HashMap* map, const void* key, size_t keyLength, float value)
+{
+  KeyValue* keyValue = hash_map_get_key_value(map, key, keyLength);
+  if (keyValue != NULL)
+  {
+    keyValue->floatValue = value;
+    return true;
+  }
+
+  StableAutoArray* bucket = hash_map_get_bucket(map, key, keyLength);
+  keyValue                = stable_auto_array_allocate(bucket);
+  if (keyValue == NULL)
+  {
+    fprintf(stderr, "OOM\n");
+    return false;
+  }
+
+  keyValue->key.key = malloc(keyLength);
+  if (keyValue->key.key == NULL)
+  {
+    return false;
+  }
+  memcpy(keyValue->key.key, key, keyLength);
+  keyValue->key.keyLength = keyLength;
+
+  keyValue->floatValue = value;
+
+  return true;
+}
+
+float hash_map_get_value_float(HashMap* map, const void* key, size_t keyLength)
+{
+  KeyValue* keyValue = hash_map_get_key_value(map, key, keyLength);
+  if (keyValue != NULL)
+  {
+    return keyValue->floatValue;
+  }
+  return NAN;
 }

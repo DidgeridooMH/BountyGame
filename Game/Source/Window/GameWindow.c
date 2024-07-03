@@ -1,61 +1,125 @@
-#include "GameWindow.h"
+#include "Window/GameWindow.h"
 
 #include <stdio.h>
+
+#include "Input/InputMap.h"
+#include "Otter/Util/AutoArray.h"
 
 #define PLAYER_RECT_SIZE 50
 
 static LRESULT CALLBACK game_window_process(
     HWND window, UINT message, WPARAM wParam, LPARAM lParam)
 {
+  AutoArray* inputs = (AutoArray*) GetWindowLongPtr(window, GWLP_USERDATA);
+
   switch (message)
   {
-    // TODO: Make an input binding system.
+  case WM_CREATE:
+    break;
   case WM_KEYDOWN:
+    if (((lParam >> 16) & KF_REPEAT) == 0)
     {
-      GET_KEYSTATE_LPARAM(lParam);
-      if ((lParam & KF_REPEAT) == 0)
-      {
-        // TODO: Register the action.
-      }
-      break;
+      InputEvent* event    = auto_array_allocate(inputs);
+      event->source.source = INPUT_TYPE_KEYBOARD;
+      event->source.index  = wParam;
+      event->value         = 1.0f;
     }
+    break;
   case WM_KEYUP:
     {
-      // TODO: Register the action.
-      break;
+      InputEvent* event    = auto_array_allocate(inputs);
+      event->source.source = INPUT_TYPE_KEYBOARD;
+      event->source.index  = wParam;
+      event->value         = 0.0f;
     }
+    break;
   case WM_LBUTTONDOWN:
+    {
+      InputEvent* event    = auto_array_allocate(inputs);
+      event->source.source = INPUT_TYPE_MOUSE;
+      event->source.index  = 0;
+      event->value         = 1.0f;
+    }
     break;
   case WM_LBUTTONUP:
+    {
+      InputEvent* event    = auto_array_allocate(inputs);
+      event->source.source = INPUT_TYPE_MOUSE;
+      event->source.index  = 0;
+      event->value         = 0.0f;
+    }
     break;
   case WM_RBUTTONDOWN:
+    {
+      InputEvent* event    = auto_array_allocate(inputs);
+      event->source.source = INPUT_TYPE_MOUSE;
+      event->source.index  = 1;
+      event->value         = 1.0f;
+    }
     break;
   case WM_RBUTTONUP:
+    {
+      InputEvent* event    = auto_array_allocate(inputs);
+      event->source.source = INPUT_TYPE_MOUSE;
+      event->source.index  = 1;
+      event->value         = 0.0f;
+    }
     break;
   case WM_MBUTTONDOWN:
+    {
+      InputEvent* event    = auto_array_allocate(inputs);
+      event->source.source = INPUT_TYPE_MOUSE;
+      event->source.index  = 2;
+      event->value         = 1.0f;
+    }
     break;
   case WM_MBUTTONUP:
+    {
+      InputEvent* event    = auto_array_allocate(inputs);
+      event->source.source = INPUT_TYPE_MOUSE;
+      event->source.index  = 2;
+      event->value         = 0.0f;
+    }
     break;
   case WM_XBUTTONDOWN:
     if (GET_XBUTTON_WPARAM(wParam) == XBUTTON1)
     {
+      InputEvent* event    = auto_array_allocate(inputs);
+      event->source.source = INPUT_TYPE_MOUSE;
+      event->source.index  = 3;
+      event->value         = 1.0f;
     }
     else if (GET_XBUTTON_WPARAM(wParam) == XBUTTON2)
     {
+      InputEvent* event    = auto_array_allocate(inputs);
+      event->source.source = INPUT_TYPE_MOUSE;
+      event->source.index  = 4;
+      event->value         = 1.0f;
     }
     break;
   case WM_XBUTTONUP:
     if (GET_XBUTTON_WPARAM(wParam) == XBUTTON1)
     {
+      InputEvent* event    = auto_array_allocate(inputs);
+      event->source.source = INPUT_TYPE_MOUSE;
+      event->source.index  = 3;
+      event->value         = 0.0f;
     }
     else if (GET_XBUTTON_WPARAM(wParam) == XBUTTON2)
     {
+      InputEvent* event    = auto_array_allocate(inputs);
+      event->source.source = INPUT_TYPE_MOUSE;
+      event->source.index  = 4;
+      event->value         = 0.0f;
     }
+    break;
     break;
   case WM_CLOSE:
     DestroyWindow(window);
     break;
   case WM_DESTROY:
+    auto_array_destroy(inputs);
+    free(inputs);
     PostQuitMessage(0);
     break;
   default:
@@ -97,13 +161,24 @@ HWND game_window_create(int width, int height, enum WindowMode windowMode)
     break;
   }
 
-  HWND window = CreateWindowEx(0, CLASS_NAME, L"Otter Engine", windowFlags,
+  HWND window = CreateWindowEx(0, CLASS_NAME, L"Bounty Game", windowFlags,
       windowPositionX, windowPositionY, width, height, NULL, NULL, instance,
       NULL);
   if (window == NULL)
   {
-    return 0;
+    return NULL;
   }
+
+  AutoArray* inputs = malloc(sizeof(AutoArray));
+  if (inputs == NULL)
+  {
+    fprintf(stderr, "Unable to create buffer for inputs\n");
+    DestroyWindow(window);
+    return NULL;
+  }
+  auto_array_create(inputs, sizeof(InputEvent));
+
+  SetWindowLongPtr(window, GWLP_USERDATA, (LONG_PTR) inputs);
 
   ShowWindow(window, SW_SHOWDEFAULT);
   UpdateWindow(window);
@@ -116,8 +191,11 @@ void game_window_destroy(HWND window)
   DestroyWindow(window);
 }
 
-bool game_window_process_message()
+bool game_window_process_message(HWND window)
 {
+  // Clear out old input events.
+  auto_array_clear((AutoArray*) GetWindowLongPtr(window, GWLP_USERDATA));
+
   MSG msg;
   while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
   {
@@ -126,4 +204,3 @@ bool game_window_process_message()
   }
   return msg.message == WM_QUIT;
 }
-

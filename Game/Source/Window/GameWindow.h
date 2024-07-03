@@ -8,4 +8,4 @@ enum WindowMode
 
 HWND game_window_create(int width, int height, enum WindowMode windowMode);
 void game_window_destroy(HWND window);
-bool game_window_process_message();
+bool game_window_process_message(HWND window);

@@ -4,6 +4,7 @@ set(SOURCES
   Private/Otter/Util/Json/JsonObject.c
   Private/Otter/Util/AutoArray.c
   Private/Otter/Util/File.c
+  Private/Otter/Util/Hash.c
   Private/Otter/Util/HashMap.c
   Private/Otter/Util/Profiler.c
   Private/Otter/Util/StableAutoArray.c

@@ -348,7 +348,7 @@ static void render_frame_render_g_buffer(RenderFrame* renderFrame,
   projection_create_perspective(mvp.projection, 90.0f,
       (float) renderStack->gBufferImage.size.width
           / (float) renderStack->gBufferImage.size.height,
-      0.1f, 100.0f);
+      0.1f, 10000.0f);
 
   for (uint32_t i = 0; i < renderFrame->renderQueue.size; i++)
   {
@@ -407,4 +407,3 @@ void render_frame_clear_buffers(
   }
   auto_array_clear(&renderFrame->perRenderBuffers);
 }
-
