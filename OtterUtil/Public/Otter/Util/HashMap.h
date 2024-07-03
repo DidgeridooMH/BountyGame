@@ -25,6 +25,7 @@ typedef struct HashMap
 } HashMap;
 
 typedef void (*HashMapDestroyFn)(void*);
+typedef void (*HashMapIterateFn)(void*, size_t, void*, void*);
 
 OTTERUTIL_API bool hash_map_create(
     HashMap* map, size_t numOfBuckets, size_t coefficient);
@@ -43,3 +44,5 @@ OTTERUTIL_API bool hash_map_set_value_float(
 OTTERUTIL_API float hash_map_get_value_float(
     HashMap* map, const void* key, size_t keyLength);
 
+OTTERUTIL_API void hash_map_iterate(
+    HashMap* map, HashMapIterateFn iterator, void* userData);

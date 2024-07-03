@@ -52,6 +52,14 @@ typedef struct InputMap
 bool input_map_create(InputMap* map);
 
 /**
+ * @brief Load key binds from a hashmap into an input map.
+ *
+ * @param map The input map to load the key binds into.
+ * @param key_binds The key binds to load into the input map.
+ */
+void input_map_load_key_binds(InputMap* map, HashMap* key_binds);
+
+/**
  * @brief Add an action to the input map.
  *
  * @param map The input map to add the action to.

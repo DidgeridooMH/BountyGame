@@ -146,3 +146,16 @@ float hash_map_get_value_float(HashMap* map, const void* key, size_t keyLength)
   }
   return NAN;
 }
+
+void hash_map_iterate(HashMap* map, HashMapIterateFn iterator, void* userData)
+{
+  for (size_t i = 0; i < map->numOfBuckets; i++)
+  {
+    for (uint32_t e = 0; e < map->buckets[i].size; e++)
+    {
+      KeyValue* keyValue = stable_auto_array_get(&map->buckets[i], e);
+      iterator(keyValue->key.key, keyValue->key.keyLength, keyValue->ptrValue,
+          userData);
+    }
+  }
+}

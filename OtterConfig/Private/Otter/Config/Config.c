@@ -89,7 +89,7 @@ bool config_parse(HashMap* configMap, char* config)
       continue;
     }
 
-    if (!hash_map_set_value(configMap, key, strlen(key), value))
+    if (!hash_map_set_value(configMap, key, strlen(key) + 1, value))
     {
       fprintf(stderr,
           "Something went horribly wrong with the HashMap. Oh its bad...\n");

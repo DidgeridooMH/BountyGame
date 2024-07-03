@@ -27,16 +27,41 @@ static void pseudoOnUpdate(
   const float SPEED = 200.0f;
 
   float moveForward  = input_map_get_action_value(map, "move_forward");
-  float moveBackward = input_map_get_action_value(map, "move_backward");
-
-  renderInstance->cameraPosition.z -=
-      (moveForward - moveBackward) * deltaTime * SPEED;
+  float moveBackward = input_map_get_action_value(map, "move_back");
+  if (!isnan(moveForward) && !isnan(moveBackward))
+  {
+    renderInstance->cameraPosition.z +=
+        (moveBackward - moveForward) * deltaTime * SPEED;
+  }
 
   float moveRight = input_map_get_action_value(map, "move_right");
   float moveLeft  = input_map_get_action_value(map, "move_left");
+  if (!isnan(moveRight) && !isnan(moveLeft))
+  {
+    renderInstance->cameraPosition.x +=
+        (moveRight - moveLeft) * deltaTime * SPEED;
+  }
+}
 
-  renderInstance->cameraPosition.x -=
-      (moveRight - moveLeft) * deltaTime * SPEED;
+static bool load_key_binds(HashMap* keyBinds, const char* path)
+{
+  char* keyBindStr = file_load(path, NULL);
+  if (keyBindStr == NULL)
+  {
+    fprintf(stderr, "Unable to find file %s\n", path);
+    return false;
+  }
+
+  if (!config_parse(keyBinds, keyBindStr))
+  {
+    fprintf(stderr, "Could not parse key binds.");
+    free(keyBindStr);
+    return false;
+  }
+
+  free(keyBindStr);
+
+  return true;
 }
 
 int WINAPI wWinMain(
@@ -81,9 +106,9 @@ int WINAPI wWinMain(
   free(configStr);
 
   char* widthStr =
-      hash_map_get_value(&config, CONFIG_WIDTH, strlen(CONFIG_WIDTH));
+      hash_map_get_value(&config, CONFIG_WIDTH, strlen(CONFIG_WIDTH) + 1);
   char* heightStr =
-      hash_map_get_value(&config, CONFIG_HEIGHT, strlen(CONFIG_HEIGHT));
+      hash_map_get_value(&config, CONFIG_HEIGHT, strlen(CONFIG_HEIGHT) + 1);
   int width  = widthStr != NULL ? atoi(widthStr) : 1920;
   int height = heightStr != NULL ? atoi(heightStr) : 1080;
   printf("Setting window to (%d, %d)\n", width, height);
@@ -169,14 +194,17 @@ int WINAPI wWinMain(
     return -1;
   }
 
-  input_map_add_action(
-      &inputMap, (InputEventSource){INPUT_TYPE_KEYBOARD, 'W'}, "move_forward");
-  input_map_add_action(
-      &inputMap, (InputEventSource){INPUT_TYPE_KEYBOARD, 'S'}, "move_backward");
-  input_map_add_action(
-      &inputMap, (InputEventSource){INPUT_TYPE_KEYBOARD, 'A'}, "move_right");
-  input_map_add_action(
-      &inputMap, (InputEventSource){INPUT_TYPE_KEYBOARD, 'D'}, "move_left");
+  HashMap keyBinds;
+  if (!load_key_binds(&keyBinds, "Config/keybinds.ini"))
+  {
+    hash_map_destroy(&config, free);
+    render_instance_destroy(renderInstance);
+    game_window_destroy(window);
+    profiler_destroy();
+    task_scheduler_destroy();
+    return -1;
+  }
+  input_map_load_key_binds(&inputMap, &keyBinds);
 
   renderInstance->cameraPosition.x = 100.0f;
   renderInstance->cameraPosition.y = 4.0f;
