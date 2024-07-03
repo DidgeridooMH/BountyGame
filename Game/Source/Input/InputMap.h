@@ -7,6 +7,7 @@
 // (8. Trigger lock support)
 
 #include <stdint.h>
+#include <xinput.h>
 
 #include "Otter/Util/AutoArray.h"
 #include "Otter/Util/HashMap.h"
@@ -69,6 +70,7 @@ typedef struct InputMap
 {
   HashMap sourceToActions;
   HashMap actionValues;
+  XINPUT_STATE previousControllerState[XUSER_MAX_COUNT];
 } InputMap;
 
 /**

@@ -19,13 +19,10 @@ static LRESULT CALLBACK game_window_process(
   case WM_CREATE:
     break;
   case WM_KEYDOWN:
-    if (((lParam >> 16) & KF_REPEAT) == 0)
-    {
-      InputEvent* event    = auto_array_allocate(inputs);
-      event->source.source = INPUT_TYPE_KEYBOARD;
-      event->source.index  = wParam;
-      event->value         = 1.0f;
-    }
+    InputEvent* event    = auto_array_allocate(inputs);
+    event->source.source = INPUT_TYPE_KEYBOARD;
+    event->source.index  = wParam;
+    event->value         = 1.0f;
     break;
   case WM_KEYUP:
     {
@@ -209,4 +206,3 @@ bool game_window_process_message(HWND window)
 
   return msg.message == WM_QUIT;
 }
- 
