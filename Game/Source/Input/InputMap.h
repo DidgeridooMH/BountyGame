@@ -1,17 +1,15 @@
 #pragma once
 
-// Requirements
-// 1. Read in keybinds from a config file.
-// 6. Rumble support
-// (7. Haptic support)
-// (8. Trigger lock support)
-
 #include <stdint.h>
 #include <xinput.h>
 
 #include "Otter/Util/AutoArray.h"
 #include "Otter/Util/HashMap.h"
+#include "Otter/Util/Heap.h"
 
+// TODO: Need key values for LSHIFT and other non-character keys.
+
+/** @brief The type of input source. */
 typedef enum InputSource : uint16_t
 {
   INPUT_TYPE_MOUSE,
@@ -19,6 +17,7 @@ typedef enum InputSource : uint16_t
   INPUT_TYPE_CONTROLLER,
 } InputSource;
 
+/** @brief The index of a controller input. */
 typedef enum ControllerInputIndex
 {
   CII_DPAD_UP,
@@ -37,7 +36,7 @@ typedef enum ControllerInputIndex
   CII_Y,
   CII_LEFT_TRIGGER,
   CII_RIGHT_TRIGGER,
-  CII_LEFT_THUMB_X_NEG, // 16
+  CII_LEFT_THUMB_X_NEG,
   CII_LEFT_THUMB_X_POS,
   CII_LEFT_THUMB_Y_NEG,
   CII_LEFT_THUMB_Y_POS,
@@ -66,11 +65,18 @@ typedef struct InputEvent
   float value;
 } InputEvent;
 
+typedef enum RumblePitch
+{
+  RP_LOW_FREQUENCY  = 0,
+  RP_HIGH_FREQUENCY = 1
+} RumblePitch;
+
 typedef struct InputMap
 {
   HashMap sourceToActions;
   HashMap actionValues;
   XINPUT_STATE previousControllerState[XUSER_MAX_COUNT];
+  Heap rumbleQueue[XUSER_MAX_COUNT][2];
 } InputMap;
 
 /**
@@ -107,19 +113,13 @@ void input_map_add_action(InputMap* map, InputEventSource source, char* action);
 void input_map_remove_action(InputMap* map, InputEventSource source);
 
 /**
- * @brief Update the actions in the input map.
+ * @brief Update the input map with `inputs` and set the vibration state.
  *
  * @param map The input map to update.
- * @param inputs The input events to update the actions with.
+ * @param inputs The inputs to update the input map with.
+ * @param deltaTime The time since the last frame.
  */
-void input_map_update_actions(InputMap* map, AutoArray* inputs);
-
-/**
- * @brief Update the controller actions in the input map.
- *
- * @param map The input map to update the controller actions with.
- */
-void input_map_update_controller_actions(InputMap* map);
+void input_map_update(InputMap* map, AutoArray* inputs, float deltaTime);
 
 /**
  * @brief Get the value of an action in the input map.
@@ -129,6 +129,18 @@ void input_map_update_controller_actions(InputMap* map);
  * @return The value of the action.
  */
 float input_map_get_action_value(InputMap* map, char* action);
+
+/**
+ * @brief Queue a rumble effect for a controller.
+ *
+ * @param map The input map to queue the rumble effect on.
+ * @param controllerIndex The index of the controller to rumble.
+ * @param pitch The pitch of the rumble effect.
+ * @param strength The strength of the rumble effect.
+ * @param duration The duration of the rumble effect in seconds.
+ */
+void input_map_queue_rumble_effect(InputMap* map, int controllerIndex,
+    RumblePitch pitch, uint16_t strength, float duration);
 
 /**
  * @brief Destroy an input map.

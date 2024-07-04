@@ -6,6 +6,7 @@ set(SOURCES
   Private/Otter/Util/File.c
   Private/Otter/Util/Hash.c
   Private/Otter/Util/HashMap.c
+  Private/Otter/Util/Heap.c
   Private/Otter/Util/Profiler.c
   Private/Otter/Util/StableAutoArray.c
 )
@@ -20,7 +21,9 @@ set(PUBLIC_HEADERS
   Public/Otter/Util/Json/Json.h
   Public/Otter/Util/AutoArray.h
   Public/Otter/Util/File.h
+  Public/Otter/Util/Hash.h
   Public/Otter/Util/HashMap.h
+  Public/Otter/Util/Heap.h
   Public/Otter/Util/Profiler.h
   Public/Otter/Util/StableAutoArray.h
 )

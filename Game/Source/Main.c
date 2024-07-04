@@ -24,7 +24,10 @@ int main()
 static void pseudoOnUpdate(
     InputMap* map, RenderInstance* renderInstance, float deltaTime)
 {
-  const float SPEED = 200.0f;
+  static float timer             = 0.0f;
+  static uint16_t rumbleStrength = 0;
+  static bool pressed            = false;
+  const float SPEED              = 200.0f;
 
   float moveForward  = input_map_get_action_value(map, "move_forward");
   float moveBackward = input_map_get_action_value(map, "move_back");
@@ -40,6 +43,46 @@ static void pseudoOnUpdate(
   {
     renderInstance->cameraPosition.x +=
         (moveRight - moveLeft) * deltaTime * SPEED;
+  }
+
+  float switchSpeed = input_map_get_action_value(map, "set_speed");
+  if (!isnan(switchSpeed))
+  {
+    if (switchSpeed > 0.0f && !pressed)
+    {
+      rumbleStrength += 1;
+      rumbleStrength %= 4;
+      pressed = true;
+      printf("Rumble strength: %d\n", rumbleStrength);
+    }
+    else if (switchSpeed <= 0.0f)
+    {
+      pressed = false;
+    }
+  }
+
+  timer += deltaTime;
+  if (timer > 5.0f)
+  {
+    switch (rumbleStrength)
+    {
+    case 1:
+      input_map_queue_rumble_effect(map, 0, RP_HIGH_FREQUENCY, 1000, 3.0f);
+      input_map_queue_rumble_effect(map, 0, RP_HIGH_FREQUENCY, 63000, 1.0f);
+      break;
+    case 2:
+      input_map_queue_rumble_effect(map, 0, RP_LOW_FREQUENCY, 1000, 3.0f);
+      input_map_queue_rumble_effect(map, 0, RP_LOW_FREQUENCY, 63000, 1.0f);
+      break;
+    case 3:
+      input_map_queue_rumble_effect(map, 0, RP_HIGH_FREQUENCY, 1000, 3.0f);
+      input_map_queue_rumble_effect(map, 0, RP_HIGH_FREQUENCY, 63000, 1.0f);
+      input_map_queue_rumble_effect(map, 0, RP_LOW_FREQUENCY, 1000, 3.0f);
+      input_map_queue_rumble_effect(map, 0, RP_LOW_FREQUENCY, 63000, 1.0f);
+    default:
+      break;
+    }
+    timer = 0.0f;
   }
 }
 
@@ -217,8 +260,7 @@ int WINAPI wWinMain(
                        / g_timerFrequency.QuadPart);
 
     AutoArray* inputs = (AutoArray*) GetWindowLongPtr(window, GWLP_USERDATA);
-    input_map_update_actions(&inputMap, inputs);
-    input_map_update_controller_actions(&inputMap);
+    input_map_update(&inputMap, inputs, deltaTime);
 
     pseudoOnUpdate(&inputMap, renderInstance, deltaTime);
 

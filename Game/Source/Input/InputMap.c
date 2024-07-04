@@ -2,6 +2,12 @@
 
 bool input_map_create(InputMap* map)
 {
+  for (size_t i = 0; i < XUSER_MAX_COUNT; ++i)
+  {
+    heap_create(&map->rumbleQueue[i][0]);
+    heap_create(&map->rumbleQueue[i][1]);
+  }
+
   return hash_map_create(&map->sourceToActions, HASH_MAP_DEFAULT_BUCKETS,
              HASH_MAP_DEFAULT_COEF)
       && hash_map_create(
@@ -97,7 +103,7 @@ static void input_map_update_action(
   }
 }
 
-void input_map_update_actions(InputMap* map, AutoArray* inputs)
+static void input_map_update_actions(InputMap* map, AutoArray* inputs)
 {
   for (size_t i = 0; i < inputs->size; ++i)
   {
@@ -134,7 +140,7 @@ static void input_map_update_axis(InputMap* map, float value,
   }
 }
 
-void input_map_update_controller_actions(InputMap* map)
+static void input_map_update_controller_actions(InputMap* map)
 {
   AutoArray inputs;
   auto_array_create(&inputs, sizeof(InputEvent));
@@ -191,14 +197,77 @@ void input_map_update_controller_actions(InputMap* map)
   }
 }
 
+void input_map_update(InputMap* map, AutoArray* inputs, float deltaTime)
+{
+  input_map_update_actions(map, inputs);
+  input_map_update_controller_actions(map);
+
+  for (size_t userIndex = 0; userIndex < XUSER_MAX_COUNT; ++userIndex)
+  {
+    uint16_t motorStrength[2] = {0};
+    for (size_t motorIndex = 0; motorIndex < 2; ++motorIndex)
+    {
+      // Decrease the time remaining for all rumble effects.
+      for (size_t i = 0;
+           i < map->rumbleQueue[userIndex][motorIndex].contents.size; ++i)
+      {
+        HeapElement* element = auto_array_get(
+            &map->rumbleQueue[userIndex][motorIndex].contents, i);
+        element->value -= deltaTime;
+      }
+
+      // Pop off any rumble effects that have expired.
+      while (map->rumbleQueue[userIndex][motorIndex].contents.size > 0)
+      {
+        uint32_t strength;
+        float timeRemaining;
+        heap_top(&map->rumbleQueue[userIndex][motorIndex], &strength,
+            &timeRemaining);
+
+        if (timeRemaining > 0.0f)
+        {
+          motorStrength[motorIndex] = strength;
+          break;
+        }
+        heap_pop(&map->rumbleQueue[userIndex][motorIndex]);
+      }
+    }
+
+    XInputSetState(userIndex,
+        &(XINPUT_VIBRATION){.wLeftMotorSpeed = motorStrength[RP_LOW_FREQUENCY],
+            .wRightMotorSpeed = motorStrength[RP_HIGH_FREQUENCY]});
+    if (motorStrength[RP_LOW_FREQUENCY] > 0
+        || motorStrength[RP_HIGH_FREQUENCY] > 0)
+    {
+      printf("Rumble effect: %d, %d, %llu\n", motorStrength[RP_LOW_FREQUENCY],
+          motorStrength[RP_HIGH_FREQUENCY],
+          map->rumbleQueue[userIndex][RP_HIGH_FREQUENCY].contents.size);
+    }
+  }
+}
+
 float input_map_get_action_value(InputMap* map, char* action)
 {
   return hash_map_get_value_float(
       &map->actionValues, action, strlen(action) + 1);
 }
 
+void input_map_queue_rumble_effect(InputMap* map, int controllerIndex,
+    RumblePitch pitch, uint16_t strength, float duration)
+{
+  if (controllerIndex < XUSER_MAX_COUNT)
+  {
+    heap_push(&map->rumbleQueue[controllerIndex][pitch], strength, duration);
+  }
+}
+
 void input_map_destroy(InputMap* map)
 {
+  for (size_t i = 0; i < XUSER_MAX_COUNT; ++i)
+  {
+    heap_destroy(&map->rumbleQueue[i][0]);
+    heap_destroy(&map->rumbleQueue[i][1]);
+  }
   hash_map_destroy(&map->sourceToActions, NULL);
   hash_map_destroy(&map->actionValues, NULL);
 }

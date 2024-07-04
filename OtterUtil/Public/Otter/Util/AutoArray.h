@@ -36,3 +36,5 @@ OTTERUTIL_API inline void* auto_array_get(AutoArray* array, size_t index)
 #endif
   return (char*) array->buffer + index * array->sizeOfElement;
 }
+
+OTTERUTIL_API void auto_array_pop(AutoArray* array);

@@ -61,3 +61,18 @@ void auto_array_clear(AutoArray* array)
 {
   array->size = 0;
 }
+
+void auto_array_pop(AutoArray* array)
+{
+  if (array->size > 0)
+  {
+    array->size--;
+
+    if (array->capacity > ARRAY_INCREMENT_SIZE * 2
+        && array->size < (array->capacity - ARRAY_INCREMENT_SIZE * 2))
+    {
+      auto_array_expand(array, array->capacity - ARRAY_INCREMENT_SIZE);
+    }
+  }
+}
+
