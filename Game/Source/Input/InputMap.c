@@ -117,7 +117,7 @@ static void input_map_update_button_bitmap(InputMap* map, WORD buttons,
 {
   for (size_t i = 0; i < 16; ++i)
   {
-    if ((mask & (1 << i)) > 0)
+    if (sources[i] != -1 && (mask & (1 << i)) > 0)
     {
       float value = (buttons & (1 << i)) ? 1.0f : 0.0f;
       input_map_update_action(
@@ -153,17 +153,16 @@ static void input_map_update_controller_actions(InputMap* map)
         && state.dwPacketNumber != previousState->dwPacketNumber)
     {
       input_map_update_button_bitmap(map, state.Gamepad.wButtons,
-          (ControllerInputIndex[]){CII_A, CII_B, CII_X, CII_Y,
-              CII_LEFT_SHOULDER, CII_RIGHT_SHOULDER, CII_LEFT_THUMB,
-              CII_RIGHT_THUMB, CII_BACK, CII_START, CII_DPAD_UP, CII_DPAD_DOWN,
-              CII_DPAD_LEFT, CII_DPAD_RIGHT, CII_LEFT_TRIGGER,
-              CII_RIGHT_TRIGGER},
+          (ControllerInputIndex[]){CII_DPAD_UP, CII_DPAD_DOWN, CII_DPAD_LEFT,
+              CII_DPAD_RIGHT, CII_START, CII_BACK, CII_LEFT_THUMB,
+              CII_RIGHT_THUMB, CII_LEFT_SHOULDER, CII_RIGHT_SHOULDER, -1, -1,
+              CII_A, CII_B, CII_X, CII_Y},
           state.Gamepad.wButtons ^ previousState->Gamepad.wButtons);
 
       input_map_update_axis(map, state.Gamepad.bLeftTrigger, CII_LEFT_TRIGGER,
-          127.0f, 0.0f, previousState->Gamepad.bLeftTrigger);
+          255.0f, 0.0f, previousState->Gamepad.bLeftTrigger);
       input_map_update_axis(map, (float) state.Gamepad.bRightTrigger,
-          CII_RIGHT_TRIGGER, 127.0f, 0.0f,
+          CII_RIGHT_TRIGGER, 255.0f, 0.0f,
           previousState->Gamepad.bRightTrigger);
 
       input_map_update_axis(map, -state.Gamepad.sThumbLX, CII_LEFT_THUMB_X_NEG,
