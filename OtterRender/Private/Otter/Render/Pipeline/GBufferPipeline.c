@@ -186,6 +186,8 @@ bool g_buffer_pipeline_create(
 void g_buffer_pipeline_destroy(
     GBufferPipeline* pipeline, VkDevice logicalDevice)
 {
+  vkDestroyDescriptorSetLayout(
+      logicalDevice, pipeline->descriptorSetLayouts, NULL);
   vkDestroyPipelineLayout(logicalDevice, pipeline->layout, NULL);
   vkDestroyPipeline(logicalDevice, pipeline->pipeline, NULL);
 }

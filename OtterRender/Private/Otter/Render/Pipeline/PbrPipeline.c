@@ -171,6 +171,8 @@ bool pbr_pipeline_create(
 
 void pbr_pipeline_destroy(PbrPipeline* pipeline, VkDevice logicalDevice)
 {
+  vkDestroyDescriptorSetLayout(
+      logicalDevice, pipeline->descriptorSetLayouts, NULL);
   vkDestroyPipelineLayout(logicalDevice, pipeline->layout, NULL);
   vkDestroyPipeline(logicalDevice, pipeline->pipeline, NULL);
 }
@@ -224,3 +226,4 @@ void pbr_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       pipeline->layout, 0, 1, &attachmentDescriptorSet, 0, NULL);
 }
+ 

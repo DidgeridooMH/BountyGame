@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Otter/Render/Pipeline/GBufferPipeline.h"
-#include "Otter/Render/RenderStack.h"
 #include <vulkan/vulkan.h>
+
+#include "Otter/Render/RenderStack.h"
 
 typedef struct PbrPipeline
 {

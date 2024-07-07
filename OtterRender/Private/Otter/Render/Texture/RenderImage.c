@@ -39,14 +39,14 @@ bool render_image_create(VkExtent2D extents, uint32_t layers, VkFormat format,
   if (!memory_type_find(memRequirements.memoryTypeBits, physicalDevice,
           memoryProperties, &allocInfo.memoryTypeIndex))
   {
-    LOG_ERROR("Could not find proper memory for the render image.\n");
+    LOG_ERROR("Could not find proper memory for the render image.");
     return false;
   }
 
   if (vkAllocateMemory(logicalDevice, &allocInfo, NULL, &renderImage->memory)
       != VK_SUCCESS)
   {
-    LOG_ERROR("Could not allocate memory for the render image.\n");
+    LOG_ERROR("Could not allocate memory for the render image.");
     return false;
   }
 
@@ -54,7 +54,7 @@ bool render_image_create(VkExtent2D extents, uint32_t layers, VkFormat format,
           logicalDevice, renderImage->image, renderImage->memory, 0)
       != VK_SUCCESS)
   {
-    LOG_ERROR("Unable to bind memory to render image.\n");
+    LOG_ERROR("Unable to bind memory to render image.");
     return false;
   }
 
@@ -65,10 +65,12 @@ void render_image_destroy(RenderImage* image, VkDevice logicalDevice)
 {
   if (image->image != VK_NULL_HANDLE)
   {
+    LOG_DEBUG("Destroying image %llx", image->image);
     vkDestroyImage(logicalDevice, image->image, NULL);
   }
   if (image->memory != VK_NULL_HANDLE)
   {
+    LOG_DEBUG("Freeing memory %llx", image->memory);
     vkFreeMemory(logicalDevice, image->memory, NULL);
   }
 }

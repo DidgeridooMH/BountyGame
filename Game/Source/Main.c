@@ -224,24 +224,23 @@ int WINAPI wWinMain(
       renderInstance->graphicsQueueFamily, 0, &graphicsQueue);
 
   // TODO: Move copy command to outside of mesh create to allow for batching.
-  // Mesh* cube = mesh_create(vertices, sizeof(MeshVertex), _countof(vertices),
-  //    indices, _countof(indices), renderInstance->physicalDevice,
-  //    renderInstance->logicalDevice, renderInstance->commandPool,
-  //    graphicsQueue);
+  Mesh* cube = mesh_create(vertices, sizeof(MeshVertex), _countof(vertices),
+      indices, _countof(indices), renderInstance->physicalDevice,
+      renderInstance->logicalDevice, renderInstance->commandPool,
+      graphicsQueue);
 
-  // AutoArray buildingMesh;
-  // auto_array_create(&buildingMesh, sizeof(Mesh*));
-  // for (uint32_t i = 0; i < asset.meshes.size; i++)
-  //{
-  //   Mesh** mesh             = auto_array_allocate(&buildingMesh);
-  //   GlbAssetMesh* assetMesh = auto_array_get(&asset.meshes, i);
-  //   *mesh = mesh_create(assetMesh->vertices, sizeof(MeshVertex),
-  //       assetMesh->numOfVertices, assetMesh->indices,
-  //       assetMesh->numOfIndices, renderInstance->physicalDevice,
-  //       renderInstance->logicalDevice, renderInstance->commandPool,
-  //       graphicsQueue);
-  // }
-  //  ------
+  AutoArray buildingMesh;
+  auto_array_create(&buildingMesh, sizeof(Mesh*));
+  for (uint32_t i = 0; i < asset.meshes.size; i++)
+  {
+    Mesh** mesh             = auto_array_allocate(&buildingMesh);
+    GlbAssetMesh* assetMesh = auto_array_get(&asset.meshes, i);
+    *mesh = mesh_create(assetMesh->vertices, sizeof(MeshVertex),
+        assetMesh->numOfVertices, assetMesh->indices, assetMesh->numOfIndices,
+        renderInstance->physicalDevice, renderInstance->logicalDevice,
+        renderInstance->commandPool, graphicsQueue);
+  }
+  // ------
 
   LARGE_INTEGER lastFrameTime;
   QueryPerformanceCounter(&lastFrameTime);
@@ -291,16 +290,16 @@ int WINAPI wWinMain(
     floorTransform.position.y = 10.0f;
     floorTransform.scale.x    = 100.0f;
     floorTransform.scale.z    = 100.0f;
-    // render_instance_queue_mesh_draw(cube, &floorTransform, renderInstance);
+    render_instance_queue_mesh_draw(cube, &floorTransform, renderInstance);
 
-    // for (uint32_t i = 0; i < buildingMesh.size; i++)
-    //{
-    //   // TODO: Properly package assets
-    //   Mesh** assetMesh       = auto_array_get(&buildingMesh, i);
-    //   GlbAssetMesh* glbAsset = auto_array_get(&asset.meshes, i);
-    //   render_instance_queue_mesh_draw(
-    //       *assetMesh, &glbAsset->transform, renderInstance);
-    // }
+    for (uint32_t i = 0; i < buildingMesh.size; i++)
+    {
+      // TODO: Properly package assets
+      Mesh** assetMesh       = auto_array_get(&buildingMesh, i);
+      GlbAssetMesh* glbAsset = auto_array_get(&asset.meshes, i);
+      render_instance_queue_mesh_draw(
+          *assetMesh, &glbAsset->transform, renderInstance);
+    }
 
     render_instance_draw(renderInstance);
 
@@ -323,9 +322,18 @@ int WINAPI wWinMain(
     lastFrameTime = currentTime;
   }
 
+  render_instance_wait_for_idle(renderInstance);
+
+  for (uint32_t i = 0; i < buildingMesh.size; i++)
+  {
+    // TODO: Properly package assets
+    Mesh** assetMesh = auto_array_get(&buildingMesh, i);
+    mesh_destroy(*assetMesh, renderInstance->logicalDevice);
+  }
+
   input_map_destroy(&inputMap);
   task_scheduler_destroy();
-  // mesh_destroy(cube, renderInstance->logicalDevice);
+  mesh_destroy(cube, renderInstance->logicalDevice);
   render_instance_destroy(renderInstance);
   game_window_destroy(window);
   profiler_destroy();

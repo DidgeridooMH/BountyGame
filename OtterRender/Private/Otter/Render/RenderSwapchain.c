@@ -81,76 +81,6 @@ RenderSwapchain* render_swapchain_create(uint32_t requestedNumberOfFrames,
     return NULL;
   }
 
-  // TODO: Generalize image creation.
-  VkImageCreateInfo depthBufferCreateInfo = {
-      .sType     = VK_STRUCTURE_TYPE_IMAGE_CREATE_INFO,
-      .imageType = VK_IMAGE_TYPE_2D,
-      .extent = {.width = extents.width, .height = extents.height, .depth = 1},
-      .mipLevels     = 1,
-      .samples       = VK_SAMPLE_COUNT_1_BIT,
-      .arrayLayers   = 1,
-      .format        = VK_FORMAT_D32_SFLOAT,
-      .tiling        = VK_IMAGE_TILING_OPTIMAL,
-      .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-      .usage         = VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT};
-  if (vkCreateImage(logicalDevice, &depthBufferCreateInfo, NULL,
-          &renderSwapchain->depthBuffer)
-      != VK_SUCCESS)
-  {
-    LOG_ERROR("Unable to create depth buffer image.");
-    return NULL;
-  }
-
-  VkMemoryRequirements memRequirements;
-  vkGetImageMemoryRequirements(
-      logicalDevice, renderSwapchain->depthBuffer, &memRequirements);
-
-  VkMemoryAllocateInfo allocInfo = {
-      .sType          = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
-      .allocationSize = memRequirements.size};
-
-  if (!memory_type_find(memRequirements.memoryTypeBits, physicalDevice,
-          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &allocInfo.memoryTypeIndex))
-  {
-    LOG_ERROR("Could not find proper memory for the depth buffer image.");
-    return NULL;
-  }
-
-  if (vkAllocateMemory(
-          logicalDevice, &allocInfo, NULL, &renderSwapchain->depthBufferMemory)
-      != VK_SUCCESS)
-  {
-    LOG_ERROR("Could not allocate memory for the depth buffer image.");
-    return NULL;
-  }
-
-  if (vkBindImageMemory(logicalDevice, renderSwapchain->depthBuffer,
-          renderSwapchain->depthBufferMemory, 0)
-      != VK_SUCCESS)
-  {
-    LOG_ERROR("Unable to bind memory to depth buffer image.");
-    return NULL;
-  }
-
-  VkImageViewCreateInfo depthBufferImageViewCreateInfo = {
-      .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-      .image            = renderSwapchain->depthBuffer,
-      .format           = VK_FORMAT_D32_SFLOAT,
-      .viewType         = VK_IMAGE_VIEW_TYPE_2D,
-      .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
-          .baseArrayLayer              = 0,
-          .layerCount                  = 1,
-          .baseMipLevel                = 0,
-          .levelCount                  = 1}};
-
-  if (vkCreateImageView(logicalDevice, &depthBufferImageViewCreateInfo, NULL,
-          &renderSwapchain->depthBufferView)
-      != VK_SUCCESS)
-  {
-    LOG_ERROR("Unable to get depth buffer image view.");
-    return NULL;
-  }
-
   return renderSwapchain;
 }
 
@@ -218,9 +148,9 @@ bool render_swapchain_create_render_stacks(RenderSwapchain* renderSwapchain,
   for (uint32_t i = 0; i < renderSwapchain->numOfSwapchainImages; i++)
   {
     if (!render_stack_create(&renderSwapchain->renderStacks[i],
-            swapchainImages[i], renderSwapchain->depthBufferView,
-            renderSwapchain->extents, renderSwapchain->format.format,
-            renderPass, physicalDevice, logicalDevice))
+            swapchainImages[i], renderSwapchain->extents,
+            renderSwapchain->format.format, renderPass, physicalDevice,
+            logicalDevice))
     {
       free(swapchainImages);
       return false;

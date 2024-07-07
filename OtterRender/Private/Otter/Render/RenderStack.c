@@ -3,9 +3,8 @@
 #include "Otter/Util/Log.h"
 
 bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
-    VkImageView depthBuffer, VkExtent2D extents, VkFormat renderFormat,
-    VkRenderPass renderPass, VkPhysicalDevice physicalDevice,
-    VkDevice logicalDevice)
+    VkExtent2D extents, VkFormat renderFormat, VkRenderPass renderPass,
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
 {
   if (!render_image_create(extents, G_BUFFER_LAYERS,
           VK_FORMAT_R16G16B16A16_SFLOAT,
@@ -59,7 +58,32 @@ bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
     return false;
   }
 
-  renderStack->bufferAttachments[RSL_DEPTH] = depthBuffer;
+  if (!render_image_create(extents, 1, VK_FORMAT_D32_SFLOAT,
+          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice,
+          &renderStack->depthBuffer))
+  {
+    return false;
+  }
+
+  VkImageViewCreateInfo depthBufferImageViewCreateInfo = {
+      .sType            = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image            = renderStack->depthBuffer.image,
+      .format           = VK_FORMAT_D32_SFLOAT,
+      .viewType         = VK_IMAGE_VIEW_TYPE_2D,
+      .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT,
+          .baseArrayLayer              = 0,
+          .layerCount                  = 1,
+          .baseMipLevel                = 0,
+          .levelCount                  = 1}};
+
+  if (vkCreateImageView(logicalDevice, &depthBufferImageViewCreateInfo, NULL,
+          &renderStack->bufferAttachments[RSL_DEPTH])
+      != VK_SUCCESS)
+  {
+    LOG_ERROR("Unable to get depth buffer image view.");
+    return NULL;
+  }
 
   VkFramebufferCreateInfo framebufferCreateInfo = {
       .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -85,16 +109,21 @@ void render_stack_destroy(RenderStack* renderStack, VkDevice logicalDevice)
 {
   if (renderStack->framebuffer != VK_NULL_HANDLE)
   {
+    LOG_DEBUG("Destroying framebuffer %llx", renderStack->framebuffer);
     vkDestroyFramebuffer(logicalDevice, renderStack->framebuffer, NULL);
   }
   for (int i = 0; i < _countof(renderStack->bufferAttachments); i++)
   {
     if (renderStack->bufferAttachments[i] != VK_NULL_HANDLE)
     {
+      LOG_DEBUG(
+          "Destroying attachment %llx", renderStack->bufferAttachments[i]);
       vkDestroyImageView(
           logicalDevice, renderStack->bufferAttachments[i], NULL);
     }
   }
 
   render_image_destroy(&renderStack->gBufferImage, logicalDevice);
+  render_image_destroy(&renderStack->depthBuffer, logicalDevice);
 }
+

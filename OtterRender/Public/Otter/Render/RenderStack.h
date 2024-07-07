@@ -20,13 +20,13 @@ enum RenderStackLayers
 typedef struct RenderStack
 {
   RenderImage gBufferImage;
+  RenderImage depthBuffer;
   VkImageView bufferAttachments[NUM_OF_RENDER_STACK_LAYERS];
   VkFramebuffer framebuffer;
 } RenderStack;
 
 bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
-    VkImageView depthBuffer, VkExtent2D extents, VkFormat renderFormat,
-    VkRenderPass renderPass, VkPhysicalDevice physicalDevice,
-    VkDevice logicalDevice);
+    VkExtent2D extents, VkFormat renderFormat, VkRenderPass renderPass,
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice);
 
 void render_stack_destroy(RenderStack* renderStack, VkDevice logicalDevice);

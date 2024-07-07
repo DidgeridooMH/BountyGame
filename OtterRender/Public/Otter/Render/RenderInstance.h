@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vulkan/vulkan.h>
+
 #include "Otter/Math/Transform.h"
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/Pipeline/GBufferPipeline.h"
@@ -7,15 +9,12 @@
 #include "Otter/Render/RenderFrame.h"
 #include "Otter/Render/RenderSwapchain.h"
 #include "Otter/Render/export.h"
-#include <vulkan/vulkan.h>
 
 enum DescriptorPoolId
 {
   DPI_UNIFORM_BUFFERS,
   DPI_NUM_OF_POOLS
 };
-
-// TODO: Create separate struct for per frame data.
 
 typedef struct RenderCapabilities
 {
@@ -64,6 +63,9 @@ typedef struct RenderInstance
 } RenderInstance;
 
 OTTERRENDER_API RenderInstance* render_instance_create(HWND window);
+
+OTTERRENDER_API void render_instance_wait_for_idle(
+    RenderInstance* renderInstance);
 
 OTTERRENDER_API void render_instance_destroy(RenderInstance* renderInstance);
 

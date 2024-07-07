@@ -834,6 +834,11 @@ RenderInstance* render_instance_create(HWND window)
   return renderInstance;
 }
 
+void render_instance_wait_for_idle(RenderInstance* renderInstance)
+{
+  vkDeviceWaitIdle(renderInstance->logicalDevice);
+}
+
 void render_instance_destroy(RenderInstance* renderInstance)
 {
   LOG_DEBUG("Destroying render frames");
