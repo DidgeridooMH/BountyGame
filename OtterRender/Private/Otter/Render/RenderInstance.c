@@ -3,6 +3,7 @@
 #include "Otter/Render/RenderQueue.h"
 
 #define VK_VALIDATION_LAYER_NAME   "VK_LAYER_KHRONOS_validation"
+#define VK_MONITOR_LAYER_NAME      "VK_LAYER_LUNARG_monitor"
 #define REQUESTED_NUMBER_OF_FRAMES 3
 
 static void render_instance_request_extensions(const char** requestedExtensions,
@@ -22,6 +23,7 @@ static void render_instance_request_extensions(const char** requestedExtensions,
       if (strcmp(properties[i].extensionName, (*requestedExtensions)) == 0)
       {
         enabledExtensions[*enabledExtensionsCount] = *requestedExtensions;
+        LOG_DEBUG("Enabled extension: %s", *requestedExtensions);
         *enabledExtensionsCount += 1;
 
         if (flags != NULL && *flags != NULL)
@@ -135,6 +137,7 @@ static bool render_instance_check_layers(const char** requestedLayers,
           **flags = true;
         }
         enabledLayers[*enabledLayersCount] = requestedLayers[layer];
+        LOG_DEBUG("Enabled layer: %s", requestedLayers[layer]);
         *enabledLayersCount += 1;
         break;
       }
@@ -184,11 +187,11 @@ static bool render_instance_create_instance(RenderInstance* renderInstance)
     return false;
   }
 
+  const char* optionalLayers[] = {
 #ifndef _DEBUG
-  char** enabledLayers        = NULL;
-  uint32_t enabledLayersCount = 0;
-#else
-  const char* optionalLayers[]                  = {VK_VALIDATION_LAYER_NAME};
+      VK_VALIDATION_LAYER_NAME,
+#endif
+      VK_MONITOR_LAYER_NAME};
   char* enabledLayers[_countof(optionalLayers)] = {NULL};
   uint32_t enabledLayersCount                   = 0;
 
@@ -200,7 +203,6 @@ static bool render_instance_create_instance(RenderInstance* renderInstance)
       (const char**) (const char**) (const char**) (const char**) (const char**) (const char**) (const char**) (const char**) (const char**)
           enabledLayers,
       &enabledLayersCount);
-#endif
 
   VkInstanceCreateInfo createInfo = {
       .sType                   = VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO,
@@ -990,4 +992,3 @@ void render_instance_queue_mesh_draw(
   command->cpuIndices    = mesh->cpuIndices;
   command->transform     = *transform;
 }
-

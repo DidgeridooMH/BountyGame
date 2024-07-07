@@ -7,10 +7,13 @@
 #include "Otter/Util/HashMap.h"
 #include "Otter/Util/Heap.h"
 
+#define DEFAULT_KEY_BINDS_PATH "Config/keybinds.ini"
+
+// TODO: Port to GameInput.
 // TODO: Need key values for LSHIFT and other non-character keys.
 
 /** @brief The type of input source. */
-typedef enum InputSource : uint16_t
+typedef enum InputSource
 {
   INPUT_TYPE_MOUSE,
   INPUT_TYPE_KEYBOARD,
@@ -46,15 +49,17 @@ typedef enum ControllerInputIndex
   CII_RIGHT_THUMB_Y_POS
 } ControllerInputIndex;
 
+#pragma pack(push, 1)
 typedef struct InputEventSource
 {
   // @brief A type of input source, such as keyboard, mouse, or controller.
-  InputSource source : 16;
+  InputSource source;
 
   // @brief A keycode for keyboard input, a mouse button index for mouse input,
   // or a controller button index for controller input.
-  uint16_t index : 16;
+  uint32_t index;
 } InputEventSource;
+#pragma pack(pop)
 
 typedef struct InputEvent
 {
@@ -94,6 +99,15 @@ bool input_map_create(InputMap* map);
  * @param key_binds The key binds to load into the input map.
  */
 void input_map_load_key_binds(InputMap* map, HashMap* key_binds);
+
+/**
+ * @brief Load key binds from a file into an input map.
+ *
+ * @param map The input map to load the key binds into.
+ * @param path The path to the file to load the key binds from.
+ * @return true if the key binds were loaded successfully, false otherwise.
+ */
+bool input_map_load_key_binds_from_file(InputMap* map, const char* path);
 
 /**
  * @brief Add an action to the input map.
@@ -148,4 +162,3 @@ void input_map_queue_rumble_effect(InputMap* map, int controllerIndex,
  * @param map The input map to destroy.
  */
 void input_map_destroy(InputMap* map);
-

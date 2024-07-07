@@ -82,7 +82,7 @@ bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
       != VK_SUCCESS)
   {
     LOG_ERROR("Unable to get depth buffer image view.");
-    return NULL;
+    return false;
   }
 
   VkFramebufferCreateInfo framebufferCreateInfo = {
@@ -126,4 +126,3 @@ void render_stack_destroy(RenderStack* renderStack, VkDevice logicalDevice)
   render_image_destroy(&renderStack->gBufferImage, logicalDevice);
   render_image_destroy(&renderStack->depthBuffer, logicalDevice);
 }
-

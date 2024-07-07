@@ -21,14 +21,14 @@ static LRESULT CALLBACK game_window_process(
   case WM_KEYDOWN:
     InputEvent* event    = auto_array_allocate(inputs);
     event->source.source = INPUT_TYPE_KEYBOARD;
-    event->source.index  = wParam;
+    event->source.index  = GET_KEYSTATE_WPARAM(wParam);
     event->value         = 1.0f;
     break;
   case WM_KEYUP:
     {
       InputEvent* event    = auto_array_allocate(inputs);
       event->source.source = INPUT_TYPE_KEYBOARD;
-      event->source.index  = wParam;
+      event->source.index  = GET_KEYSTATE_WPARAM(wParam);
       event->value         = 0.0f;
     }
     break;
@@ -113,7 +113,7 @@ static LRESULT CALLBACK game_window_process(
     }
     break;
   case WM_ACTIVATEAPP:
-    XInputEnable(wParam);
+    XInputEnable(wParam > 0);
     break;
   case WM_CLOSE:
     DestroyWindow(window);
@@ -206,3 +206,4 @@ bool game_window_process_message(HWND window)
 
   return msg.message == WM_QUIT;
 }
+ 

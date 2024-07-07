@@ -1,5 +1,8 @@
 #include "Input/InputMap.h"
 
+#include "Otter/Config/Config.h"
+#include "Otter/Util/File.h"
+
 bool input_map_create(InputMap* map)
 {
   for (size_t i = 0; i < XUSER_MAX_COUNT; ++i)
@@ -22,12 +25,12 @@ static bool input_map_convert_definition_to_source(
     source->source = INPUT_TYPE_KEYBOARD;
     source->index  = definition[0];
   }
-  else if (definitionSize > 1 & definition[0] == 'M')
+  else if (definitionSize > 1 && definition[0] == 'M')
   {
     source->source = INPUT_TYPE_MOUSE;
     source->index  = atoi(&definition[1]);
   }
-  else if (definitionSize > 1 & definition[0] == 'C')
+  else if (definitionSize > 1 && definition[0] == 'C')
   {
     source->source = INPUT_TYPE_CONTROLLER;
     source->index  = atoi(&definition[1]);
@@ -81,6 +84,34 @@ void input_map_add_action(InputMap* map, InputEventSource source, char* action)
       _strdup(action));
   hash_map_set_value_float(
       &map->actionValues, action, strlen(action) + 1, 0.0f);
+}
+
+bool input_map_load_key_binds_from_file(InputMap* map, const char* path)
+{
+  LOG_DEBUG("Loading key binds from %s", path);
+
+  HashMap keyBinds;
+  char* keyBindStr = file_load(path, NULL);
+  if (keyBindStr == NULL)
+  {
+    LOG_ERROR("Unable to find file %s", path);
+    return false;
+  }
+
+  if (!config_parse(&keyBinds, keyBindStr))
+  {
+    LOG_ERROR("Could not parse key binds.");
+    free(keyBindStr);
+    return false;
+  }
+
+  free(keyBindStr);
+
+  input_map_load_key_binds(map, &keyBinds);
+
+  hash_map_destroy(&keyBinds, free);
+
+  return true;
 }
 
 void input_map_remove_action(InputMap* map, InputEventSource source)
@@ -159,37 +190,38 @@ static void input_map_update_controller_actions(InputMap* map)
               CII_A, CII_B, CII_X, CII_Y},
           state.Gamepad.wButtons ^ previousState->Gamepad.wButtons);
 
-      input_map_update_axis(map, state.Gamepad.bLeftTrigger, CII_LEFT_TRIGGER,
-          255.0f, 0.0f, previousState->Gamepad.bLeftTrigger);
+      input_map_update_axis(map, (float) state.Gamepad.bLeftTrigger,
+          CII_LEFT_TRIGGER, 255.0f, 0.0f,
+          (float) previousState->Gamepad.bLeftTrigger);
       input_map_update_axis(map, (float) state.Gamepad.bRightTrigger,
           CII_RIGHT_TRIGGER, 255.0f, 0.0f,
           previousState->Gamepad.bRightTrigger);
 
-      input_map_update_axis(map, -state.Gamepad.sThumbLX, CII_LEFT_THUMB_X_NEG,
-          32768, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE,
-          -previousState->Gamepad.sThumbLX);
-      input_map_update_axis(map, state.Gamepad.sThumbLX, CII_LEFT_THUMB_X_POS,
-          32767, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE,
-          previousState->Gamepad.sThumbLX);
-      input_map_update_axis(map, -state.Gamepad.sThumbLY, CII_LEFT_THUMB_Y_NEG,
-          32768, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE,
-          -previousState->Gamepad.sThumbLY);
-      input_map_update_axis(map, state.Gamepad.sThumbLY, CII_LEFT_THUMB_Y_POS,
-          32767, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE,
-          previousState->Gamepad.sThumbLY);
+      input_map_update_axis(map, (float) -state.Gamepad.sThumbLX,
+          CII_LEFT_THUMB_X_NEG, 32768.0f, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE,
+          (float) -previousState->Gamepad.sThumbLX);
+      input_map_update_axis(map, (float) state.Gamepad.sThumbLX,
+          CII_LEFT_THUMB_X_POS, 32767.0f, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE,
+          (float) previousState->Gamepad.sThumbLX);
+      input_map_update_axis(map, (float) -state.Gamepad.sThumbLY,
+          CII_LEFT_THUMB_Y_NEG, 32768.0f, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE,
+          (float) -previousState->Gamepad.sThumbLY);
+      input_map_update_axis(map, (float) state.Gamepad.sThumbLY,
+          CII_LEFT_THUMB_Y_POS, 32767.0f, XINPUT_GAMEPAD_LEFT_THUMB_DEADZONE,
+          (float) previousState->Gamepad.sThumbLY);
 
-      input_map_update_axis(map, -state.Gamepad.sThumbRX, CII_RIGHT_THUMB_X_NEG,
-          32768, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE,
-          -previousState->Gamepad.sThumbRX);
-      input_map_update_axis(map, state.Gamepad.sThumbRX, CII_RIGHT_THUMB_X_POS,
-          32767, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE,
-          previousState->Gamepad.sThumbRX);
-      input_map_update_axis(map, -state.Gamepad.sThumbRY, CII_RIGHT_THUMB_Y_NEG,
-          32768, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE,
-          -previousState->Gamepad.sThumbRY);
-      input_map_update_axis(map, state.Gamepad.sThumbRY, CII_RIGHT_THUMB_Y_POS,
-          32767, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE,
-          previousState->Gamepad.sThumbRY);
+      input_map_update_axis(map, (float) -state.Gamepad.sThumbRX,
+          CII_RIGHT_THUMB_X_NEG, 32768.0f, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE,
+          (float) -previousState->Gamepad.sThumbRX);
+      input_map_update_axis(map, (float) state.Gamepad.sThumbRX,
+          CII_RIGHT_THUMB_X_POS, 32767.0f, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE,
+          (float) previousState->Gamepad.sThumbRX);
+      input_map_update_axis(map, (float) -state.Gamepad.sThumbRY,
+          CII_RIGHT_THUMB_Y_NEG, 32768.0f, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE,
+          (float) -previousState->Gamepad.sThumbRY);
+      input_map_update_axis(map, (float) state.Gamepad.sThumbRY,
+          CII_RIGHT_THUMB_Y_POS, 32767.0f, XINPUT_GAMEPAD_RIGHT_THUMB_DEADZONE,
+          (float) previousState->Gamepad.sThumbRY);
     }
 
     map->previousControllerState[i] = state;
@@ -201,7 +233,7 @@ void input_map_update(InputMap* map, AutoArray* inputs, float deltaTime)
   input_map_update_actions(map, inputs);
   input_map_update_controller_actions(map);
 
-  for (size_t userIndex = 0; userIndex < XUSER_MAX_COUNT; ++userIndex)
+  for (DWORD userIndex = 0; userIndex < XUSER_MAX_COUNT; ++userIndex)
   {
     uint16_t motorStrength[2] = {0};
     for (size_t motorIndex = 0; motorIndex < 2; ++motorIndex)
@@ -263,3 +295,4 @@ void input_map_destroy(InputMap* map)
   hash_map_destroy(&map->sourceToActions, NULL);
   hash_map_destroy(&map->actionValues, NULL);
 }
+

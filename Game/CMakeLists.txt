@@ -1,10 +1,12 @@
 set(SOURCE
+  Source/Config/GameConfig.c
   Source/Input/InputMap.c
   Source/Window/GameWindow.c
   Source/Main.c
 )
 
 set(HEADERS
+  Source/Config/GameConfig.h
   Source/Input/InputMap.h
   Source/Window/GameWindow.h
   Source/pch.h
