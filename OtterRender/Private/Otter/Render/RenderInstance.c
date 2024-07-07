@@ -154,7 +154,7 @@ static bool render_instance_create_instance(RenderInstance* renderInstance)
       .apiVersion         = VK_API_VERSION_1_3,
       .applicationVersion = VK_MAKE_VERSION(0, 1, 0),
       .engineVersion      = VK_MAKE_VERSION(0, 1, 0),
-      .pApplicationName   = "OtterEngineGame",
+      .pApplicationName   = "BountyGame",
       .pEngineName        = "Otter"};
 
   const char* requiredExtensions[] = {
@@ -590,15 +590,7 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
           .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
           .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
           .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
-          .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL},
-      {.format            = VK_FORMAT_R32_SFLOAT,
-          .samples        = VK_SAMPLE_COUNT_1_BIT,
-          .loadOp         = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-          .storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-          .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-          .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-          .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
-          .finalLayout    = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
+          .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL}};
 
   VkSubpassDependency dependencies[] = {
       {.srcSubpass      = VK_SUBPASS_EXTERNAL,
@@ -639,8 +631,6 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
       {.attachment = RSL_COLOR,
           .layout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
       {.attachment = RSL_MATERIAL,
-          .layout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-      {.attachment = RSL_SHADOWMAP,
           .layout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
 
   VkSubpassDescription subpassDescriptions[] = {
@@ -848,16 +838,7 @@ RenderInstance* render_instance_create(HWND window)
 
 void render_instance_destroy(RenderInstance* renderInstance)
 {
-  if (renderInstance->fullscreenQuad != NULL)
-  {
-    mesh_destroy(renderInstance->fullscreenQuad, renderInstance->logicalDevice);
-  }
-
-  pbr_pipeline_destroy(
-      &renderInstance->pbrPipeline, renderInstance->logicalDevice);
-  g_buffer_pipeline_destroy(
-      &renderInstance->gBufferPipeline, renderInstance->logicalDevice);
-
+  printf("DEBUG: Destroying render frames\n");
   if (renderInstance->frames != NULL)
   {
     for (uint32_t i = 0; i < renderInstance->framesInFlight; i++)
@@ -867,36 +848,54 @@ void render_instance_destroy(RenderInstance* renderInstance)
     }
   }
 
+  printf("DEBUG: Destroying full screen mesh\n");
+  if (renderInstance->fullscreenQuad != NULL)
+  {
+    mesh_destroy(renderInstance->fullscreenQuad, renderInstance->logicalDevice);
+  }
+
+  printf("DEBUG: Destroying pipelines\n");
+  pbr_pipeline_destroy(
+      &renderInstance->pbrPipeline, renderInstance->logicalDevice);
+  g_buffer_pipeline_destroy(
+      &renderInstance->gBufferPipeline, renderInstance->logicalDevice);
+
+  printf("DEBUG: Destroying command pool\n");
   if (renderInstance->commandPool != NULL)
   {
     vkDestroyCommandPool(
         renderInstance->logicalDevice, renderInstance->commandPool, NULL);
   }
 
+  printf("DEBUG: Destroying render pass\n");
   if (renderInstance->renderPass != NULL)
   {
     vkDestroyRenderPass(
         renderInstance->logicalDevice, renderInstance->renderPass, NULL);
   }
 
+  printf("DEBUG: Destroying swapchain\n");
   if (renderInstance->swapchain != NULL)
   {
     render_swapchain_destroy(
         renderInstance->swapchain, renderInstance->logicalDevice);
   }
 
+  printf("DEBUG: Destroying surface\n");
   if (renderInstance->surface != VK_NULL_HANDLE)
   {
     vkDestroySurfaceKHR(
         renderInstance->instance, renderInstance->surface, NULL);
   }
 
+  printf("DEBUG: Destroying logical device\n");
   if (renderInstance->logicalDevice != VK_NULL_HANDLE)
   {
     vkDestroyDevice(renderInstance->logicalDevice, NULL);
   }
 
 #ifdef _DEBUG
+  printf("DEBUG: Destroying debug messenger\n");
   if (renderInstance->debugMessenger != VK_NULL_HANDLE)
   {
     PFN_vkDestroyDebugUtilsMessengerEXT destroyDebugUtilsMessenger =
@@ -907,6 +906,7 @@ void render_instance_destroy(RenderInstance* renderInstance)
   }
 #endif
 
+  printf("DEBUG: Destroying instance\n");
   if (renderInstance->instance != VK_NULL_HANDLE)
   {
     vkDestroyInstance(renderInstance->instance, NULL);

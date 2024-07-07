@@ -74,6 +74,12 @@ bool render_frame_create(
 void render_frame_destroy(
     RenderFrame* renderFrame, VkCommandPool commandPool, VkDevice logicalDevice)
 {
+  if (renderFrame->inflightFence != VK_NULL_HANDLE)
+  {
+    vkWaitForFences(
+        logicalDevice, 1, &renderFrame->inflightFence, true, UINT64_MAX);
+  }
+
   for (uint32_t i = 0; i < renderFrame->perRenderBuffers.size; i++)
   {
     gpu_buffer_free(
@@ -82,12 +88,6 @@ void render_frame_destroy(
 
   auto_array_destroy(&renderFrame->perRenderBuffers);
   auto_array_destroy(&renderFrame->renderQueue);
-
-  if (renderFrame->inflightFence != VK_NULL_HANDLE)
-  {
-    vkWaitForFences(
-        logicalDevice, 1, &renderFrame->inflightFence, true, UINT64_MAX);
-  }
 
   vkDestroySemaphore(logicalDevice, renderFrame->imageAvailableSemaphore, NULL);
   vkDestroySemaphore(logicalDevice, renderFrame->renderFinishedSemaphore, NULL);
@@ -152,109 +152,6 @@ static void render_frame_draw_mesh(RenderCommand* meshCommand,
       (uint32_t) meshCommand->numOfIndices, 1, 0, 0, 0);
 }
 
-static void render_frame_submit_cpu_frames(RenderFrame* renderFrame,
-    RenderStack* renderStack, VkCommandPool commandPool, VkDevice logicalDevice,
-    VkQueue queue)
-{
-  VkCommandBufferAllocateInfo transferBufferAllocateInfo = {
-      .sType              = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
-      .commandPool        = commandPool,
-      .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
-      .commandBufferCount = 1};
-  VkCommandBuffer transferBuffer;
-  if (vkAllocateCommandBuffers(
-          logicalDevice, &transferBufferAllocateInfo, &transferBuffer)
-      != VK_SUCCESS)
-  {
-    // TODO: Handle
-    return;
-  }
-
-  // TODO: Try prebaking.
-  VkCommandBufferBeginInfo beginInfo = {
-      .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-      .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
-  if (vkBeginCommandBuffer(transferBuffer, &beginInfo) != VK_SUCCESS)
-  {
-    // TODO: Handle.
-    return;
-  }
-
-  VkImageMemoryBarrier barrier = {
-      .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-      .oldLayout           = VK_IMAGE_LAYOUT_UNDEFINED,
-      .newLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .srcAccessMask       = 0,
-      .dstAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT,
-      .image               = renderStack->cpuShadowMap.image,
-      .subresourceRange    = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-             .baseMipLevel                = 0,
-             .levelCount                  = 1,
-             .baseArrayLayer              = 0,
-             .layerCount                  = 1}};
-
-  vkCmdPipelineBarrier(transferBuffer, VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
-      VK_PIPELINE_STAGE_TRANSFER_BIT, 0, 0, NULL, 0, NULL, 1, &barrier);
-
-  VkBufferImageCopy region = {
-      .imageSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-          .layerCount                  = 1},
-      .imageExtent      = {renderStack->cpuShadowMap.size.width,
-               renderStack->cpuShadowMap.size.height, 1}};
-
-  vkCmdCopyBufferToImage(transferBuffer, renderStack->cpuShadowMapBuffer.buffer,
-      renderStack->cpuShadowMap.image, VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1,
-      &region);
-
-  VkImageMemoryBarrier barrierReturn = {
-      .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
-      .oldLayout           = VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-      .newLayout           = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      .srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED,
-      .srcAccessMask       = VK_ACCESS_TRANSFER_WRITE_BIT,
-      .dstAccessMask       = VK_ACCESS_SHADER_READ_BIT,
-      .image               = renderStack->cpuShadowMap.image,
-      .subresourceRange    = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
-             .baseMipLevel                = 0,
-             .levelCount                  = 1,
-             .baseArrayLayer              = 0,
-             .layerCount                  = 1}};
-
-  vkCmdPipelineBarrier(transferBuffer, VK_PIPELINE_STAGE_TRANSFER_BIT,
-      VK_PIPELINE_STAGE_FRAGMENT_SHADER_BIT, 0, 0, NULL, 0, NULL, 1,
-      &barrierReturn);
-
-  if (vkEndCommandBuffer(transferBuffer) != VK_SUCCESS)
-  {
-    // TODO: Handle.
-    return;
-  }
-
-  VkSubmitInfo submitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-      .commandBufferCount           = 1,
-      .pCommandBuffers              = &transferBuffer};
-
-  if (vkQueueSubmit(queue, 1, &submitInfo, NULL) != VK_SUCCESS)
-  {
-    fprintf(stderr, "Error: Unable to submit graphics work\n");
-    // TODO: Handle error
-    return;
-  }
-
-  // TODO: Add synchonization and separate this into a copy queue.
-  // Multithreading people, multithreading.
-  if (vkDeviceWaitIdle(logicalDevice) != VK_SUCCESS)
-  {
-    // TODO: Handle.
-    return;
-  }
-
-  vkFreeCommandBuffers(logicalDevice, commandPool, 1, &transferBuffer);
-}
-
 static void render_frame_start_render(RenderFrame* renderFrame,
     VkRenderPass renderPass, RenderStack* renderStack, VkDevice logicalDevice)
 {
@@ -276,7 +173,7 @@ static void render_frame_start_render(RenderFrame* renderFrame,
   VkClearValue clearColor[NUM_OF_RENDER_STACK_LAYERS] = {
       {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
       {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
-      {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}, {0.0f}};
+      {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}};
   VkRenderPassBeginInfo renderPassInfo = {
       .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
       .renderPass      = renderPass,
@@ -407,3 +304,4 @@ void render_frame_clear_buffers(
   }
   auto_array_clear(&renderFrame->perRenderBuffers);
 }
+

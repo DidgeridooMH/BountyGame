@@ -204,9 +204,6 @@ void pbr_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
           .sampler   = VK_NULL_HANDLE},
       {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
           .imageView = renderStack->bufferAttachments[RSL_MATERIAL],
-          .sampler   = VK_NULL_HANDLE},
-      {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-          .imageView = renderStack->bufferAttachments[RSL_SHADOWMAP],
           .sampler   = VK_NULL_HANDLE}};
 
   VkWriteDescriptorSet attachmentWrites[_countof(attachmentDescriptors)] = {0};

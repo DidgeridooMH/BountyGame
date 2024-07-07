@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Otter/Render/Memory/GpuBuffer.h"
-#include "Otter/Render/export.h"
 #include <vulkan/vulkan.h>
+
+#include "Otter/Render/Memory/GpuBuffer.h"
 
 typedef struct GBufferPipeline
 {

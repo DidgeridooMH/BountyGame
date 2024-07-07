@@ -1,7 +1,7 @@
 #include "Otter/Render/RenderSwapchain.h"
 
-#include "Otter/Render/Memory/MemoryType.h"
 #include "Otter/Math/Clamp.h"
+#include "Otter/Render/Memory/MemoryType.h"
 
 static bool render_swapchain_create_swapchain(RenderSwapchain* renderSwapchain,
     uint32_t requestedNumberOfFrames, VkPhysicalDevice physicalDevice,
@@ -157,20 +157,20 @@ RenderSwapchain* render_swapchain_create(uint32_t requestedNumberOfFrames,
 void render_swapchain_destroy(
     RenderSwapchain* renderSwapchain, VkDevice logicalDevice)
 {
-  // TODO: Should we wait for the fences to finish?
-
   if (renderSwapchain->renderStacks != NULL)
   {
-    render_stack_destroy(renderSwapchain->renderStacks, logicalDevice);
+    for (size_t i = 0; i < renderSwapchain->numOfSwapchainImages; i++)
+    {
+      printf("DEBUG: Destroying render stack %llu\n", i);
+      render_stack_destroy(&renderSwapchain->renderStacks[i], logicalDevice);
+    }
     free(renderSwapchain->renderStacks);
   }
 
   if (renderSwapchain->swapchain != VK_NULL_HANDLE)
   {
-    if (renderSwapchain->swapchain != VK_NULL_HANDLE)
-    {
-      vkDestroySwapchainKHR(logicalDevice, renderSwapchain->swapchain, NULL);
-    }
+    printf("DEBUG: Destroying swapchain\n");
+    vkDestroySwapchainKHR(logicalDevice, renderSwapchain->swapchain, NULL);
   }
 
   free(renderSwapchain);
@@ -261,3 +261,4 @@ bool render_swapchain_get_next_image(RenderSwapchain* renderSwapchain,
 
   return true;
 }
+

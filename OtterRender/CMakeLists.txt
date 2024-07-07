@@ -50,3 +50,31 @@ target_precompile_headers(OtterRender PRIVATE Private/pch.h)
 target_include_directories(OtterRender PUBLIC Public PRIVATE Private)
 target_link_libraries(OtterRender PRIVATE OtterMath OtterUtil OtterAsync Vulkan::Vulkan)
 
+set(GLSL_VALIDATOR "glslangValidator")
+set(SHADERS
+  Shaders/gbuffer.vert.glsl
+  Shaders/gbuffer.frag.glsl
+  Shaders/pbr.vert.glsl
+  Shaders/pbr.frag.glsl
+)
+
+foreach(SHADER ${SHADERS})
+  get_filename_component(FILE_NAME ${SHADER} NAME_WLE)
+  set(SPIRV "${CMAKE_BINARY_DIR}/Shaders/${FILE_NAME}.spv")
+  add_custom_command(
+    OUTPUT ${SPIRV}
+    COMMAND ${GLSL_VALIDATOR} -V ${CMAKE_CURRENT_SOURCE_DIR}/${SHADER} -o ${SPIRV}
+    DEPENDS ${SHADER}
+  )
+  list(APPEND SPIRV_BINARY_FILES ${SPIRV})
+endforeach()
+
+add_custom_target(Shaders DEPENDS ${SPIRV_BINARY_FILES})
+add_dependencies(OtterRender Shaders)
+
+add_custom_command(
+  TARGET OtterRender POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:OtterRender>/Shaders
+  COMMAND ${CMAKE_COMMAND} -E copy ${SPIRV_BINARY_FILES} $<TARGET_FILE_DIR:OtterRender>/Shaders
+)
+
