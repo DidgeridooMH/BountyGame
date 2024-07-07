@@ -2,6 +2,7 @@
 
 #include "Otter/Math/Clamp.h"
 #include "Otter/Render/Memory/MemoryType.h"
+#include "Otter/Util/Log.h"
 
 static bool render_swapchain_create_swapchain(RenderSwapchain* renderSwapchain,
     uint32_t requestedNumberOfFrames, VkPhysicalDevice physicalDevice,
@@ -13,7 +14,7 @@ static bool render_swapchain_create_swapchain(RenderSwapchain* renderSwapchain,
           physicalDevice, surface, &surfaceCaps)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to get surface capabilities.\n");
+    LOG_ERROR("Unable to get surface capabilities.");
     return false;
   }
 
@@ -50,7 +51,7 @@ static bool render_swapchain_create_swapchain(RenderSwapchain* renderSwapchain,
           &renderSwapchain->swapchain)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to create swapchain\n");
+    LOG_ERROR("Unable to create swapchain");
     return false;
   }
 
@@ -66,7 +67,7 @@ RenderSwapchain* render_swapchain_create(uint32_t requestedNumberOfFrames,
   RenderSwapchain* renderSwapchain = calloc(1, sizeof(RenderSwapchain));
   if (renderSwapchain == NULL)
   {
-    fprintf(stderr, "OOM\n");
+    LOG_ERROR("OOM");
     return NULL;
   }
   renderSwapchain->format  = format;
@@ -96,7 +97,7 @@ RenderSwapchain* render_swapchain_create(uint32_t requestedNumberOfFrames,
           &renderSwapchain->depthBuffer)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to create depth buffer image.\n");
+    LOG_ERROR("Unable to create depth buffer image.");
     return NULL;
   }
 
@@ -111,8 +112,7 @@ RenderSwapchain* render_swapchain_create(uint32_t requestedNumberOfFrames,
   if (!memory_type_find(memRequirements.memoryTypeBits, physicalDevice,
           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &allocInfo.memoryTypeIndex))
   {
-    fprintf(
-        stderr, "Could not find proper memory for the depth buffer image.\n");
+    LOG_ERROR("Could not find proper memory for the depth buffer image.");
     return NULL;
   }
 
@@ -120,7 +120,7 @@ RenderSwapchain* render_swapchain_create(uint32_t requestedNumberOfFrames,
           logicalDevice, &allocInfo, NULL, &renderSwapchain->depthBufferMemory)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Could not allocate memory for the depth buffer image.\n");
+    LOG_ERROR("Could not allocate memory for the depth buffer image.");
     return NULL;
   }
 
@@ -128,7 +128,7 @@ RenderSwapchain* render_swapchain_create(uint32_t requestedNumberOfFrames,
           renderSwapchain->depthBufferMemory, 0)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to bind memory to depth buffer image.\n");
+    LOG_ERROR("Unable to bind memory to depth buffer image.");
     return NULL;
   }
 
@@ -147,7 +147,7 @@ RenderSwapchain* render_swapchain_create(uint32_t requestedNumberOfFrames,
           &renderSwapchain->depthBufferView)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to get depth buffer image view.\n");
+    LOG_ERROR("Unable to get depth buffer image view.");
     return NULL;
   }
 
@@ -161,7 +161,7 @@ void render_swapchain_destroy(
   {
     for (size_t i = 0; i < renderSwapchain->numOfSwapchainImages; i++)
     {
-      printf("DEBUG: Destroying render stack %llu\n", i);
+      LOG_DEBUG("Destroying render stack %llu", i);
       render_stack_destroy(&renderSwapchain->renderStacks[i], logicalDevice);
     }
     free(renderSwapchain->renderStacks);
@@ -169,7 +169,7 @@ void render_swapchain_destroy(
 
   if (renderSwapchain->swapchain != VK_NULL_HANDLE)
   {
-    printf("DEBUG: Destroying swapchain\n");
+    LOG_DEBUG("Destroying swapchain");
     vkDestroySwapchainKHR(logicalDevice, renderSwapchain->swapchain, NULL);
   }
 
@@ -185,7 +185,7 @@ bool render_swapchain_create_render_stacks(RenderSwapchain* renderSwapchain,
           != VK_SUCCESS
       || renderSwapchain->numOfSwapchainImages == 0)
   {
-    fprintf(stderr, "Unable to get swapchain images.\n");
+    LOG_ERROR("Unable to get swapchain images.");
     return false;
   }
 
@@ -193,7 +193,7 @@ bool render_swapchain_create_render_stacks(RenderSwapchain* renderSwapchain,
       calloc(renderSwapchain->numOfSwapchainImages, sizeof(VkImage));
   if (swapchainImages == NULL)
   {
-    fprintf(stderr, "OOM\n");
+    LOG_ERROR("OOM");
     return false;
   }
 
@@ -201,7 +201,7 @@ bool render_swapchain_create_render_stacks(RenderSwapchain* renderSwapchain,
           &renderSwapchain->numOfSwapchainImages, swapchainImages)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to get swapchain images.\n");
+    LOG_ERROR("Unable to get swapchain images.");
     free(swapchainImages);
     return false;
   }
@@ -210,7 +210,7 @@ bool render_swapchain_create_render_stacks(RenderSwapchain* renderSwapchain,
       calloc(renderSwapchain->numOfSwapchainImages, sizeof(RenderStack));
   if (renderSwapchain->renderStacks == NULL)
   {
-    fprintf(stderr, "OOM\n");
+    LOG_ERROR("OOM");
     free(swapchainImages);
     return false;
   }
@@ -240,7 +240,7 @@ bool render_swapchain_get_next_image(RenderSwapchain* renderSwapchain,
           logicalDevice, 1, &previousRenderFinished, VK_TRUE, UINT64_MAX)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Error: Could not wait for fence\n");
+    LOG_ERROR("Error: Could not wait for fence");
     // Handle the error appropriately
     return false;
   }
@@ -254,11 +254,10 @@ bool render_swapchain_get_next_image(RenderSwapchain* renderSwapchain,
   }
   else if (result != VK_ERROR_OUT_OF_DATE_KHR && result != VK_SUBOPTIMAL_KHR)
   {
-    fprintf(stderr, "Error: Unable to retrieve image index\n");
+    LOG_ERROR("Error: Unable to retrieve image index");
     // TODO: Handle the error appropriately
     return false;
   }
 
   return true;
 }
-

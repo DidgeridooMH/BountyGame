@@ -28,7 +28,7 @@ void* stable_auto_array_allocate(StableAutoArray* array)
         sizeof(StableAutoArrayChunk) + array->sizeOfElement * array->chunkSize);
     if (newChunk == NULL)
     {
-      fprintf(stderr, "WARN: Out of memory. Not allocating element.\n");
+      LOG_WARNING("Out of memory. Not allocating element.");
       return NULL;
     }
     newChunk->nextChunk = NULL;

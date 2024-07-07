@@ -6,7 +6,7 @@ JsonValue* json_parse_object_value(
   JsonValue* jsonObject = malloc(sizeof(JsonValue));
   if (jsonObject == NULL)
   {
-    fprintf(stderr, "ERR: OOM\n");
+    LOG_ERROR("Out of memory");
     return NULL;
   }
   jsonObject->type = JT_OBJECT;

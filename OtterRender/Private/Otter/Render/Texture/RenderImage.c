@@ -1,6 +1,7 @@
 #include "Otter/Render/Texture/RenderImage.h"
 
 #include "Otter/Render/Memory/MemoryType.h"
+#include "Otter/Util/Log.h"
 
 bool render_image_create(VkExtent2D extents, uint32_t layers, VkFormat format,
     VkImageUsageFlags usage, VkMemoryPropertyFlags memoryProperties,
@@ -38,14 +39,14 @@ bool render_image_create(VkExtent2D extents, uint32_t layers, VkFormat format,
   if (!memory_type_find(memRequirements.memoryTypeBits, physicalDevice,
           memoryProperties, &allocInfo.memoryTypeIndex))
   {
-    fprintf(stderr, "Could not find proper memory for the render image.\n");
+    LOG_ERROR("Could not find proper memory for the render image.\n");
     return false;
   }
 
   if (vkAllocateMemory(logicalDevice, &allocInfo, NULL, &renderImage->memory)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Could not allocate memory for the render image.\n");
+    LOG_ERROR("Could not allocate memory for the render image.\n");
     return false;
   }
 
@@ -53,7 +54,7 @@ bool render_image_create(VkExtent2D extents, uint32_t layers, VkFormat format,
           logicalDevice, renderImage->image, renderImage->memory, 0)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to bind memory to render image.\n");
+    LOG_ERROR("Unable to bind memory to render image.\n");
     return false;
   }
 

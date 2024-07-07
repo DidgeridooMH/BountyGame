@@ -173,7 +173,7 @@ HWND game_window_create(int width, int height, enum WindowMode windowMode)
   AutoArray* inputs = malloc(sizeof(AutoArray));
   if (inputs == NULL)
   {
-    fprintf(stderr, "Unable to create buffer for inputs\n");
+    LOG_ERROR("Unable to create buffer for inputs");
     DestroyWindow(window);
     return NULL;
   }

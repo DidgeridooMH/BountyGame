@@ -25,6 +25,7 @@ if (MSVC)
   add_compile_options(/D_UNICODE /DUNICODE)
 elseif (WIN32)
   add_compile_options(-D_UNICODE -DUNICODE -Werror)
+  add_compile_options(-ffile-prefix-map=${CMAKE_SOURCE_DIR}/=/)
 endif()
 
 add_subdirectory(OtterAsync)

@@ -1,6 +1,7 @@
 #include "Otter/Util/Profiler.h"
 
 #include "Otter/Util/HashMap.h"
+#include "Otter/Util/Log.h"
 
 #define PROFILE_TIME_SAMPLE_COUNT 50
 
@@ -22,7 +23,7 @@ void profiler_init(LARGE_INTEGER frequency)
   if (!hash_map_create(
           &g_clockTimes, HASH_MAP_DEFAULT_BUCKETS, HASH_MAP_DEFAULT_COEF))
   {
-    fprintf(stderr, "Warning: Profiler did not initialize.\n");
+    LOG_WARNING("Profiler did not initialize.");
     return;
   }
 
@@ -82,4 +83,3 @@ float profiler_clock_get(const char* key)
   }
   return profileTime->totalTime / profileTime->numOfSamples;
 }
-

@@ -1,6 +1,7 @@
 #include "Otter/Render/Pipeline/Pipeline.h"
 
 #include "Otter/Util/File.h"
+#include "Otter/Util/Log.h"
 
 VkShaderModule pipeline_load_shader_module(
     const char* file, VkDevice logicalDevice)
@@ -9,7 +10,7 @@ VkShaderModule pipeline_load_shader_module(
   char* shaderCode      = file_load(file, &shaderLength);
   if (shaderCode == NULL)
   {
-    fprintf(stderr, "Unable to find vertex shader\n");
+    LOG_ERROR("Unable to find vertex shader");
     return VK_NULL_HANDLE;
   }
 
@@ -24,7 +25,7 @@ VkShaderModule pipeline_load_shader_module(
       != VK_SUCCESS)
   {
     free(shaderCode);
-    fprintf(stderr, "Unable to create shader module.\n");
+    LOG_ERROR("Unable to create shader module.");
     return VK_NULL_HANDLE;
   }
 

@@ -1,6 +1,7 @@
 #include "Otter/Render/Gltf/GlbJsonChunk.h"
 
 #include "Otter/Util/Json/Json.h"
+#include "Otter/Util/Log.h"
 
 static bool glb_json_chunk_parse_vec3(JsonValue* jsonValue, Vec3* result)
 {
@@ -99,7 +100,7 @@ static bool glb_json_chunk_parse_meshes(JsonValue* meshes, AutoArray* array)
           *(JsonValue**) auto_array_get(&primitives->array, p);
       if (primitive == NULL || primitive->type != JT_OBJECT)
       {
-        fprintf(stderr, "Primitive was not an object.\n");
+        LOG_ERROR("Primitive was not an object.");
         return false;
       }
       JsonValue* attributes = hash_map_get_value(
@@ -109,7 +110,7 @@ static bool glb_json_chunk_parse_meshes(JsonValue* meshes, AutoArray* array)
       if (attributes == NULL || attributes->type != JT_OBJECT || indices == NULL
           || indices->type != JT_NUMBER)
       {
-        fprintf(stderr, "Attributes or indices were not present.\n");
+        LOG_ERROR("Attributes or indices were not present.");
         return false;
       }
 
@@ -122,8 +123,7 @@ static bool glb_json_chunk_parse_meshes(JsonValue* meshes, AutoArray* array)
       if (position == NULL || position->type != JT_NUMBER || normal == NULL
           || normal->type != JT_NUMBER || uv == NULL || uv->type != JT_NUMBER)
       {
-        fprintf(
-            stderr, "position, normal, or uv were not in the right format.\n");
+        LOG_ERROR("position, normal, or uv were not in the right format.");
         return false;
       }
 
@@ -149,7 +149,7 @@ static bool glb_json_chunk_parse_accessors(
         *(JsonValue**) auto_array_get(&accessors->array, i);
     if (accessorElement->type != JT_OBJECT)
     {
-      fprintf(stderr, "Accessor was not an object.\n");
+      LOG_ERROR("Accessor was not an object.");
       return false;
     }
 
@@ -166,7 +166,7 @@ static bool glb_json_chunk_parse_accessors(
         || count == NULL || count->type != JT_NUMBER || type == NULL
         || type->type != JT_STRING)
     {
-      fprintf(stderr, "Accessor property was not in the right format.\n");
+      LOG_ERROR("Accessor property was not in the right format.");
       return false;
     }
 
@@ -205,7 +205,7 @@ static bool glb_json_chunk_parse_accessors(
     }
     else
     {
-      fprintf(stderr, "Unknown accessor rank found %s\n", type->string);
+      LOG_ERROR("Unknown accessor rank found %s", type->string);
       return false;
     }
 
@@ -235,7 +235,7 @@ static bool glb_json_chunk_parse_buffer_views(
         *(JsonValue**) auto_array_get(&bufferViews->array, i);
     if (bufferViewElement->type != JT_OBJECT)
     {
-      fprintf(stderr, "Buffer view was not an object\n");
+      LOG_ERROR("Buffer view was not an object");
       return false;
     }
 
@@ -249,7 +249,7 @@ static bool glb_json_chunk_parse_buffer_views(
         || length->type != JT_NUMBER || offset == NULL
         || offset->type != JT_NUMBER)
     {
-      fprintf(stderr, "Buffer view property was not in the right format\n");
+      LOG_ERROR("Buffer view property was not in the right format");
       return false;
     }
 
@@ -272,7 +272,7 @@ bool glb_json_chunk_parse_buffers(JsonValue* buffers, AutoArray* array)
         *(JsonValue**) auto_array_get(&buffers->array, i);
     if (bufferElement->type != JT_OBJECT)
     {
-      fprintf(stderr, "Buffer was not an object\n");
+      LOG_ERROR("Buffer was not an object");
       return false;
     }
 
@@ -280,7 +280,7 @@ bool glb_json_chunk_parse_buffers(JsonValue* buffers, AutoArray* array)
         &bufferElement->object, "byteLength", strlen("byteLength"));
     if (length == NULL || length->type != JT_NUMBER)
     {
-      fprintf(stderr, "Buffer length not found.\n");
+      LOG_ERROR("Buffer length not found.");
       return false;
     }
 
@@ -295,7 +295,7 @@ bool glb_json_chunk_parse(JsonValue* json, GlbJsonChunk* jsonChunk)
 {
   if (json->type != JT_OBJECT)
   {
-    fprintf(stderr, "Top-level GLTF was not an object.\n");
+    LOG_ERROR("Top-level GLTF was not an object.");
     return false;
   }
 
@@ -315,7 +315,7 @@ bool glb_json_chunk_parse(JsonValue* json, GlbJsonChunk* jsonChunk)
       || bufferViews->type != JT_ARRAY || buffers == NULL
       || buffers->type != JT_ARRAY)
   {
-    fprintf(stderr, "Fields missing from GLTF.\n");
+    LOG_ERROR("Fields missing from GLTF.");
     return false;
   }
 
@@ -347,4 +347,3 @@ void glb_json_chunk_destroy(GlbJsonChunk* jsonChunk)
   }
   auto_array_destroy(&jsonChunk->meshes);
 }
-

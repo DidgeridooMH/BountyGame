@@ -34,7 +34,7 @@ static bool input_map_convert_definition_to_source(
   }
   else
   {
-    fprintf(stderr, "Unknown input source %s\n", definition);
+    LOG_WARNING("Unknown input source %s", definition);
     return false;
   }
   return true;
@@ -235,13 +235,6 @@ void input_map_update(InputMap* map, AutoArray* inputs, float deltaTime)
     XInputSetState(userIndex,
         &(XINPUT_VIBRATION){.wLeftMotorSpeed = motorStrength[RP_LOW_FREQUENCY],
             .wRightMotorSpeed = motorStrength[RP_HIGH_FREQUENCY]});
-    if (motorStrength[RP_LOW_FREQUENCY] > 0
-        || motorStrength[RP_HIGH_FREQUENCY] > 0)
-    {
-      printf("Rumble effect: %d, %d, %llu\n", motorStrength[RP_LOW_FREQUENCY],
-          motorStrength[RP_HIGH_FREQUENCY],
-          map->rumbleQueue[userIndex][RP_HIGH_FREQUENCY].contents.size);
-    }
   }
 }
 
@@ -270,4 +263,3 @@ void input_map_destroy(InputMap* map)
   hash_map_destroy(&map->sourceToActions, NULL);
   hash_map_destroy(&map->actionValues, NULL);
 }
-

@@ -1,6 +1,7 @@
 #include "Otter/Render/Memory/GpuBuffer.h"
 
 #include "Otter/Render/Memory/MemoryType.h"
+#include "Otter/Util/Log.h"
 
 // TODO: We should really be only allocating one buffer for the MVP, then
 // binding different locations for each model.
@@ -30,7 +31,7 @@ bool gpu_buffer_allocate(GpuBuffer* buffer, VkDeviceSize size,
   if (!memory_type_find(memoryRequirements.memoryTypeBits, physicalDevice,
           memoryProperties, &memoryIndex))
   {
-    fprintf(stderr, "Failed to find suitable memory type\n");
+    LOG_ERROR("Failed to find suitable memory type");
     vkDestroyBuffer(logicalDevice, buffer->buffer, NULL);
     return false;
   }
@@ -42,7 +43,7 @@ bool gpu_buffer_allocate(GpuBuffer* buffer, VkDeviceSize size,
   if (vkAllocateMemory(logicalDevice, &allocateInfo, NULL, &buffer->memory)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to allocate GPU memory.\n");
+    LOG_ERROR("Unable to allocate GPU memory.");
     vkDestroyBuffer(logicalDevice, buffer->buffer, NULL);
     return false;
   }
@@ -71,7 +72,7 @@ bool gpu_buffer_write(GpuBuffer* buffer, uint8_t* data, VkDeviceSize size,
   if (vkMapMemory(logicalDevice, buffer->memory, offset, size, 0, &mapping)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to write to buffer.");
+    LOG_ERROR("Unable to write to buffer.");
     return false;
   }
 
@@ -86,7 +87,7 @@ void gpu_buffer_transfer(
 {
   if (source->size != destination->size)
   {
-    printf("WARN: Source and destination buffer sizes do not match\n");
+    LOG_WARNING("Source and destination buffer sizes do not match");
     return;
   }
 

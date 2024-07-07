@@ -1,5 +1,7 @@
 #include "Otter/Render/RenderStack.h"
 
+#include "Otter/Util/Log.h"
+
 bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
     VkImageView depthBuffer, VkExtent2D extents, VkFormat renderFormat,
     VkRenderPass renderPass, VkPhysicalDevice physicalDevice,
@@ -53,7 +55,7 @@ bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
           &renderStack->bufferAttachments[RSL_LIGHTING])
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to get swapchain images.\n");
+    LOG_ERROR("Unable to get swapchain images.");
     return false;
   }
 
@@ -72,7 +74,7 @@ bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
           &renderStack->framebuffer)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Error: Unable to create framebuffer from image view.\n");
+    LOG_ERROR("Error: Unable to create framebuffer from image view.");
     return false;
   }
 

@@ -75,7 +75,7 @@ bool config_parse(HashMap* configMap, char* config)
     size_t separator = config_find_char(line, '=');
     if (separator == SIZE_MAX)
     {
-      fprintf(stderr, "Warning: Invalid key pair on line %d\n", lineNumber);
+      LOG_WARNING("Invalid key pair on line %d", lineNumber);
       continue;
     }
     line[separator] = '\0';
@@ -85,14 +85,13 @@ bool config_parse(HashMap* configMap, char* config)
     char* value = _strdup(&line[separator + 1]);
     if (value == NULL)
     {
-      fprintf(stderr, "Warning: Invalid value on line %d\n", lineNumber);
+      LOG_WARNING("Invalid value on line %d", lineNumber);
       continue;
     }
 
     if (!hash_map_set_value(configMap, key, strlen(key) + 1, value))
     {
-      fprintf(stderr,
-          "Something went horribly wrong with the HashMap. Oh its bad...\n");
+      LOG_ERROR("Failed to set value for key %s", key);
       return false;
     }
   }

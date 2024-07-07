@@ -1,5 +1,7 @@
 #include "Otter/Util/AutoArray.h"
 
+#include "Otter/Util/Log.h"
+
 #define ARRAY_INCREMENT_SIZE 32
 
 void auto_array_create(AutoArray* array, size_t elementSize)
@@ -27,8 +29,7 @@ static bool auto_array_expand(AutoArray* array, size_t requestedSize)
       realloc(array->buffer, requestedSize * array->sizeOfElement);
   if (newBuffer == NULL)
   {
-    fprintf(stderr,
-        "WARN: Unable to increase array size. Not allocating element.\n");
+    LOG_WARNING("Unable to increase array size. Not allocating element.");
     return false;
   }
   array->buffer   = newBuffer;
@@ -75,4 +76,3 @@ void auto_array_pop(AutoArray* array)
     }
   }
 }
-

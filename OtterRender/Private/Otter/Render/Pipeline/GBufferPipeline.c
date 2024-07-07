@@ -3,6 +3,7 @@
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/Pipeline/Pipeline.h"
 #include "Otter/Render/RenderStack.h"
+#include "Otter/Util/Log.h"
 
 bool g_buffer_pipeline_create(
     VkDevice logicalDevice, VkRenderPass renderPass, GBufferPipeline* pipeline)
@@ -137,7 +138,7 @@ bool g_buffer_pipeline_create(
           logicalDevice, &layoutCreateInfo, NULL, &pipeline->layout)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to create pipeline layout.\n");
+    LOG_ERROR("Unable to create pipeline layout.");
     vkDestroyShaderModule(logicalDevice, vertexShader, NULL);
     vkDestroyShaderModule(logicalDevice, fragShader, NULL);
     return false;
@@ -204,7 +205,7 @@ void g_buffer_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
           logicalDevice, &mvpDescriptorSetAllocInfo, &mvpDescriptorSet)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "WARN: Unable to allocate descriptors\n");
+    LOG_ERROR("WARN: Unable to allocate descriptors");
   }
 
   VkDescriptorBufferInfo mvpBufferInfo = {

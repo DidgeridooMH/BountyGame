@@ -1,5 +1,7 @@
 #include "Otter/Render/Mesh.h"
 
+#include "Otter/Util/Log.h"
+
 Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
     uint64_t numOfVertices, const uint16_t indices[], uint64_t numOfIndices,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
@@ -37,7 +39,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
           VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice))
   {
-    fprintf(stderr, "There was a problem allocating the mesh\n");
+    LOG_ERROR("There was a problem allocating the mesh");
     mesh_destroy(mesh, logicalDevice);
     return NULL;
   }
@@ -47,7 +49,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
       || !gpu_buffer_write(&indexStagingBuffer, (uint8_t*) indices,
           mesh->indices.size, 0, logicalDevice))
   {
-    fprintf(stderr, "There was an issue writing to the buffer.\n");
+    LOG_ERROR("There was an issue writing to the buffer.");
     gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
     gpu_buffer_free(&indexStagingBuffer, logicalDevice);
     mesh_destroy(mesh, logicalDevice);
@@ -64,7 +66,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
           logicalDevice, &transferCommandsAlloc, &transferCommands)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to allocate command buffer\n");
+    LOG_ERROR("Unable to allocate command buffer");
     gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
     gpu_buffer_free(&indexStagingBuffer, logicalDevice);
     mesh_destroy(mesh, logicalDevice);
@@ -76,7 +78,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
       .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT};
   if (vkBeginCommandBuffer(transferCommands, &beginInfo) != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to start command buffer\n");
+    LOG_ERROR("Unable to start command buffer");
     vkFreeCommandBuffers(logicalDevice, commandPool, 1, &transferCommands);
     gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
     gpu_buffer_free(&indexStagingBuffer, logicalDevice);
@@ -89,7 +91,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
 
   if (vkEndCommandBuffer(transferCommands) != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to end command buffer\n");
+    LOG_ERROR("Unable to end command buffer");
     vkFreeCommandBuffers(logicalDevice, commandPool, 1, &transferCommands);
     gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
     gpu_buffer_free(&indexStagingBuffer, logicalDevice);
@@ -102,7 +104,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
       .commandBufferCount           = 1};
   if (vkQueueSubmit(commandQueue, 1, &submitInfo, NULL) != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to submit queue\n");
+    LOG_ERROR("Unable to submit queue");
     vkFreeCommandBuffers(logicalDevice, commandPool, 1, &transferCommands);
     gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
     gpu_buffer_free(&indexStagingBuffer, logicalDevice);
@@ -112,7 +114,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
 
   if (vkQueueWaitIdle(commandQueue) != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to start command buffer\n");
+    LOG_ERROR("Unable to start command buffer");
     vkFreeCommandBuffers(logicalDevice, commandPool, 1, &transferCommands);
     gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
     gpu_buffer_free(&indexStagingBuffer, logicalDevice);

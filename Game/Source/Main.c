@@ -8,6 +8,7 @@
 #include "Otter/Render/RenderInstance.h"
 #include "Otter/Util/File.h"
 #include "Otter/Util/HashMap.h"
+#include "Otter/Util/Log.h"
 #include "Otter/Util/Profiler.h"
 #include "Window/GameWindow.h"
 
@@ -27,7 +28,7 @@ static bool loadGameConfig(GameConfig* config)
   char* configStr = file_load("Config/client.ini", NULL);
   if (configStr == NULL)
   {
-    fprintf(stderr, "Unable to find file config.ini\n");
+    LOG_ERROR("Unable to find file config.ini");
     return false;
   }
 
@@ -35,7 +36,7 @@ static bool loadGameConfig(GameConfig* config)
   if (!config_parse(&configMap, configStr))
   {
     free(configStr);
-    fprintf(stderr, "Could not parse configuration.");
+    LOG_ERROR("Could not parse configuration.");
     return false;
   }
   free(configStr);
@@ -46,7 +47,7 @@ static bool loadGameConfig(GameConfig* config)
       hash_map_get_value(&configMap, CONFIG_HEIGHT, strlen(CONFIG_HEIGHT) + 1);
   config->width  = widthStr != NULL ? atoi(widthStr) : 1920;
   config->height = heightStr != NULL ? atoi(heightStr) : 1080;
-  printf("Setting window to (%d, %d)\n", config->width, config->height);
+  LOG_DEBUG("Setting window to (%d, %d)", config->width, config->height);
 
   hash_map_destroy(&configMap, free);
 
@@ -90,7 +91,7 @@ static void pseudoOnUpdate(
       rumbleStrength += 1;
       rumbleStrength %= 4;
       pressed = true;
-      printf("Rumble strength: %d\n", rumbleStrength);
+      LOG_DEBUG("Rumble strength: %d", rumbleStrength);
     }
     else if (switchSpeed <= 0.0f)
     {
@@ -128,13 +129,13 @@ static bool load_key_binds(HashMap* keyBinds, const char* path)
   char* keyBindStr = file_load(path, NULL);
   if (keyBindStr == NULL)
   {
-    fprintf(stderr, "Unable to find file %s\n", path);
+    LOG_ERROR("Unable to find file %s", path);
     return false;
   }
 
   if (!config_parse(keyBinds, keyBindStr))
   {
-    fprintf(stderr, "Could not parse key binds.");
+    LOG_ERROR("Could not parse key binds.");
     free(keyBindStr);
     return false;
   }
@@ -158,14 +159,14 @@ int WINAPI wWinMain(
   char* glbTest     = file_load("model.glb", &fileLength);
   if (glbTest == NULL)
   {
-    fprintf(stderr, "Unable to find file model.glb\n");
+    LOG_ERROR("Unable to find file model.glb");
     return -1;
   }
 
   GlbAsset asset;
   if (!glb_load_asset(glbTest, fileLength, &asset))
   {
-    fprintf(stderr, "Unable to parse model.glb\n");
+    LOG_ERROR("Unable to parse model.glb");
     return -1;
   }
   free(glbTest);
@@ -182,7 +183,7 @@ int WINAPI wWinMain(
   RenderInstance* renderInstance = render_instance_create(window);
   if (renderInstance == NULL)
   {
-    fprintf(stderr, "Failed to initialize render instance.\n");
+    LOG_ERROR("Failed to initialize render instance.");
     game_window_destroy(window);
     profiler_destroy();
     task_scheduler_destroy();
@@ -271,6 +272,7 @@ int WINAPI wWinMain(
   renderInstance->cameraPosition.x = 100.0f;
   renderInstance->cameraPosition.y = 4.0f;
   renderInstance->cameraPosition.z = 100.0f;
+
   while (!game_window_process_message(window))
   {
     LARGE_INTEGER currentTime;
@@ -330,3 +332,4 @@ int WINAPI wWinMain(
 
   return 0;
 }
+

@@ -7,6 +7,7 @@ set(SOURCES
   Private/Otter/Util/Hash.c
   Private/Otter/Util/HashMap.c
   Private/Otter/Util/Heap.c
+  Private/Otter/Util/Log.c
   Private/Otter/Util/Profiler.c
   Private/Otter/Util/StableAutoArray.c
 )
@@ -24,6 +25,7 @@ set(PUBLIC_HEADERS
   Public/Otter/Util/Hash.h
   Public/Otter/Util/HashMap.h
   Public/Otter/Util/Heap.h
+  Public/Otter/Util/Log.h
   Public/Otter/Util/Profiler.h
   Public/Otter/Util/StableAutoArray.h
 )

@@ -1,8 +1,7 @@
 #pragma once
 
+#include "Otter/Util/Log.h"
 #include "Otter/Util/export.h"
-
-// TODO: Implement size optimization algorithm
 
 typedef struct AutoArray
 {
@@ -28,8 +27,7 @@ OTTERUTIL_API inline void* auto_array_get(AutoArray* array, size_t index)
 #ifdef _DEBUG
   if (index >= array->size)
   {
-    fprintf(stderr,
-        "WARN: Out of bounds read of index %zd on array of size %zd", index,
+    LOG_WARNING("Out of bounds read of index %zd on array of size %zd", index,
         array->size);
     return NULL;
   }

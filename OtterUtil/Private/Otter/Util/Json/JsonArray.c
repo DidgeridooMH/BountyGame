@@ -1,12 +1,14 @@
 #include "Otter/Util/Json/JsonArray.h"
 
+#include "Otter/Util/Log.h"
+
 JsonValue* json_parse_array_value(
     const char* document, size_t documentLength, size_t* const cursor)
 {
   JsonValue* jsonArray = malloc(sizeof(JsonValue));
   if (jsonArray == NULL)
   {
-    fprintf(stderr, "ERR: OOM\n");
+    LOG_ERROR("Out of memory");
     return NULL;
   }
   jsonArray->type = JT_ARRAY;

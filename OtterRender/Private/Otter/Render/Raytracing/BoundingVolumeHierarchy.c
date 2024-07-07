@@ -1,6 +1,7 @@
 #include "Otter/Render/Raytracing/BoundingVolumeHierarchy.h"
 
 #include "Otter/Async/Scheduler.h"
+#include "Otter/Util/Log.h"
 
 #define SUBDIVISION_LIMIT 20
 // #define DEBUG_BVH
@@ -165,9 +166,10 @@ static void bounding_volume_hierarchy_print(BoundingVolumeNode* node, int level)
 {
   for (int i = 0; i < level; i++)
   {
+    // TODO: Fix this to work with logger.
     printf("  ");
   }
-  printf("Split has %lld prims\n", node->numOfTris);
+  LOG_DEBUG("Split has %lld prims", node->numOfTris);
   if (node->left != NULL)
   {
     bounding_volume_hierarchy_print(node->left, level + 1);

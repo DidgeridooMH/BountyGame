@@ -23,7 +23,7 @@ bool render_frame_create(
           logicalDevice, &allocInfo, &renderFrame->commandBuffer)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Error: Failed to allocate command buffers\n");
+    LOG_ERROR("Error: Failed to allocate command buffers");
     return false;
   }
 
@@ -41,7 +41,7 @@ bool render_frame_create(
           logicalDevice, &createInfo, NULL, &renderFrame->descriptorPool)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Could not create descriptor pools\n");
+    LOG_ERROR("Could not create descriptor pools");
     return false;
   }
 
@@ -61,7 +61,7 @@ bool render_frame_create(
              logicalDevice, &fenceInfo, NULL, &renderFrame->inflightFence)
              != VK_SUCCESS)
   {
-    fprintf(stderr, "Error: Failed to create synchronization objects\n");
+    LOG_ERROR("Error: Failed to create synchronization objects");
     return false;
   }
 
@@ -116,7 +116,7 @@ static void render_frame_draw_mesh(RenderCommand* meshCommand,
   GpuBuffer* mvpBuffer = auto_array_allocate(&renderFrame->perRenderBuffers);
   if (mvpBuffer == NULL)
   {
-    fprintf(stderr, "Unable to queue mesh for rendering.\n");
+    LOG_ERROR("Unable to queue mesh for rendering.");
     return;
   }
 
@@ -126,15 +126,15 @@ static void render_frame_draw_mesh(RenderCommand* meshCommand,
               | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
           physicalDevice, logicalDevice))
   {
-    fprintf(stderr, "Warning: Could not allocate temporary gpu buffer...but I "
-                    "also don't know what to do about that.\n");
+    LOG_ERROR("Warning: Could not allocate temporary gpu buffer...but I "
+              "also don't know what to do about that.");
     return;
   }
 
   if (!gpu_buffer_write(mvpBuffer, (uint8_t*) mvp, sizeof(ModelViewProjection),
           0, logicalDevice))
   {
-    fprintf(stderr, "WARN: Unable to write MVP buffer\n");
+    LOG_ERROR("WARN: Unable to write MVP buffer");
     gpu_buffer_free(mvpBuffer, logicalDevice);
     mvpBuffer = NULL;
     return;
@@ -165,7 +165,7 @@ static void render_frame_start_render(RenderFrame* renderFrame,
   if (vkBeginCommandBuffer(renderFrame->commandBuffer, &beginInfo)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Error: Unable to begin command buffer\n");
+    LOG_ERROR("Error: Unable to begin command buffer");
     // TODO: Handle error
     return;
   }
@@ -205,7 +205,7 @@ static void render_frame_end_render(RenderFrame* renderFrame, VkQueue queue)
 
   if (vkEndCommandBuffer(renderFrame->commandBuffer) != VK_SUCCESS)
   {
-    fprintf(stderr, "Error: Unable to end recording of command buffer\n");
+    LOG_ERROR("Error: Unable to end recording of command buffer");
     // Handle error
     return;
   }
@@ -224,7 +224,7 @@ static void render_frame_end_render(RenderFrame* renderFrame, VkQueue queue)
   if (vkQueueSubmit(queue, 1, &submitInfo, renderFrame->inflightFence)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Error: Unable to submit graphics work\n");
+    LOG_ERROR("Error: Unable to submit graphics work");
     // TODO: Handle error
     return;
   }
@@ -304,4 +304,3 @@ void render_frame_clear_buffers(
   }
   auto_array_clear(&renderFrame->perRenderBuffers);
 }
-

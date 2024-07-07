@@ -51,7 +51,7 @@ static bool render_instance_check_extensions(const char* requiredExtensions[],
           != VK_SUCCESS
       || extensionCount == 0)
   {
-    fprintf(stderr, "Unable to enumerate extensions\n");
+    LOG_ERROR("Unable to enumerate extensions");
     return false;
   }
 
@@ -59,7 +59,7 @@ static bool render_instance_check_extensions(const char* requiredExtensions[],
       malloc(sizeof(VkExtensionProperties) * extensionCount);
   if (extensionProperties == NULL)
   {
-    fprintf(stderr, "OOM\n");
+    LOG_ERROR("OOM");
     return false;
   }
 
@@ -67,7 +67,7 @@ static bool render_instance_check_extensions(const char* requiredExtensions[],
           NULL, &extensionCount, extensionProperties)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to enumerate extensions\n");
+    LOG_ERROR("Unable to enumerate extensions");
     free(extensionProperties);
     return false;
   }
@@ -77,7 +77,7 @@ static bool render_instance_check_extensions(const char* requiredExtensions[],
       extensionProperties, extensionCount);
   if (*enabledExtensionsCount != requiredExtensionsCount)
   {
-    fprintf(stderr, "Missing required extensions.\n");
+    LOG_ERROR("Missing required extensions.");
     free(extensionProperties);
     return false;
   }
@@ -98,7 +98,7 @@ static bool render_instance_check_layers(const char** requestedLayers,
   if (vkEnumerateInstanceLayerProperties(&propertyCount, NULL) != VK_SUCCESS
       || propertyCount == 0)
   {
-    fprintf(stderr, "Error: Unable to enumerate instance layers\n");
+    LOG_ERROR("Unable to enumerate instance layers");
     return false;
   }
 
@@ -106,17 +106,15 @@ static bool render_instance_check_layers(const char** requestedLayers,
       malloc(sizeof(VkLayerProperties) * propertyCount);
   if (properties == NULL)
   {
-    fprintf(
-        stderr, "Error: Unable to enumerate instance layers because of OOM.\n");
+    LOG_ERROR("Unable to enumerate instance layers because of OOM.");
     return false;
   }
 
   if (vkEnumerateInstanceLayerProperties(&propertyCount, properties)
       != VK_SUCCESS)
   {
-    fprintf(stderr,
-        "Error: Unable to enumerate instance layers with count %u\n",
-        propertyCount);
+    LOG_ERROR(
+        "Unable to enumerate instance layers with count %u", propertyCount);
     free(properties);
     return false;
   }
@@ -215,7 +213,7 @@ static bool render_instance_create_instance(RenderInstance* renderInstance)
   if (vkCreateInstance(&createInfo, NULL, &renderInstance->instance)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Failed to create Vulkan instance.\n");
+    LOG_ERROR("Failed to create Vulkan instance.");
     free(renderInstance);
     return false;
   }
@@ -231,7 +229,7 @@ static bool render_instance_fetch_device(RenderInstance* renderInstance)
           != VK_SUCCESS
       || physicalDeviceCount == 0)
   {
-    fprintf(stderr, "Unable to enumerate physical devices.\n");
+    LOG_ERROR("Unable to enumerate physical devices.");
     return false;
   }
 
@@ -239,7 +237,7 @@ static bool render_instance_fetch_device(RenderInstance* renderInstance)
       malloc(sizeof(VkPhysicalDevice) * physicalDeviceCount);
   if (availableDevices == NULL)
   {
-    fprintf(stderr, "OOM\n");
+    LOG_ERROR("OOM");
     return false;
   }
 
@@ -247,7 +245,7 @@ static bool render_instance_fetch_device(RenderInstance* renderInstance)
           renderInstance->instance, &physicalDeviceCount, availableDevices)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to enumerate physical devices with count %u\n",
+    LOG_ERROR("Unable to enumerate physical devices with count %u",
         physicalDeviceCount);
     return false;
   }
@@ -265,7 +263,7 @@ static bool render_instance_fetch_device(RenderInstance* renderInstance)
     }
   }
 
-  printf("DEBUG: Using %s for rendering\n", properties.deviceName);
+  LOG_DEBUG("Using %s for rendering", properties.deviceName);
 
   return true;
 }
@@ -277,11 +275,11 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL render_instance_debug_callback(
 {
   if (severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT)
   {
-    printf("Vulkan warning: %s\n", callbackData->pMessage);
+    LOG_WARNING(" [Vulkan] %s", callbackData->pMessage);
   }
   else if (severity == VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT)
   {
-    fprintf(stderr, "Vulkan error: %s\n", callbackData->pMessage);
+    LOG_ERROR(" [Vulkan] %s", callbackData->pMessage);
   }
   return VK_FALSE;
 }
@@ -306,7 +304,7 @@ static bool render_instance_attach_debug_messenger(
 
   if (createDebugUtilsMessengerEXT == NULL)
   {
-    fprintf(stderr, "Error: Debug messenger extension not available.\n");
+    LOG_ERROR("Debug messenger extension not available.");
     return false;
   }
 
@@ -314,7 +312,7 @@ static bool render_instance_attach_debug_messenger(
           &renderInstance->debugMessenger)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Error: Unable to create debug messenger.\n");
+    LOG_ERROR("Unable to create debug messenger.");
     return false;
   }
 
@@ -332,7 +330,7 @@ static bool render_instance_find_queue_families(RenderInstance* renderInstance)
       malloc(sizeof(VkQueueFamilyProperties) * queueFamilyCount);
   if (queueFamilyProperties == NULL)
   {
-    fprintf(stderr, "Unable to get queue families\n.");
+    LOG_ERROR("Unable to get queue families.");
     return false;
   }
 
@@ -351,7 +349,7 @@ static bool render_instance_find_queue_families(RenderInstance* renderInstance)
 
   if (renderInstance->graphicsQueueFamily == UINT32_MAX)
   {
-    fprintf(stderr, "Unable to find queue families\n");
+    LOG_ERROR("Unable to find queue families");
     free(queueFamilyProperties);
     return false;
   }
@@ -402,7 +400,7 @@ static bool render_instance_create_logical_device(
           &renderInstance->logicalDevice)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Error: Unable to create logical device\n");
+    LOG_ERROR("Unable to create logical device");
     return false;
   }
 
@@ -422,13 +420,13 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
           renderInstance->physicalDevice, renderInstance->surface, &surfaceCaps)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Error: Unable to get surface capabilities\n");
+    LOG_ERROR("Unable to get surface capabilities");
     return false;
   }
 
   VkExtent2D swapchainExtent = surfaceCaps.currentExtent;
-  printf("DEBUG: Surface area at %dx%d\n", swapchainExtent.width,
-      swapchainExtent.height);
+  LOG_DEBUG(
+      "Surface area at %dx%d", swapchainExtent.width, swapchainExtent.height);
 
   uint32_t formatCount = 0;
   if (vkGetPhysicalDeviceSurfaceFormatsKHR(renderInstance->physicalDevice,
@@ -436,7 +434,7 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
           != VK_SUCCESS
       || formatCount == 0)
   {
-    fprintf(stderr, "Error: Unable to get surface formats\n");
+    LOG_ERROR("Unable to get surface formats");
     return false;
   }
 
@@ -444,14 +442,14 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
       malloc(formatCount * sizeof(VkSurfaceFormatKHR));
   if (formats == NULL)
   {
-    fprintf(stderr, "OOM\n");
+    LOG_ERROR("OOM");
     return false;
   }
   if (vkGetPhysicalDeviceSurfaceFormatsKHR(renderInstance->physicalDevice,
           renderInstance->surface, &formatCount, formats)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Error: Unable to get surface formats\n");
+    LOG_ERROR("Unable to get surface formats");
     free(formats);
     return false;
   }
@@ -489,7 +487,7 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
             != VK_SUCCESS
         || presentModeCount == 0)
     {
-      fprintf(stderr, "Unable to enumerate present modes.\n");
+      LOG_ERROR("Unable to enumerate present modes.");
       return false;
     }
 
@@ -497,7 +495,7 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
         malloc(sizeof(VkPresentModeKHR) * presentModeCount);
     if (presentModes == NULL)
     {
-      fprintf(stderr, "OOM\n");
+      LOG_ERROR("OOM");
       return false;
     }
 
@@ -506,7 +504,7 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
             &presentModeCount, presentModes)
         != VK_SUCCESS)
     {
-      fprintf(stderr, "Unable to enumerate present modes.\n");
+      LOG_ERROR("Unable to enumerate present modes.");
       free(presentModes);
       return false;
     }
@@ -658,7 +656,7 @@ static bool render_instance_create_render_pass(RenderInstance* renderInstance)
       &renderPassInfo, NULL, &renderInstance->renderPass);
   if (result != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to create the render pass\n");
+    LOG_ERROR("Unable to create the render pass");
     return false;
   }
 
@@ -677,7 +675,7 @@ static bool render_instance_create_render_surface(
           NULL, &renderInstance->surface)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to create win32 surface.\n");
+    LOG_ERROR("Unable to create win32 surface.");
     return false;
   }
 
@@ -717,7 +715,7 @@ static bool render_instance_create_command_pool(RenderInstance* renderInstance)
           &renderInstance->commandPool)
       != VK_SUCCESS)
   {
-    fprintf(stderr, "Error: Failed to create command pool\n");
+    LOG_ERROR("Failed to create command pool");
     return false;
   }
 
@@ -729,7 +727,7 @@ RenderInstance* render_instance_create(HWND window)
   RenderInstance* renderInstance = calloc(1, sizeof(RenderInstance));
   if (renderInstance == NULL)
   {
-    fprintf(stderr, "OOM\n");
+    LOG_ERROR("OOM");
     return NULL;
   }
 
@@ -747,12 +745,12 @@ RenderInstance* render_instance_create(HWND window)
   {
     if (render_instance_attach_debug_messenger(renderInstance))
     {
-      printf("DEBUG: Validation and debug layers enabled\n");
+      LOG_DEBUG("Validation and debug layers enabled");
     }
     else
     {
-      fprintf(stderr, "WARN: Debug messenger could not be attached. Continuing "
-                      "without...\n");
+      LOG_ERROR("WARN: Debug messenger could not be attached. Continuing "
+                "without...");
     }
   }
 #endif
@@ -838,7 +836,7 @@ RenderInstance* render_instance_create(HWND window)
 
 void render_instance_destroy(RenderInstance* renderInstance)
 {
-  printf("DEBUG: Destroying render frames\n");
+  LOG_DEBUG("Destroying render frames");
   if (renderInstance->frames != NULL)
   {
     for (uint32_t i = 0; i < renderInstance->framesInFlight; i++)
@@ -848,54 +846,54 @@ void render_instance_destroy(RenderInstance* renderInstance)
     }
   }
 
-  printf("DEBUG: Destroying full screen mesh\n");
+  LOG_DEBUG("Destroying full screen mesh");
   if (renderInstance->fullscreenQuad != NULL)
   {
     mesh_destroy(renderInstance->fullscreenQuad, renderInstance->logicalDevice);
   }
 
-  printf("DEBUG: Destroying pipelines\n");
+  LOG_DEBUG("Destroying pipelines");
   pbr_pipeline_destroy(
       &renderInstance->pbrPipeline, renderInstance->logicalDevice);
   g_buffer_pipeline_destroy(
       &renderInstance->gBufferPipeline, renderInstance->logicalDevice);
 
-  printf("DEBUG: Destroying command pool\n");
+  LOG_DEBUG("Destroying command pool");
   if (renderInstance->commandPool != NULL)
   {
     vkDestroyCommandPool(
         renderInstance->logicalDevice, renderInstance->commandPool, NULL);
   }
 
-  printf("DEBUG: Destroying render pass\n");
+  LOG_DEBUG("Destroying render pass");
   if (renderInstance->renderPass != NULL)
   {
     vkDestroyRenderPass(
         renderInstance->logicalDevice, renderInstance->renderPass, NULL);
   }
 
-  printf("DEBUG: Destroying swapchain\n");
+  LOG_DEBUG("Destroying swapchain");
   if (renderInstance->swapchain != NULL)
   {
     render_swapchain_destroy(
         renderInstance->swapchain, renderInstance->logicalDevice);
   }
 
-  printf("DEBUG: Destroying surface\n");
+  LOG_DEBUG("Destroying surface");
   if (renderInstance->surface != VK_NULL_HANDLE)
   {
     vkDestroySurfaceKHR(
         renderInstance->instance, renderInstance->surface, NULL);
   }
 
-  printf("DEBUG: Destroying logical device\n");
+  LOG_DEBUG("Destroying logical device");
   if (renderInstance->logicalDevice != VK_NULL_HANDLE)
   {
     vkDestroyDevice(renderInstance->logicalDevice, NULL);
   }
 
 #ifdef _DEBUG
-  printf("DEBUG: Destroying debug messenger\n");
+  LOG_DEBUG("Destroying debug messenger");
   if (renderInstance->debugMessenger != VK_NULL_HANDLE)
   {
     PFN_vkDestroyDebugUtilsMessengerEXT destroyDebugUtilsMessenger =
@@ -906,7 +904,7 @@ void render_instance_destroy(RenderInstance* renderInstance)
   }
 #endif
 
-  printf("DEBUG: Destroying instance\n");
+  LOG_DEBUG("Destroying instance");
   if (renderInstance->instance != VK_NULL_HANDLE)
   {
     vkDestroyInstance(renderInstance->instance, NULL);
@@ -925,8 +923,8 @@ void render_instance_draw(RenderInstance* renderInstance)
               .imageAvailableSemaphore,
           &image))
   {
-    fprintf(stderr, "WARN: Swapchain was invalid, but recreation is not "
-                    "implemented yet.\n");
+    LOG_ERROR("WARN: Swapchain was invalid, but recreation is not "
+              "implemented yet.");
     // TODO: Try to recreate the swapchain.
     return;
   }
@@ -960,7 +958,7 @@ void render_instance_draw(RenderInstance* renderInstance)
 
   if (vkQueuePresentKHR(presentQueue, &presentInfo) != VK_SUCCESS)
   {
-    fprintf(stderr, "Unable to present frame\n");
+    LOG_ERROR("Unable to present frame");
     // TODO: Should try to reset the swapchain.
   }
 

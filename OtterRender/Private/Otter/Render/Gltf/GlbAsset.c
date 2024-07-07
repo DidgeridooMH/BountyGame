@@ -2,6 +2,7 @@
 
 #include "Otter/Render/Gltf/GlbJsonChunk.h"
 #include "Otter/Util/Json/Json.h"
+#include "Otter/Util/Log.h"
 
 #define GLB_MAGIC 0x46546C67
 
@@ -32,7 +33,7 @@ OTTERRENDER_API bool glb_load_asset(
 {
   if (contentSize < sizeof(GlbHeader))
   {
-    fprintf(stderr, "Invalid GLB header.\n");
+    LOG_ERROR("Invalid GLB header.");
     return false;
   }
 
@@ -40,14 +41,14 @@ OTTERRENDER_API bool glb_load_asset(
   if (glbHeader->magic != GLB_MAGIC || glbHeader->version != 2
       || glbHeader->length != contentSize)
   {
-    fprintf(stderr, "Invalid GLB file format.\n");
+    LOG_ERROR("Invalid GLB file format.");
     return false;
   }
 
   GlbChunk* jsonChunk = (GlbChunk*) (content + sizeof(GlbHeader));
   if (jsonChunk->type != GCT_JSON)
   {
-    fprintf(stderr, "First chunk must be a JSON chunk.\n");
+    LOG_ERROR("First chunk must be a JSON chunk.");
     return false;
   }
 
@@ -56,7 +57,7 @@ OTTERRENDER_API bool glb_load_asset(
       json_parse(jsonChunk->data, jsonChunk->length, &bytesParsed);
   if (glbJsonData == NULL)
   {
-    fprintf(stderr, "Unable to parse JSON chunk\n");
+    LOG_ERROR("Unable to parse JSON chunk");
     return false;
   }
 
@@ -70,7 +71,7 @@ OTTERRENDER_API bool glb_load_asset(
   GlbChunk* binaryChunk = (GlbChunk*) (jsonChunk->data + jsonChunk->length);
   if (binaryChunk->type != GCT_BIN)
   {
-    fprintf(stderr, "Second chunk must be a binary chunk.\n");
+    LOG_ERROR("Second chunk must be a binary chunk.");
     json_destroy(glbJsonData);
     return false;
   }

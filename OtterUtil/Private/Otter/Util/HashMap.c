@@ -79,7 +79,7 @@ bool hash_map_set_value(
   keyValue                = stable_auto_array_allocate(bucket);
   if (keyValue == NULL)
   {
-    fprintf(stderr, "OOM\n");
+    LOG_ERROR("Out of memory");
     return false;
   }
 
@@ -120,7 +120,7 @@ bool hash_map_set_value_float(
   keyValue                = stable_auto_array_allocate(bucket);
   if (keyValue == NULL)
   {
-    fprintf(stderr, "OOM\n");
+    LOG_ERROR("Out of memory");
     return false;
   }
 

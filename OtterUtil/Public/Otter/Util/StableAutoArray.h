@@ -1,8 +1,7 @@
 #pragma once
 
+#include "Otter/Util/Log.h"
 #include "Otter/Util/export.h"
-
-// TODO: Implement size optimization algorithm
 
 #define SAA_DEFAULT_CHUNK_SIZE 32
 
@@ -36,8 +35,8 @@ OTTERUTIL_API inline void* stable_auto_array_get(
 #ifdef _DEBUG
   if (index >= array->size)
   {
-    fprintf(stderr, "WARN: Out of bounds read of index %d on array of size %d",
-        index, array->size);
+    LOG_WARNING("Out of bounds read of index %d on array of size %d", index,
+        array->size);
     return NULL;
   }
 #endif
@@ -51,3 +50,4 @@ OTTERUTIL_API inline void* stable_auto_array_get(
   return (char*) chunk->buffer
        + (index % array->chunkSize) * array->sizeOfElement;
 }
+ 
