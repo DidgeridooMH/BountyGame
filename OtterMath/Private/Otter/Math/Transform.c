@@ -1,5 +1,7 @@
 #include "Otter/Math/Transform.h"
 
+#include "Otter/Math/Mat.h"
+
 void transform_identity(Transform* transform)
 {
   transform->position.x = 0;

@@ -59,7 +59,7 @@ typedef struct RenderInstance
   // TODO: Rewrite mesh to not have to be a pointer.
   Mesh* fullscreenQuad;
 
-  Vec3 cameraPosition;
+  Transform cameraTransform;
 } RenderInstance;
 
 OTTERRENDER_API RenderInstance* render_instance_create(HWND window);
@@ -73,3 +73,4 @@ OTTERRENDER_API void render_instance_draw(RenderInstance* renderInstance);
 
 OTTERRENDER_API void render_instance_queue_mesh_draw(
     Mesh* mesh, Transform* transform, RenderInstance* renderInstance);
+

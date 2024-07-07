@@ -68,9 +68,8 @@ void main()
 
   vec3 diffuse = calculateDirectLight(position, normal);
 
-  vec3 lighting = max(diffuse, 0.0);
-  //* subpassLoad(ainColor).rgb;
-  //lighting = tonemap(lighting);
-  //lighting = gamma_adjust(lighting, 1.2);
+  vec3 lighting = max(diffuse, 0.1) * subpassLoad(ainColor).rgb;
+  lighting = tonemap(lighting);
+  lighting = gamma_adjust(lighting, 1.2);
   outColor = vec4(lighting, 1.0);
 }

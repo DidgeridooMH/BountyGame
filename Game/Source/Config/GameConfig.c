@@ -13,7 +13,7 @@ bool game_config_parse(GameConfig* config, const char* filename)
   char* configStr = file_load(filename, NULL);
   if (configStr == NULL)
   {
-    LOG_ERROR("Unable to find file config.ini");
+    LOG_ERROR("Unable to find file %s", filename);
     return false;
   }
 

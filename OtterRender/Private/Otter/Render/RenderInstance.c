@@ -188,7 +188,7 @@ static bool render_instance_create_instance(RenderInstance* renderInstance)
   }
 
   const char* optionalLayers[] = {
-#ifndef _DEBUG
+#ifdef _DEBUG
       VK_VALIDATION_LAYER_NAME,
 #endif
       VK_MONITOR_LAYER_NAME};
@@ -733,6 +733,8 @@ RenderInstance* render_instance_create(HWND window)
     return NULL;
   }
 
+  transform_identity(&renderInstance->cameraTransform);
+
   if (!render_instance_create_instance(renderInstance))
   {
     render_instance_destroy(renderInstance);
@@ -947,7 +949,7 @@ void render_instance_draw(RenderInstance* renderInstance)
   render_frame_draw(&renderInstance->frames[renderInstance->currentFrame],
       &renderInstance->swapchain->renderStacks[image],
       &renderInstance->gBufferPipeline, &renderInstance->pbrPipeline,
-      renderInstance->fullscreenQuad, &renderInstance->cameraPosition,
+      renderInstance->fullscreenQuad, &renderInstance->cameraTransform,
       renderInstance->renderPass, graphicsQueue, renderInstance->commandPool,
       renderInstance->physicalDevice, renderInstance->logicalDevice);
 

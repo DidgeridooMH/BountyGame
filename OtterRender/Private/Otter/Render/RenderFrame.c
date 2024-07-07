@@ -233,15 +233,19 @@ static void render_frame_end_render(RenderFrame* renderFrame, VkQueue queue)
 }
 
 static void render_frame_render_g_buffer(RenderFrame* renderFrame,
-    GBufferPipeline* gBufferPipeline, Vec3* camera, RenderStack* renderStack,
-    VkDevice logicalDevice, VkPhysicalDevice physicalDevice)
+    GBufferPipeline* gBufferPipeline, Transform* camera,
+    RenderStack* renderStack, VkDevice logicalDevice,
+    VkPhysicalDevice physicalDevice)
 {
   vkCmdBindPipeline(renderFrame->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       gBufferPipeline->pipeline);
 
   ModelViewProjection mvp = {0};
   mat4_identity(mvp.view);
-  mat4_translate(mvp.view, -camera->x, camera->y, -camera->z);
+  mat4_translate(
+      mvp.view, camera->position.x, camera->position.y, camera->position.z);
+  mat4_rotate(
+      mvp.view, camera->rotation.x, camera->rotation.y, camera->rotation.z);
   projection_create_perspective(mvp.projection, 90.0f,
       (float) renderStack->gBufferImage.size.width
           / (float) renderStack->gBufferImage.size.height,
@@ -275,8 +279,8 @@ static void render_frame_render_lighting(RenderFrame* renderFrame,
 
 void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     GBufferPipeline* gBufferPipeline, PbrPipeline* pbrPipeline,
-    Mesh* fullscreenQuad, Vec3* camera, VkRenderPass renderPass, VkQueue queue,
-    VkCommandPool commandPool, VkPhysicalDevice physicalDevice,
+    Mesh* fullscreenQuad, Transform* camera, VkRenderPass renderPass,
+    VkQueue queue, VkCommandPool commandPool, VkPhysicalDevice physicalDevice,
     VkDevice logicalDevice)
 {
   profiler_clock_start("render_submit");
@@ -304,3 +308,4 @@ void render_frame_clear_buffers(
   }
   auto_array_clear(&renderFrame->perRenderBuffers);
 }
+

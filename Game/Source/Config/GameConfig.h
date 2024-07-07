@@ -1,6 +1,6 @@
 #pragma once
 
-#define DEFAULT_GAME_CONFIG_PATH "Config/client.ini"
+#define DEFAULT_GAME_CONFIG_PATH "Config/config.ini"
 
 typedef struct GameConfig
 {
@@ -9,4 +9,3 @@ typedef struct GameConfig
 } GameConfig;
 
 bool game_config_parse(GameConfig* config, const char* filename);
-

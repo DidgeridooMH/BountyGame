@@ -73,8 +73,8 @@ add_custom_target(Shaders DEPENDS ${SPIRV_BINARY_FILES})
 add_dependencies(OtterRender Shaders)
 
 add_custom_command(
-  TARGET OtterRender POST_BUILD
-  COMMAND ${CMAKE_COMMAND} -E make_directory $<TARGET_FILE_DIR:OtterRender>/Shaders
-  COMMAND ${CMAKE_COMMAND} -E copy ${SPIRV_BINARY_FILES} $<TARGET_FILE_DIR:OtterRender>/Shaders
+  TARGET Shaders POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/Shaders
+  COMMAND ${CMAKE_COMMAND} -E copy ${SPIRV_BINARY_FILES} ${CMAKE_BINARY_DIR}/bin/Shaders
 )
 

@@ -1,11 +1,13 @@
 #pragma once
 
+#include <vulkan/vulkan.h>
+
+#include "Otter/Math/Transform.h"
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/Pipeline/GBufferPipeline.h"
 #include "Otter/Render/Pipeline/PbrPipeline.h"
 #include "Otter/Render/RenderStack.h"
 #include "Otter/Util/AutoArray.h"
-#include <vulkan/vulkan.h>
 
 typedef struct RenderFrame
 {
@@ -27,8 +29,8 @@ void render_frame_destroy(RenderFrame* renderFrame, VkCommandPool commandPool,
 
 void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     GBufferPipeline* gBufferPipeline, PbrPipeline* pbrPipeline,
-    Mesh* fullscreenQuad, Vec3* camera, VkRenderPass renderPass, VkQueue queue,
-    VkCommandPool commandPool, VkPhysicalDevice physicalDevice,
+    Mesh* fullscreenQuad, Transform* camera, VkRenderPass renderPass,
+    VkQueue queue, VkCommandPool commandPool, VkPhysicalDevice physicalDevice,
     VkDevice logicalDevice);
 
 void render_frame_clear_buffers(

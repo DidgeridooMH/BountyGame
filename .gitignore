@@ -64,3 +64,7 @@ RCa*
 x64/
 build/
 .cache
+
+*.spv
+*.glb
+

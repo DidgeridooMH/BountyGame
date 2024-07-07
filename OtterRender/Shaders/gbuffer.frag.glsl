@@ -10,13 +10,13 @@ layout (location = 3) out vec4 outMaterial;
 
 void main()
 {
-	outPosition = vec4(inPosition, 1.0);
-	outNormal = vec4(inNormal, 1.0);
+  outPosition = vec4(inPosition, 1.0);
+  outNormal = vec4(inNormal, 1.0);
 
-	outColor = vec4(1.0, 1.0, 1.0, 1.0);
+  outColor = vec4(1.0, 0.5, 0.5, 1.0);
 
-	float metallic = 0.5;
-	float roughness = 0.5;
-	float ao = 0.0;
-	outMaterial = vec4(metallic, roughness, ao, 1.0);
+  float metallic = 0.5;
+  float roughness = 0.5;
+  float ao = 0.0;
+  outMaterial = vec4(metallic, roughness, ao, 1.0);
 }
