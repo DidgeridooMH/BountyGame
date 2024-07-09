@@ -27,7 +27,7 @@ set(PUBLIC_HEADERS
   Public/Otter/Render/Pipeline/PbrPipeline.h
   Public/Otter/Render/Pipeline/Pipeline.h
   Public/Otter/Render/Texture/RenderImage.h
-  Public/Otter/Render/Uniform/ModelViewProjection.h
+  Public/Otter/Render/Uniform/ViewProjection.h
   Public/Otter/Render/export.h
   Public/Otter/Render/Mesh.h
   Public/Otter/Render/RenderFrame.h

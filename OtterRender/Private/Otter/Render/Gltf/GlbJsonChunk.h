@@ -1,13 +1,22 @@
 #pragma once
 
-#include "Otter/Math/Transform.h"
+#include "Otter/Math/MatDef.h"
+#include "Otter/Math/Vec.h"
 #include "Otter/Util/AutoArray.h"
 #include "Otter/Util/Json/Json.h"
 
+typedef enum NodeType
+{
+  NT_EMPTY,
+  NT_MESH
+} NodeType;
+
 typedef struct GlbNode
 {
+  NodeType type;
+  AutoArray children;
   uint32_t mesh;
-  Transform transform;
+  Mat4 transform;
 } GlbNode;
 
 typedef struct GlbMeshPrimitive
@@ -79,3 +88,4 @@ typedef struct GlbJsonChunk
 bool glb_json_chunk_parse(JsonValue* json, GlbJsonChunk* jsonChunk);
 
 void glb_json_chunk_destroy(GlbJsonChunk* jsonChunk);
+

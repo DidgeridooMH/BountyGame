@@ -1,5 +1,7 @@
 #include "Otter/Render/RenderInstance.h"
 
+#include <vulkan/vulkan_core.h>
+
 #include "Otter/Render/RenderQueue.h"
 
 #define VK_VALIDATION_LAYER_NAME   "VK_LAYER_KHRONOS_validation"
@@ -460,12 +462,14 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
   VkSurfaceFormatKHR format           = formats[0];
   if (renderInstance->settings.hdr)
   {
+
     for (uint32_t i = 0; i < formatCount; i++)
     {
+      LOG_DEBUG(
+          "Available format: %d %d", formats[i].format, formats[i].colorSpace);
       if (formats[i].colorSpace == HdrColorSpace)
       {
         format = formats[i];
-        break;
       }
     }
 
@@ -475,6 +479,9 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
       renderInstance->settings.hdr     = false;
     }
   }
+
+  LOG_DEBUG(
+      "Using format %d with color space %d", format.format, format.colorSpace);
 
   free(formats);
 
@@ -724,7 +731,7 @@ static bool render_instance_create_command_pool(RenderInstance* renderInstance)
   return true;
 }
 
-RenderInstance* render_instance_create(HWND window)
+RenderInstance* render_instance_create(HWND window, const char* shaderDirectory)
 {
   RenderInstance* renderInstance = calloc(1, sizeof(RenderInstance));
   if (renderInstance == NULL)
@@ -808,13 +815,13 @@ RenderInstance* render_instance_create(HWND window)
     }
   }
 
-  if (!g_buffer_pipeline_create(renderInstance->logicalDevice,
+  if (!g_buffer_pipeline_create(shaderDirectory, renderInstance->logicalDevice,
           renderInstance->renderPass, &renderInstance->gBufferPipeline))
   {
     return NULL;
   }
 
-  if (!pbr_pipeline_create(renderInstance->logicalDevice,
+  if (!pbr_pipeline_create(shaderDirectory, renderInstance->logicalDevice,
           renderInstance->renderPass, &renderInstance->pbrPipeline))
   {
     return NULL;
@@ -976,7 +983,7 @@ void render_instance_draw(RenderInstance* renderInstance)
 }
 
 void render_instance_queue_mesh_draw(
-    Mesh* mesh, Transform* transform, RenderInstance* renderInstance)
+    Mesh* mesh, Mat4 transform, RenderInstance* renderInstance)
 {
   RenderCommand* command = auto_array_allocate(
       &renderInstance->frames[renderInstance->currentFrame].renderQueue);
@@ -992,5 +999,6 @@ void render_instance_queue_mesh_draw(
   command->cpuVertices   = mesh->cpuVertices;
   command->numOfVertices = mesh->vertices.size / sizeof(MeshVertex);
   command->cpuIndices    = mesh->cpuIndices;
-  command->transform     = *transform;
+  memcpy(&command->transform, transform, sizeof(Mat4));
 }
+

@@ -25,7 +25,7 @@ static void pseudoOnUpdate(
   static float timer             = 0.0f;
   static uint16_t rumbleStrength = 0;
   static bool pressed            = false;
-  const float SPEED              = 200.0f;
+  const float SPEED              = 50.0f;
 
   float moveForward  = input_map_get_action_value(map, "move_forward");
   float moveBackward = input_map_get_action_value(map, "move_back");
@@ -34,14 +34,14 @@ static void pseudoOnUpdate(
     Vec4 translation = {0.0f, 0.0f, 1.0f, 1.0f};
     Mat4 rotationMatrix;
     mat4_identity(rotationMatrix);
-    mat4_rotate(rotationMatrix, -renderInstance->cameraTransform.rotation.x,
-        -renderInstance->cameraTransform.rotation.y,
-        -renderInstance->cameraTransform.rotation.z);
+    mat4_rotate(rotationMatrix, renderInstance->cameraTransform.rotation.x,
+        renderInstance->cameraTransform.rotation.y,
+        renderInstance->cameraTransform.rotation.z);
     vec4_multiply_mat4(&translation, rotationMatrix);
 
     Vec3* translation3d = (Vec3*) &translation;
     vec3_multiply(
-        translation3d, (moveForward - moveBackward) * SPEED * deltaTime);
+        translation3d, -(moveForward - moveBackward) * SPEED * deltaTime);
     vec3_add(&renderInstance->cameraTransform.position, (Vec3*) &translation);
   }
 
@@ -52,13 +52,13 @@ static void pseudoOnUpdate(
     Vec4 translation = {1.0f, 0.0f, 0.0f, 1.0f};
     Mat4 rotationMatrix;
     mat4_identity(rotationMatrix);
-    mat4_rotate(rotationMatrix, -renderInstance->cameraTransform.rotation.x,
-        -renderInstance->cameraTransform.rotation.y,
-        -renderInstance->cameraTransform.rotation.z);
+    mat4_rotate(rotationMatrix, renderInstance->cameraTransform.rotation.x,
+        renderInstance->cameraTransform.rotation.y,
+        renderInstance->cameraTransform.rotation.z);
     vec4_multiply_mat4(&translation, rotationMatrix);
 
     Vec3* translation3d = (Vec3*) &translation;
-    vec3_multiply(translation3d, (moveLeft - moveRight) * SPEED * deltaTime);
+    vec3_multiply(translation3d, -(moveLeft - moveRight) * SPEED * deltaTime);
     vec3_add(&renderInstance->cameraTransform.position, (Vec3*) &translation);
   }
 
@@ -66,8 +66,16 @@ static void pseudoOnUpdate(
   float turnRight = input_map_get_action_value(map, "turn_right");
   if (!isnan(turnLeft) && !isnan(turnRight))
   {
-    renderInstance->cameraTransform.rotation.y -=
+    renderInstance->cameraTransform.rotation.y +=
         (turnLeft - turnRight) * deltaTime * 3.f;
+  }
+
+  float moveUp   = input_map_get_action_value(map, "move_up");
+  float moveDown = input_map_get_action_value(map, "move_down");
+  if (!isnan(moveUp) && !isnan(moveDown))
+  {
+    renderInstance->cameraTransform.position.y -=
+        (moveUp - moveDown) * deltaTime * 3.f;
   }
 
   float switchSpeed = input_map_get_action_value(map, "set_speed");
@@ -121,35 +129,40 @@ int WINAPI wWinMain(
 
   QueryPerformanceFrequency(&g_timerFrequency);
 
-  size_t fileLength = 0;
-  char* glbTest     = file_load("model.glb", &fileLength);
-  if (glbTest == NULL)
-  {
-    LOG_ERROR("Unable to find file model.glb");
-    return -1;
-  }
-
-  GlbAsset asset;
-  if (!glb_load_asset(glbTest, fileLength, &asset))
-  {
-    LOG_ERROR("Unable to parse model.glb");
-    return -1;
-  }
-  free(glbTest);
-
   GameConfig config;
   if (!game_config_parse(&config, DEFAULT_GAME_CONFIG_PATH))
   {
     return -1;
   }
 
+  size_t fileLength = 0;
+  char* glbTest     = file_load(config.sampleModel, &fileLength);
+  if (glbTest == NULL)
+  {
+    LOG_ERROR("Unable to find file %s", config.sampleModel);
+    game_config_destroy(&config);
+    return -1;
+  }
+
+  GlbAsset asset;
+  if (!glb_load_asset(glbTest, fileLength, &asset))
+  {
+    LOG_ERROR("Unable to parse %s", config.sampleModel);
+    free(glbTest);
+    game_config_destroy(&config);
+    return -1;
+  }
+  free(glbTest);
+
   task_scheduler_init();
   profiler_init(g_timerFrequency);
   HWND window = game_window_create(config.width, config.height, WM_WINDOWED);
-  RenderInstance* renderInstance = render_instance_create(window);
+  RenderInstance* renderInstance =
+      render_instance_create(window, config.shaderDirectory);
   if (renderInstance == NULL)
   {
     LOG_ERROR("Failed to initialize render instance.");
+    game_config_destroy(&config);
     game_window_destroy(window);
     profiler_destroy();
     task_scheduler_destroy();
@@ -177,12 +190,12 @@ int WINAPI wWinMain(
       {.position  = {0.5f, 0.5f, -0.5f},
           .normal = {baseComp, baseComp, -baseComp}}};
   const uint16_t indices[] = {
-      0, 2, 1, 2, 3, 1, // Front
-      1, 3, 5, 3, 7, 5, // Right
-      5, 7, 4, 7, 6, 4, // Back
-      4, 6, 0, 6, 2, 0, // Left
-      4, 0, 1, 4, 1, 5, // Top
-      2, 6, 3, 6, 7, 3 // Bottom
+      1, 2, 0, 1, 3, 2, // Front
+      5, 3, 1, 5, 7, 3, // Right
+      4, 7, 5, 4, 6, 7, // Back
+      0, 6, 4, 0, 2, 6, // Left
+      1, 0, 4, 5, 1, 4, // Top
+      3, 6, 2, 3, 7, 6 // Bottom
   };
 
   VkQueue graphicsQueue;
@@ -215,6 +228,7 @@ int WINAPI wWinMain(
   InputMap inputMap;
   if (!input_map_create(&inputMap))
   {
+    game_config_destroy(&config);
     render_instance_destroy(renderInstance);
     game_window_destroy(window);
     profiler_destroy();
@@ -225,11 +239,12 @@ int WINAPI wWinMain(
   input_map_load_key_binds_from_file(&inputMap, DEFAULT_KEY_BINDS_PATH);
 
   renderInstance->cameraTransform.position.x = 0.0f;
-  renderInstance->cameraTransform.position.y = 4.0f;
-  renderInstance->cameraTransform.position.z = -100.0f;
+  renderInstance->cameraTransform.position.y = -4.0f;
+  renderInstance->cameraTransform.position.z = 100.0f;
 
   while (!game_window_process_message(window))
   {
+    profiler_clock_start("preframe");
     LARGE_INTEGER currentTime;
     QueryPerformanceCounter(&currentTime);
     float deltaTime = ((float) (currentTime.QuadPart - lastFrameTime.QuadPart)
@@ -241,12 +256,17 @@ int WINAPI wWinMain(
     pseudoOnUpdate(&inputMap, renderInstance, deltaTime);
 
     // Draw scene
-    Transform floorTransform;
-    transform_identity(&floorTransform);
-    floorTransform.position.y = 10.0f;
-    floorTransform.scale.x    = 100.0f;
-    floorTransform.scale.z    = 100.0f;
-    render_instance_queue_mesh_draw(cube, &floorTransform, renderInstance);
+    Mat4 floorTransform;
+    mat4_identity(floorTransform);
+    mat4_translate(floorTransform, 0.0f, 10.0f, 0.0f);
+    mat4_scale(floorTransform, 100.0f, 1.0f, 100.0f);
+    render_instance_queue_mesh_draw(cube, floorTransform, renderInstance);
+
+    // Draw light source
+    Mat4 lightTransform;
+    mat4_identity(lightTransform);
+    mat4_translate(lightTransform, 16.0f, -16.0f, 16.0f);
+    render_instance_queue_mesh_draw(cube, lightTransform, renderInstance);
 
     for (uint32_t i = 0; i < buildingMesh.size; i++)
     {
@@ -254,8 +274,9 @@ int WINAPI wWinMain(
       Mesh** assetMesh       = auto_array_get(&buildingMesh, i);
       GlbAssetMesh* glbAsset = auto_array_get(&asset.meshes, i);
       render_instance_queue_mesh_draw(
-          *assetMesh, &glbAsset->transform, renderInstance);
+          *assetMesh, glbAsset->transform, renderInstance);
     }
+    profiler_clock_end("preframe");
 
     render_instance_draw(renderInstance);
 
@@ -264,14 +285,12 @@ int WINAPI wWinMain(
             / g_timerFrequency.QuadPart
         > 1.0f)
     {
-      // Read profile keys from config file and overlay them with imgui.
-      // const char* keys[] = {"bvh_init", "bvh_build", "bvh_create",
-      //     "cpu_shadow_rt", "cpu_buffer_copy", "render_submit"};
-      // for (int i = 0; i < _countof(keys); i++)
-      // {
-      //   float time = profiler_clock_get(keys[i]);
-      //   printf("[%s]        \t%f ms\n", keys[i], time * 1000.0f);
-      // }
+      const char* keys[] = {};
+      for (int i = 0; i < _countof(keys); i++)
+      {
+        float time = profiler_clock_get(keys[i]);
+        printf("[%s]        \t%f ms\n", keys[i], time * 1000.0f);
+      }
       lastStatTime = currentTime;
     }
 
@@ -287,6 +306,7 @@ int WINAPI wWinMain(
     mesh_destroy(*assetMesh, renderInstance->logicalDevice);
   }
 
+  game_config_destroy(&config);
   input_map_destroy(&inputMap);
   task_scheduler_destroy();
   mesh_destroy(cube, renderInstance->logicalDevice);
@@ -296,4 +316,3 @@ int WINAPI wWinMain(
 
   return 0;
 }
-

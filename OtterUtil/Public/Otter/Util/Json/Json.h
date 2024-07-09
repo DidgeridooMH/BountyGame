@@ -9,7 +9,8 @@ enum JsonType
   JT_OBJECT,
   JT_ARRAY,
   JT_STRING,
-  JT_NUMBER,
+  JT_FLOAT,
+  JT_INTEGER,
   JT_BOOLEAN,
 };
 
@@ -21,7 +22,8 @@ typedef struct JsonValue
     HashMap object;
     AutoArray array;
     char* string;
-    float number;
+    double floatingPoint;
+    int64_t integer;
     bool boolean;
   };
 } JsonValue;
@@ -36,7 +38,8 @@ enum JsonTokenType
   JTT_COLON,
   JTT_COMMA,
   JTT_STRING,
-  JTT_NUMBER,
+  JTT_FLOAT,
+  JTT_INTEGER,
   JTT_TRUE,
   JTT_FALSE,
   JTT_NULL
@@ -52,7 +55,8 @@ typedef struct JsonToken
       const char* tokenString;
       size_t tokenStringLength;
     };
-    float tokenFloat;
+    uint64_t tokenInteger;
+    double tokenFloat;
   };
 } JsonToken;
 

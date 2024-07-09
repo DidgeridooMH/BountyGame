@@ -74,3 +74,21 @@ void mat4_rotate(Mat4 matrix, float roll, float pitch, float yaw)
 
   mat4_multiply(rotationMatrix, matrix);
 }
+
+void mat4_rotate_quaternion(Mat4 matrix, float x, float y, float z, float w)
+{
+  Mat4 rotationMatrix;
+  mat4_identity(rotationMatrix);
+  rotationMatrix[0][0] = 1.0f - 2.0f * (y * y + z * z);
+  rotationMatrix[0][1] = 2.0f * (x * y + w * z);
+  rotationMatrix[0][2] = 2.0f * (x * z - w * y);
+  rotationMatrix[1][0] = 2.0f * (x * y - w * z);
+  rotationMatrix[1][1] = 1.0f - 2.0f * (x * x + z * z);
+  rotationMatrix[1][2] = 2.0f * (w * x + y * z);
+  rotationMatrix[2][0] = 2.0f * (w * y + x * z);
+  rotationMatrix[2][1] = 2.0f * (y * z - w * x);
+  rotationMatrix[2][2] = 1.0f - 2.0f * (x * x + y * y);
+
+  mat4_multiply(rotationMatrix, matrix);
+}
+

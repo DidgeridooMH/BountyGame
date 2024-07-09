@@ -1,22 +1,28 @@
 #include "Otter/Render/Pipeline/GBufferPipeline.h"
 
+#include "Otter/Math/MatDef.h"
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/Pipeline/Pipeline.h"
 #include "Otter/Render/RenderStack.h"
 #include "Otter/Util/Log.h"
 
-bool g_buffer_pipeline_create(
+bool g_buffer_pipeline_create(const char* shaderDirectory,
     VkDevice logicalDevice, VkRenderPass renderPass, GBufferPipeline* pipeline)
 {
+  char shaderPath[MAX_PATH] = {0};
+  snprintf(
+      shaderPath, _countof(shaderPath), "%s/gbuffer.vert.spv", shaderDirectory);
   VkShaderModule vertexShader =
-      pipeline_load_shader_module("Shaders/gbuffer.vert.spv", logicalDevice);
+      pipeline_load_shader_module(shaderPath, logicalDevice);
   if (vertexShader == VK_NULL_HANDLE)
   {
     return false;
   }
 
+  snprintf(
+      shaderPath, _countof(shaderPath), "%s/gbuffer.frag.spv", shaderDirectory);
   VkShaderModule fragShader =
-      pipeline_load_shader_module("Shaders/gbuffer.frag.spv", logicalDevice);
+      pipeline_load_shader_module(shaderPath, logicalDevice);
   if (fragShader == VK_NULL_HANDLE)
   {
     vkDestroyShaderModule(logicalDevice, vertexShader, NULL);
@@ -86,7 +92,7 @@ bool g_buffer_pipeline_create(
   VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = {
       .sType     = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
       .cullMode  = VK_CULL_MODE_BACK_BIT,
-      .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
+      .frontFace = VK_FRONT_FACE_CLOCKWISE,
       .lineWidth = 1.0f};
 
   VkPipelineMultisampleStateCreateInfo multisamplingStateCreateInfo = {
@@ -130,10 +136,17 @@ bool g_buffer_pipeline_create(
     return false;
   }
 
+  VkPushConstantRange pushConstantRange = {
+      .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+      .offset     = 0,
+      .size       = sizeof(Mat4)};
+
   VkPipelineLayoutCreateInfo layoutCreateInfo = {
-      .sType          = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .pSetLayouts    = &pipeline->descriptorSetLayouts,
-      .setLayoutCount = 1};
+      .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
+      .pSetLayouts            = &pipeline->descriptorSetLayouts,
+      .setLayoutCount         = 1,
+      .pushConstantRangeCount = 1,
+      .pPushConstantRanges    = &pushConstantRange};
   if (vkCreatePipelineLayout(
           logicalDevice, &layoutCreateInfo, NULL, &pipeline->layout)
       != VK_SUCCESS)
@@ -148,7 +161,7 @@ bool g_buffer_pipeline_create(
       .sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO,
       .depthTestEnable       = VK_TRUE,
       .depthWriteEnable      = VK_TRUE,
-      .depthCompareOp        = VK_COMPARE_OP_GREATER,
+      .depthCompareOp        = VK_COMPARE_OP_LESS,
       .depthBoundsTestEnable = VK_FALSE,
       .stencilTestEnable     = VK_FALSE};
 
@@ -194,34 +207,34 @@ void g_buffer_pipeline_destroy(
 
 void g_buffer_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
     VkDescriptorPool descriptorPool, VkDevice logicalDevice,
-    GpuBuffer* mvpBuffer, GBufferPipeline* pipeline)
+    GpuBuffer* vpBuffer, GBufferPipeline* pipeline)
 {
-  // TODO: Move out of this to make a bulk allocation
-  VkDescriptorSetAllocateInfo mvpDescriptorSetAllocInfo = {
+  VkDescriptorSetAllocateInfo vpDescriptorSetAllocInfo = {
       .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
       .descriptorPool     = descriptorPool,
       .pSetLayouts        = &pipeline->descriptorSetLayouts,
       .descriptorSetCount = 1};
-  VkDescriptorSet mvpDescriptorSet;
+  VkDescriptorSet vpDescriptorSet;
   if (vkAllocateDescriptorSets(
-          logicalDevice, &mvpDescriptorSetAllocInfo, &mvpDescriptorSet)
+          logicalDevice, &vpDescriptorSetAllocInfo, &vpDescriptorSet)
       != VK_SUCCESS)
   {
     LOG_ERROR("WARN: Unable to allocate descriptors");
   }
 
   VkDescriptorBufferInfo mvpBufferInfo = {
-      .buffer = mvpBuffer->buffer, .offset = 0, .range = mvpBuffer->size};
+      .buffer = vpBuffer->buffer, .offset = 0, .range = vpBuffer->size};
   VkWriteDescriptorSet mvpWrite = {
       .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
       .descriptorCount = 1,
       .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      .dstSet          = mvpDescriptorSet,
+      .dstSet          = vpDescriptorSet,
       .dstBinding      = 0,
       .dstArrayElement = 0,
       .pBufferInfo     = &mvpBufferInfo};
   vkUpdateDescriptorSets(logicalDevice, 1, &mvpWrite, 0, NULL);
 
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      pipeline->layout, 0, 1, &mvpDescriptorSet, 0, NULL);
+      pipeline->layout, 0, 1, &vpDescriptorSet, 0, NULL);
 }
+

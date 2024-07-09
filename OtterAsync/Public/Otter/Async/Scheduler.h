@@ -2,6 +2,9 @@
 
 #include "Otter/Async/export.h"
 
+// TODO: Get this shit outta here and make a proper task graph for better
+// performance.
+
 #define TASK_SCHEDULER_THREADS 16
 
 enum TaskFlags

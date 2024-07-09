@@ -5,18 +5,21 @@
 #include "Otter/Render/RenderStack.h"
 #include "Otter/Util/Log.h"
 
-bool pbr_pipeline_create(
-    VkDevice logicalDevice, VkRenderPass renderPass, PbrPipeline* pipeline)
+bool pbr_pipeline_create(const char* shaderDirectory, VkDevice logicalDevice,
+    VkRenderPass renderPass, PbrPipeline* pipeline)
 {
+  char shaderPath[MAX_PATH] = {0};
+  snprintf(shaderPath, MAX_PATH, "%s/pbr.vert.spv", shaderDirectory);
   VkShaderModule vertexShader =
-      pipeline_load_shader_module("Shaders/pbr.vert.spv", logicalDevice);
+      pipeline_load_shader_module(shaderPath, logicalDevice);
   if (vertexShader == VK_NULL_HANDLE)
   {
     return false;
   }
 
+  snprintf(shaderPath, MAX_PATH, "%s/pbr.frag.spv", shaderDirectory);
   VkShaderModule fragShader =
-      pipeline_load_shader_module("Shaders/pbr.frag.spv", logicalDevice);
+      pipeline_load_shader_module(shaderPath, logicalDevice);
   if (fragShader == VK_NULL_HANDLE)
   {
     vkDestroyShaderModule(logicalDevice, vertexShader, NULL);
@@ -112,6 +115,10 @@ bool pbr_pipeline_create(
       {.binding            = 4,
           .descriptorCount = 1,
           .descriptorType  = VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT,
+          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT},
+      {.binding            = 5,
+          .descriptorCount = 1,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}};
 
   VkDescriptorSetLayoutCreateInfo descriptorSetLayoutCreateInfo = {
@@ -179,9 +186,8 @@ void pbr_pipeline_destroy(PbrPipeline* pipeline, VkDevice logicalDevice)
 
 void pbr_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
     VkDescriptorPool descriptorPool, VkDevice logicalDevice,
-    RenderStack* renderStack, PbrPipeline* pipeline)
+    RenderStack* renderStack, GpuBuffer* pbrData, PbrPipeline* pipeline)
 {
-
   VkDescriptorSetAllocateInfo attachmentDescriptorSetAllocInfo = {
       .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
       .descriptorPool     = descriptorPool,
@@ -209,7 +215,8 @@ void pbr_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
           .imageView = renderStack->bufferAttachments[RSL_MATERIAL],
           .sampler   = VK_NULL_HANDLE}};
 
-  VkWriteDescriptorSet attachmentWrites[_countof(attachmentDescriptors)] = {0};
+  VkWriteDescriptorSet attachmentWrites[_countof(attachmentDescriptors) + 1] = {
+      0};
   for (uint32_t i = 0; i < _countof(attachmentDescriptors); i++)
   {
     attachmentWrites[i].sType          = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
@@ -220,10 +227,18 @@ void pbr_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
     attachmentWrites[i].pImageInfo      = attachmentDescriptors + i;
   }
 
+  VkDescriptorBufferInfo pbrBufferInfo = {
+      .buffer = pbrData->buffer, .offset = 0, .range = pbrData->size};
+  attachmentWrites[4].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  attachmentWrites[4].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  attachmentWrites[4].descriptorCount = 1;
+  attachmentWrites[4].dstBinding      = 5;
+  attachmentWrites[4].dstSet          = attachmentDescriptorSet;
+  attachmentWrites[4].pBufferInfo     = &pbrBufferInfo;
+
   vkUpdateDescriptorSets(
       logicalDevice, _countof(attachmentWrites), attachmentWrites, 0, NULL);
 
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       pipeline->layout, 0, 1, &attachmentDescriptorSet, 0, NULL);
 }
- 

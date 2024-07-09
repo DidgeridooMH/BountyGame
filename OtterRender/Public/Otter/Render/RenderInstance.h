@@ -62,7 +62,8 @@ typedef struct RenderInstance
   Transform cameraTransform;
 } RenderInstance;
 
-OTTERRENDER_API RenderInstance* render_instance_create(HWND window);
+OTTERRENDER_API RenderInstance* render_instance_create(
+    HWND window, const char* shaderDirectory);
 
 OTTERRENDER_API void render_instance_wait_for_idle(
     RenderInstance* renderInstance);
@@ -72,5 +73,5 @@ OTTERRENDER_API void render_instance_destroy(RenderInstance* renderInstance);
 OTTERRENDER_API void render_instance_draw(RenderInstance* renderInstance);
 
 OTTERRENDER_API void render_instance_queue_mesh_draw(
-    Mesh* mesh, Transform* transform, RenderInstance* renderInstance);
+    Mesh* mesh, Mat4 transform, RenderInstance* renderInstance);
 

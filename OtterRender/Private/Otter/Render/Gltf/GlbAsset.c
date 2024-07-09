@@ -80,61 +80,63 @@ OTTERRENDER_API bool glb_load_asset(
   for (uint32_t i = 0; i < parsedJsonChunk.nodes.size; i++)
   {
     GlbNode* node = auto_array_get(&parsedJsonChunk.nodes, i);
-    GlbMesh* mesh = auto_array_get(&parsedJsonChunk.meshes, node->mesh);
-    for (uint32_t p = 0; p < mesh->primitives.size; p++)
+    if (node->type == NT_MESH)
     {
-      // TODO: Do some checks to verify integrity.
-      GlbMeshPrimitive* primitive = auto_array_get(&mesh->primitives, p);
-      GlbAccessor* positionAccessor =
-          auto_array_get(&parsedJsonChunk.accessors, primitive->position);
-      GlbAccessor* normalAccessor =
-          auto_array_get(&parsedJsonChunk.accessors, primitive->normal);
-      GlbAccessor* uvAccessor =
-          auto_array_get(&parsedJsonChunk.accessors, primitive->uv);
-      GlbAccessor* indexAccessor =
-          auto_array_get(&parsedJsonChunk.accessors, primitive->indices);
-
-      GlbBufferView* positionBuffer = auto_array_get(
-          &parsedJsonChunk.bufferViews, positionAccessor->bufferView);
-      GlbBufferView* normalBuffer = auto_array_get(
-          &parsedJsonChunk.bufferViews, normalAccessor->bufferView);
-      GlbBufferView* uvBuffer =
-          auto_array_get(&parsedJsonChunk.bufferViews, uvAccessor->bufferView);
-      GlbBufferView* indicesBuffer = auto_array_get(
-          &parsedJsonChunk.bufferViews, indexAccessor->bufferView);
-
-      // TODO: Figure out how multiple buffers would work.
-      Vec3* positions   = (Vec3*) &binaryChunk->data[positionBuffer->offset];
-      Vec3* normals     = (Vec3*) &binaryChunk->data[normalBuffer->offset];
-      Vec2* uvs         = (Vec2*) &binaryChunk->data[uvBuffer->offset];
-      uint16_t* indices = (uint16_t*) &binaryChunk->data[indicesBuffer->offset];
-
-      GlbAssetMesh* assetMesh = auto_array_allocate(&asset->meshes);
-
-      assetMesh->vertices =
-          malloc(sizeof(MeshVertex) * positionAccessor->count);
-      assetMesh->numOfVertices = positionAccessor->count;
-
-      assetMesh->indices      = malloc(sizeof(uint16_t) * indexAccessor->count);
-      assetMesh->numOfIndices = indexAccessor->count;
-
-      for (uint32_t attribute = 0; attribute < positionAccessor->count;
-           attribute++)
+      GlbMesh* mesh = auto_array_get(&parsedJsonChunk.meshes, node->mesh);
+      for (uint32_t p = 0; p < mesh->primitives.size; p++)
       {
-        // TODO: Take into consideration the buffer index.
-        assetMesh->vertices[attribute].position = positions[attribute];
-        assetMesh->vertices[attribute].normal   = normals[attribute];
-        assetMesh->vertices[attribute].uv       = uvs[attribute];
-      }
+        // TODO: Do some checks to verify integrity.
+        GlbMeshPrimitive* primitive = auto_array_get(&mesh->primitives, p);
+        GlbAccessor* positionAccessor =
+            auto_array_get(&parsedJsonChunk.accessors, primitive->position);
+        GlbAccessor* normalAccessor =
+            auto_array_get(&parsedJsonChunk.accessors, primitive->normal);
+        GlbAccessor* uvAccessor =
+            auto_array_get(&parsedJsonChunk.accessors, primitive->uv);
+        GlbAccessor* indexAccessor =
+            auto_array_get(&parsedJsonChunk.accessors, primitive->indices);
 
-      for (uint32_t index = 0; index < indexAccessor->count; index++)
-      {
-        assetMesh->indices[index] = indices[index];
-      }
+        GlbBufferView* positionBuffer = auto_array_get(
+            &parsedJsonChunk.bufferViews, positionAccessor->bufferView);
+        GlbBufferView* normalBuffer = auto_array_get(
+            &parsedJsonChunk.bufferViews, normalAccessor->bufferView);
+        GlbBufferView* uvBuffer = auto_array_get(
+            &parsedJsonChunk.bufferViews, uvAccessor->bufferView);
+        GlbBufferView* indicesBuffer = auto_array_get(
+            &parsedJsonChunk.bufferViews, indexAccessor->bufferView);
 
-      assetMesh->transform = node->transform;
-      assetMesh->transform.position.y *= -1;
-      assetMesh->transform.scale.y *= -1;
+        // TODO: Figure out how multiple buffers would work.
+        Vec3* positions = (Vec3*) &binaryChunk->data[positionBuffer->offset];
+        Vec3* normals   = (Vec3*) &binaryChunk->data[normalBuffer->offset];
+        Vec2* uvs       = (Vec2*) &binaryChunk->data[uvBuffer->offset];
+        uint16_t* indices =
+            (uint16_t*) &binaryChunk->data[indicesBuffer->offset];
+
+        GlbAssetMesh* assetMesh = auto_array_allocate(&asset->meshes);
+
+        assetMesh->vertices =
+            malloc(sizeof(MeshVertex) * positionAccessor->count);
+        assetMesh->numOfVertices = positionAccessor->count;
+
+        assetMesh->indices = malloc(sizeof(uint16_t) * indexAccessor->count);
+        assetMesh->numOfIndices = indexAccessor->count;
+
+        for (uint32_t attribute = 0; attribute < positionAccessor->count;
+             attribute++)
+        {
+          // TODO: Take into consideration the buffer index.
+          assetMesh->vertices[attribute].position = positions[attribute];
+          assetMesh->vertices[attribute].normal   = normals[attribute];
+          assetMesh->vertices[attribute].uv       = uvs[attribute];
+        }
+
+        for (uint32_t index = 0; index < indexAccessor->count; index++)
+        {
+          assetMesh->indices[index] = indices[index];
+        }
+
+        memcpy(&assetMesh->transform, &node->transform, sizeof(Mat4));
+      }
     }
   }
 
@@ -143,3 +145,4 @@ OTTERRENDER_API bool glb_load_asset(
 
   return true;
 }
+

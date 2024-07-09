@@ -1,8 +1,11 @@
 #include "Otter/Util/Json/Json.h"
 
+#include <stdlib.h>
+
 #include "Otter/Util/Json/JsonArray.h"
 #include "Otter/Util/Json/JsonObject.h"
 
+// TODO: There are not alot of bounds checks here.
 bool json_get_token(JsonToken* token, const char* document,
     size_t documentLength, size_t* const cursor)
 {
@@ -64,10 +67,23 @@ bool json_get_token(JsonToken* token, const char* document,
   }
   else if (tokenStart == '-' || isdigit(tokenStart))
   {
-    token->type       = JTT_NUMBER;
-    char* endOfNumber = NULL;
-    token->tokenFloat = strtof(&document[*cursor - 1], &endOfNumber);
-    *cursor += (endOfNumber - &document[*cursor - 1]) - 1;
+    // TODO: Please don't do it like this.
+    char* endOfFloat     = NULL;
+    char* endOfInteger   = NULL;
+    double floatingPoint = strtod(&document[*cursor - 1], &endOfFloat);
+    int64_t integer      = strtoll(&document[*cursor - 1], &endOfInteger, 10);
+    if (endOfFloat > endOfInteger)
+    {
+      token->type       = JTT_FLOAT;
+      token->tokenFloat = floatingPoint;
+      *cursor += (endOfFloat - &document[*cursor - 1]) - 1;
+    }
+    else
+    {
+      token->type         = JTT_INTEGER;
+      token->tokenInteger = integer;
+      *cursor += (endOfInteger - &document[*cursor - 1]) - 1;
+    }
   }
   else if (strncmp(&document[*cursor - 1], "true", strlen("true")) == 0)
   {
@@ -93,6 +109,7 @@ bool json_get_token(JsonToken* token, const char* document,
   return true;
 }
 
+// TODO: Maybe pre-parse the information.
 void json_peek_token(JsonToken* token, const char* document,
     size_t documentLength, size_t cursor)
 {
@@ -138,7 +155,19 @@ void json_peek_token(JsonToken* token, const char* document,
   }
   else if (tokenStart == '-' || isdigit(tokenStart))
   {
-    token->type = JTT_NUMBER;
+    // TODO: Again, please don't
+    char* endOfFloat     = NULL;
+    char* endOfInteger   = NULL;
+    double floatingPoint = strtod(&document[cursor], &endOfFloat);
+    int64_t integer      = strtoll(&document[cursor], &endOfInteger, 10);
+    if (endOfFloat > endOfInteger)
+    {
+      token->type = JTT_FLOAT;
+    }
+    else
+    {
+      token->type = JTT_INTEGER;
+    }
   }
   else if (strncmp(&document[cursor], "true", strlen("true")) == 0)
   {
@@ -190,15 +219,26 @@ JsonValue* json_parse(
           token.tokenString, token.tokenStringLength);
       return stringValue;
     }
-  case JTT_NUMBER:
+  case JTT_INTEGER:
     {
       JsonValue* numberValue = malloc(sizeof(JsonValue));
       if (numberValue == NULL)
       {
         return NULL;
       }
-      numberValue->type   = JT_NUMBER;
-      numberValue->number = token.tokenFloat;
+      numberValue->type    = JT_INTEGER;
+      numberValue->integer = token.tokenInteger;
+      return numberValue;
+    }
+  case JTT_FLOAT:
+    {
+      JsonValue* numberValue = malloc(sizeof(JsonValue));
+      if (numberValue == NULL)
+      {
+        return NULL;
+      }
+      numberValue->type          = JT_FLOAT;
+      numberValue->floatingPoint = token.tokenInteger;
       return numberValue;
     }
   case JTT_TRUE:
@@ -256,3 +296,4 @@ void json_destroy(JsonValue* value)
 
   free(value);
 }
+

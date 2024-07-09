@@ -1,5 +1,6 @@
 #include "Otter/Render/Gltf/GlbJsonChunk.h"
 
+#include "Otter/Math/Mat.h"
 #include "Otter/Util/Json/Json.h"
 #include "Otter/Util/Log.h"
 
@@ -13,14 +14,122 @@ static bool glb_json_chunk_parse_vec3(JsonValue* jsonValue, Vec3* result)
   JsonValue* x = *(JsonValue**) auto_array_get(&jsonValue->array, 0);
   JsonValue* y = *(JsonValue**) auto_array_get(&jsonValue->array, 1);
   JsonValue* z = *(JsonValue**) auto_array_get(&jsonValue->array, 2);
-  if (x->type != JT_NUMBER && y->type != JT_NUMBER && z->type != JT_NUMBER)
+  if ((x->type != JT_INTEGER && x->type != JT_FLOAT)
+      || (y->type != JT_INTEGER && y->type != JT_FLOAT)
+      || (z->type != JT_INTEGER && z->type != JT_FLOAT))
   {
     return false;
   }
 
-  result->x = x->number;
-  result->y = y->number;
-  result->z = z->number;
+  result->x = x->type == JT_INTEGER ? x->integer : x->floatingPoint;
+  result->y = y->type == JT_INTEGER ? y->integer : y->floatingPoint;
+  result->z = z->type == JT_INTEGER ? z->integer : z->floatingPoint;
+
+  return true;
+}
+
+static bool glb_json_chunk_parse_vec4(JsonValue* jsonValue, Vec4* result)
+{
+  if (jsonValue->type != JT_ARRAY || jsonValue->array.size != 3)
+  {
+    return false;
+  }
+
+  JsonValue* x = *(JsonValue**) auto_array_get(&jsonValue->array, 0);
+  JsonValue* y = *(JsonValue**) auto_array_get(&jsonValue->array, 1);
+  JsonValue* z = *(JsonValue**) auto_array_get(&jsonValue->array, 2);
+  JsonValue* w = *(JsonValue**) auto_array_get(&jsonValue->array, 4);
+  if ((x->type != JT_INTEGER && x->type != JT_FLOAT)
+      || (y->type != JT_INTEGER && y->type != JT_FLOAT)
+      || (z->type != JT_INTEGER && z->type != JT_FLOAT)
+      || (w->type != JT_INTEGER && w->type != JT_FLOAT))
+  {
+    return false;
+  }
+
+  result->x = x->type == JT_INTEGER ? x->integer : x->floatingPoint;
+  result->y = y->type == JT_INTEGER ? y->integer : y->floatingPoint;
+  result->z = z->type == JT_INTEGER ? z->integer : z->floatingPoint;
+  result->w = w->type == JT_INTEGER ? w->integer : w->floatingPoint;
+
+  return true;
+}
+
+static bool glb_json_chunk_parse_node_transformation(
+    JsonValue* nodeElement, GlbNode* newNode)
+{
+  JsonValue* transformMatrix =
+      hash_map_get_value(&nodeElement->object, "matrix", strlen("matrix"));
+  if (transformMatrix != NULL)
+  {
+    if (transformMatrix->type != JT_ARRAY || transformMatrix->array.size != 16)
+    {
+      LOG_WARNING("Matrix was not in the right format for node.");
+      return false;
+    }
+
+    for (uint32_t m = 0; m < 16; m++)
+    {
+      JsonValue* matrixElement =
+          *(JsonValue**) auto_array_get(&transformMatrix->array, m);
+      if (matrixElement->type != JT_FLOAT && matrixElement->type != JT_INTEGER)
+      {
+        LOG_WARNING("Matrix element was not a number for node.");
+        return false;
+      }
+      newNode->transform[m / 4][m % 4] = matrixElement->type == JT_FLOAT
+                                           ? matrixElement->floatingPoint
+                                           : matrixElement->integer;
+    }
+  }
+  else
+  {
+    JsonValue* translation = hash_map_get_value(
+        &nodeElement->object, "translation", strlen("translation"));
+    if (translation != NULL)
+    {
+      Vec3 translationTransform = {0};
+      if (!glb_json_chunk_parse_vec3(translation, &translationTransform))
+      {
+        LOG_WARNING("Translation was not in the right format for node.");
+        return false;
+      }
+      mat4_translate(newNode->transform, translationTransform.x,
+          translationTransform.y, translationTransform.z);
+    }
+
+    JsonValue* rotation = hash_map_get_value(
+        &nodeElement->object, "rotation", strlen("rotation"));
+    if (rotation != NULL)
+    {
+      Vec4 rotationTransform = {0};
+      if (!glb_json_chunk_parse_vec4(rotation, &rotationTransform))
+      {
+        LOG_WARNING("Rotation was not in the right format for node.");
+        return false;
+      }
+      mat4_rotate_quaternion(newNode->transform, rotationTransform.x,
+          rotationTransform.y, rotationTransform.z, rotationTransform.w);
+    }
+
+    JsonValue* scale =
+        hash_map_get_value(&nodeElement->object, "scale", strlen("scale"));
+    if (scale != NULL)
+    {
+      Vec3 scaleTransform = {0};
+      if (!glb_json_chunk_parse_vec3(scale, &scaleTransform))
+      {
+        LOG_WARNING("Scale was not in the right format for node.");
+        return false;
+      }
+      mat4_scale(newNode->transform, scaleTransform.x, scaleTransform.y,
+          scaleTransform.z);
+    }
+  }
+
+  // NOTE: Vulkan uses -y for its up axis. Our glb currently uses +y for its
+  // up axis.
+  mat4_rotate(newNode->transform, 0, 0, M_PI);
 
   return true;
 }
@@ -34,39 +143,46 @@ static bool glb_json_chunk_parse_nodes(JsonValue* nodes, AutoArray* array)
     JsonValue* nodeElement = *(JsonValue**) auto_array_get(&nodes->array, i);
     if (nodeElement->type != JT_OBJECT)
     {
-      continue;
-    }
-
-    JsonValue* meshIndex =
-        hash_map_get_value(&nodeElement->object, "mesh", strlen("mesh"));
-    if (meshIndex == NULL || meshIndex->type != JT_NUMBER)
-    {
+      LOG_WARNING("Node was not an object for node %d", i);
       continue;
     }
 
     GlbNode* newNode = auto_array_allocate(array);
-    newNode->mesh    = (uint32_t) meshIndex->number;
-    transform_identity(&newNode->transform);
+    newNode->type    = NT_EMPTY;
+    mat4_identity(newNode->transform);
 
-    JsonValue* translation = hash_map_get_value(
-        &nodeElement->object, "translation", strlen("translation"));
-    if (translation != NULL)
+    JsonValue* meshIndex =
+        hash_map_get_value(&nodeElement->object, "mesh", strlen("mesh"));
+    if (meshIndex != NULL && meshIndex->type == JT_INTEGER)
     {
-      glb_json_chunk_parse_vec3(translation, &newNode->transform.position);
+      newNode->type = NT_MESH;
+      newNode->mesh = meshIndex->integer;
     }
 
-    JsonValue* rotation = hash_map_get_value(
-        &nodeElement->object, "rotation", strlen("rotation"));
-    if (rotation != NULL)
+    if (!glb_json_chunk_parse_node_transformation(nodeElement, newNode))
     {
-      glb_json_chunk_parse_vec3(rotation, &newNode->transform.rotation);
+      newNode->type = NT_EMPTY;
+      LOG_WARNING("Node transformation was not parsed properly for node %d", i);
+      continue;
     }
 
-    JsonValue* scale =
-        hash_map_get_value(&nodeElement->object, "scale", strlen("scale"));
-    if (scale != NULL)
+    auto_array_create(&newNode->children, sizeof(uint32_t));
+    JsonValue* children = hash_map_get_value(
+        &nodeElement->object, "children", strlen("children"));
+    if (children != NULL && children->type == JT_ARRAY)
     {
-      glb_json_chunk_parse_vec3(scale, &newNode->transform.scale);
+      for (uint32_t c = 0; c < children->array.size; c++)
+      {
+        JsonValue* child = *(JsonValue**) auto_array_get(&children->array, c);
+        if (child->type == JT_INTEGER)
+        {
+          *(uint32_t*) auto_array_allocate(&newNode->children) = child->integer;
+        }
+        else
+        {
+          LOG_WARNING("Child was not a number for node %d", i);
+        }
+      }
     }
   }
 
@@ -79,9 +195,13 @@ static bool glb_json_chunk_parse_meshes(JsonValue* meshes, AutoArray* array)
 
   for (uint32_t i = 0; i < meshes->array.size; i++)
   {
+    GlbMesh* mesh = auto_array_allocate(array);
+    auto_array_create(&mesh->primitives, sizeof(GlbMeshPrimitive));
+
     JsonValue* meshElement = *(JsonValue**) auto_array_get(&meshes->array, i);
     if (meshElement->type != JT_OBJECT)
     {
+      LOG_ERROR("Mesh was not an object.");
       continue;
     }
 
@@ -89,11 +209,10 @@ static bool glb_json_chunk_parse_meshes(JsonValue* meshes, AutoArray* array)
         &meshElement->object, "primitives", strlen("primitives"));
     if (primitives == NULL || primitives->type != JT_ARRAY)
     {
-      return false;
+      LOG_ERROR("Primitives were not present.");
+      continue;
     }
 
-    GlbMesh* mesh = auto_array_allocate(array);
-    auto_array_create(&mesh->primitives, sizeof(GlbMeshPrimitive));
     for (uint32_t p = 0; p < primitives->array.size; p++)
     {
       JsonValue* primitive =
@@ -101,17 +220,17 @@ static bool glb_json_chunk_parse_meshes(JsonValue* meshes, AutoArray* array)
       if (primitive == NULL || primitive->type != JT_OBJECT)
       {
         LOG_ERROR("Primitive was not an object.");
-        return false;
+        continue;
       }
       JsonValue* attributes = hash_map_get_value(
           &primitive->object, "attributes", strlen("attributes"));
       JsonValue* indices =
           hash_map_get_value(&primitive->object, "indices", strlen("indices"));
       if (attributes == NULL || attributes->type != JT_OBJECT || indices == NULL
-          || indices->type != JT_NUMBER)
+          || indices->type != JT_INTEGER)
       {
         LOG_ERROR("Attributes or indices were not present.");
-        return false;
+        continue;
       }
 
       JsonValue* position = hash_map_get_value(
@@ -120,18 +239,18 @@ static bool glb_json_chunk_parse_meshes(JsonValue* meshes, AutoArray* array)
           hash_map_get_value(&attributes->object, "NORMAL", strlen("NORMAL"));
       JsonValue* uv = hash_map_get_value(
           &attributes->object, "TEXCOORD_0", strlen("TEXCOORD_0"));
-      if (position == NULL || position->type != JT_NUMBER || normal == NULL
-          || normal->type != JT_NUMBER || uv == NULL || uv->type != JT_NUMBER)
+      if (position == NULL || position->type != JT_INTEGER || normal == NULL
+          || normal->type != JT_INTEGER || uv == NULL || uv->type != JT_INTEGER)
       {
         LOG_ERROR("position, normal, or uv were not in the right format.");
-        return false;
+        continue;
       }
 
       GlbMeshPrimitive* meshPrimitives = auto_array_allocate(&mesh->primitives);
-      meshPrimitives->position         = (uint32_t) position->number;
-      meshPrimitives->normal           = (uint32_t) normal->number;
-      meshPrimitives->uv               = (uint32_t) uv->number;
-      meshPrimitives->indices          = (uint32_t) indices->number;
+      meshPrimitives->position         = position->integer;
+      meshPrimitives->normal           = normal->integer;
+      meshPrimitives->uv               = uv->integer;
+      meshPrimitives->indices          = indices->integer;
     }
   }
 
@@ -161,9 +280,9 @@ static bool glb_json_chunk_parse_accessors(
         hash_map_get_value(&accessorElement->object, "count", strlen("count"));
     JsonValue* type =
         hash_map_get_value(&accessorElement->object, "type", strlen("type"));
-    if (bufferView == NULL || bufferView->type != JT_NUMBER
-        || componentType == NULL || componentType->type != JT_NUMBER
-        || count == NULL || count->type != JT_NUMBER || type == NULL
+    if (bufferView == NULL || bufferView->type != JT_INTEGER
+        || componentType == NULL || componentType->type != JT_INTEGER
+        || count == NULL || count->type != JT_INTEGER || type == NULL
         || type->type != JT_STRING)
     {
       LOG_ERROR("Accessor property was not in the right format.");
@@ -171,9 +290,9 @@ static bool glb_json_chunk_parse_accessors(
     }
 
     GlbAccessor* accessor   = auto_array_allocate(array);
-    accessor->bufferView    = (uint32_t) bufferView->number;
-    accessor->componentType = (uint32_t) componentType->number;
-    accessor->count         = (uint32_t) count->number;
+    accessor->bufferView    = bufferView->integer;
+    accessor->componentType = componentType->integer;
+    accessor->count         = count->integer;
 
     if (strcmp(type->string, "SCALAR") == 0)
     {
@@ -245,18 +364,18 @@ static bool glb_json_chunk_parse_buffer_views(
         &bufferViewElement->object, "byteLength", strlen("byteLength"));
     JsonValue* offset = hash_map_get_value(
         &bufferViewElement->object, "byteOffset", strlen("byteOffset"));
-    if (buffer == NULL || buffer->type != JT_NUMBER || length == NULL
-        || length->type != JT_NUMBER || offset == NULL
-        || offset->type != JT_NUMBER)
+    if (buffer == NULL || buffer->type != JT_INTEGER || length == NULL
+        || length->type != JT_INTEGER || offset == NULL
+        || offset->type != JT_INTEGER)
     {
       LOG_ERROR("Buffer view property was not in the right format");
       return false;
     }
 
     GlbBufferView* bufferView = auto_array_allocate(array);
-    bufferView->buffer        = (uint32_t) buffer->number;
-    bufferView->length        = (uint32_t) length->number;
-    bufferView->offset        = (uint32_t) offset->number;
+    bufferView->buffer        = buffer->integer;
+    bufferView->length        = length->integer;
+    bufferView->offset        = offset->integer;
   }
 
   return true;
@@ -278,14 +397,14 @@ bool glb_json_chunk_parse_buffers(JsonValue* buffers, AutoArray* array)
 
     JsonValue* length = hash_map_get_value(
         &bufferElement->object, "byteLength", strlen("byteLength"));
-    if (length == NULL || length->type != JT_NUMBER)
+    if (length == NULL || length->type != JT_INTEGER)
     {
       LOG_ERROR("Buffer length not found.");
       return false;
     }
 
     GlbBuffer* buffer  = auto_array_allocate(array);
-    buffer->byteLength = (uint32_t) length->number;
+    buffer->byteLength = length->integer;
   }
 
   return true;
@@ -338,6 +457,13 @@ void glb_json_chunk_destroy(GlbJsonChunk* jsonChunk)
   auto_array_destroy(&jsonChunk->accessors);
   auto_array_destroy(&jsonChunk->buffers);
   auto_array_destroy(&jsonChunk->bufferViews);
+
+  for (uint32_t i = 0; i < jsonChunk->nodes.size; i++)
+  {
+    GlbNode* node = auto_array_get(&jsonChunk->nodes, i);
+    auto_array_destroy(&node->children);
+  }
+
   auto_array_destroy(&jsonChunk->nodes);
 
   for (uint32_t i = 0; i < jsonChunk->meshes.size; i++)
@@ -347,3 +473,4 @@ void glb_json_chunk_destroy(GlbJsonChunk* jsonChunk)
   }
   auto_array_destroy(&jsonChunk->meshes);
 }
+

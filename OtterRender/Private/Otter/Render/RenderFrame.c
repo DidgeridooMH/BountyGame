@@ -2,7 +2,7 @@
 
 #include "Otter/Math/Projection.h"
 #include "Otter/Render/RenderQueue.h"
-#include "Otter/Render/Uniform/ModelViewProjection.h"
+#include "Otter/Render/Uniform/ViewProjection.h"
 #include "Otter/Util/Profiler.h"
 
 #define DESCRIPTOR_POOL_SIZE 128
@@ -106,42 +106,11 @@ void render_frame_destroy(
 }
 
 static void render_frame_draw_mesh(RenderCommand* meshCommand,
-    RenderFrame* renderFrame, ModelViewProjection* mvp,
-    GBufferPipeline* gBufferPipeline, VkPhysicalDevice physicalDevice,
-    VkDevice logicalDevice)
+    RenderFrame* renderFrame, GBufferPipeline* gBufferPipeline,
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
 {
-  mat4_identity(mvp->model);
-  transform_apply(mvp->model, &meshCommand->transform);
-
-  GpuBuffer* mvpBuffer = auto_array_allocate(&renderFrame->perRenderBuffers);
-  if (mvpBuffer == NULL)
-  {
-    LOG_ERROR("Unable to queue mesh for rendering.");
-    return;
-  }
-
-  if (!gpu_buffer_allocate(mvpBuffer, sizeof(ModelViewProjection),
-          VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-              | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-          physicalDevice, logicalDevice))
-  {
-    LOG_ERROR("Warning: Could not allocate temporary gpu buffer...but I "
-              "also don't know what to do about that.");
-    return;
-  }
-
-  if (!gpu_buffer_write(mvpBuffer, (uint8_t*) mvp, sizeof(ModelViewProjection),
-          0, logicalDevice))
-  {
-    LOG_ERROR("WARN: Unable to write MVP buffer");
-    gpu_buffer_free(mvpBuffer, logicalDevice);
-    mvpBuffer = NULL;
-    return;
-  }
-
-  g_buffer_pipeline_write_descriptor_set(renderFrame->commandBuffer,
-      renderFrame->descriptorPool, logicalDevice, mvpBuffer, gBufferPipeline);
+  vkCmdPushConstants(renderFrame->commandBuffer, gBufferPipeline->layout,
+      VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Mat4), &meshCommand->transform);
 
   VkDeviceSize offset = 0;
   vkCmdBindVertexBuffers(
@@ -173,7 +142,7 @@ static void render_frame_start_render(RenderFrame* renderFrame,
   VkClearValue clearColor[NUM_OF_RENDER_STACK_LAYERS] = {
       {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
       {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
-      {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f}};
+      {0.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}};
   VkRenderPassBeginInfo renderPassInfo = {
       .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
       .renderPass      = renderPass,
@@ -240,33 +209,94 @@ static void render_frame_render_g_buffer(RenderFrame* renderFrame,
   vkCmdBindPipeline(renderFrame->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       gBufferPipeline->pipeline);
 
-  ModelViewProjection mvp = {0};
-  mat4_identity(mvp.view);
+  ViewProjection vp = {0};
+  mat4_identity(vp.view);
   mat4_translate(
-      mvp.view, camera->position.x, camera->position.y, camera->position.z);
+      vp.view, -camera->position.x, -camera->position.y, -camera->position.z);
   mat4_rotate(
-      mvp.view, camera->rotation.x, camera->rotation.y, camera->rotation.z);
-  projection_create_perspective(mvp.projection, 90.0f,
+      vp.view, -camera->rotation.x, -camera->rotation.y, -camera->rotation.z);
+  projection_create_perspective(vp.projection, 90.0f,
       (float) renderStack->gBufferImage.size.width
           / (float) renderStack->gBufferImage.size.height,
-      0.1f, 10000.0f);
+      1000.0f, 0.1f);
 
+  // TODO: make this a one time allocation in the instance/frame.
+  GpuBuffer* vpBuffer = auto_array_allocate(&renderFrame->perRenderBuffers);
+  if (vpBuffer == NULL)
+  {
+    LOG_ERROR("Unable to allocate VP buffer");
+    return;
+  }
+
+  if (!gpu_buffer_allocate(vpBuffer, sizeof(ViewProjection),
+          VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+              | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+          physicalDevice, logicalDevice))
+  {
+    LOG_ERROR("Warning: Could not allocate temporary gpu buffer...but I "
+              "also don't know what to do about that.");
+    return;
+  }
+
+  if (!gpu_buffer_write(
+          vpBuffer, (uint8_t*) &vp, sizeof(ViewProjection), 0, logicalDevice))
+  {
+    LOG_ERROR("WARN: Unable to write VP buffer");
+    gpu_buffer_free(vpBuffer, logicalDevice);
+    return;
+  }
+
+  g_buffer_pipeline_write_descriptor_set(renderFrame->commandBuffer,
+      renderFrame->descriptorPool, logicalDevice, vpBuffer, gBufferPipeline);
+
+  profiler_clock_start("render_meshes");
   for (uint32_t i = 0; i < renderFrame->renderQueue.size; i++)
   {
     RenderCommand* meshCommand = auto_array_get(&renderFrame->renderQueue, i);
-    render_frame_draw_mesh(meshCommand, renderFrame, &mvp, gBufferPipeline,
+    render_frame_draw_mesh(meshCommand, renderFrame, gBufferPipeline,
         physicalDevice, logicalDevice);
   }
+  profiler_clock_end("render_meshes");
 }
 
 static void render_frame_render_lighting(RenderFrame* renderFrame,
     RenderStack* renderStack, PbrPipeline* pbrPipeline, Mesh* fullscreenQuad,
-    VkDevice logicalDevice)
+    Transform* camera, VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
 {
+  LightingData lightingData = {.cameraPositionWorldSpace = camera->position};
+
+  GpuBuffer* pbrData = auto_array_allocate(&renderFrame->perRenderBuffers);
+  if (pbrData == NULL)
+  {
+    LOG_ERROR("Unable to allocate lighting data");
+    return;
+  }
+
+  if (!gpu_buffer_allocate(pbrData, sizeof(lightingData),
+          VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+              | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+          physicalDevice, logicalDevice))
+  {
+    LOG_ERROR("Warning: Could not allocate temporary gpu buffer...but I "
+              "also don't know what to do about that.");
+    return;
+  }
+
+  if (!gpu_buffer_write(pbrData, (uint8_t*) &lightingData, sizeof(lightingData),
+          0, logicalDevice))
+  {
+    LOG_ERROR("WARN: Unable to write MVP buffer");
+    gpu_buffer_free(pbrData, logicalDevice);
+    return;
+  }
+
   vkCmdBindPipeline(renderFrame->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       pbrPipeline->pipeline);
   pbr_pipeline_write_descriptor_set(renderFrame->commandBuffer,
-      renderFrame->descriptorPool, logicalDevice, renderStack, pbrPipeline);
+      renderFrame->descriptorPool, logicalDevice, renderStack, pbrData,
+      pbrPipeline);
 
   VkDeviceSize offset = 0;
   vkCmdBindVertexBuffers(renderFrame->commandBuffer, 0, 1,
@@ -283,19 +313,25 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     VkQueue queue, VkCommandPool commandPool, VkPhysicalDevice physicalDevice,
     VkDevice logicalDevice)
 {
-  profiler_clock_start("render_submit");
+  profiler_clock_start("render_start");
   render_frame_start_render(
       renderFrame, renderPass, renderStack, logicalDevice);
+  profiler_clock_end("render_start");
+  profiler_clock_start("render_g_buffer");
   render_frame_render_g_buffer(renderFrame, gBufferPipeline, camera,
       renderStack, logicalDevice, physicalDevice);
+  profiler_clock_end("render_g_buffer");
 
   vkCmdNextSubpass(renderFrame->commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
 
-  render_frame_render_lighting(
-      renderFrame, renderStack, pbrPipeline, fullscreenQuad, logicalDevice);
+  profiler_clock_start("render_lighting");
+  render_frame_render_lighting(renderFrame, renderStack, pbrPipeline,
+      fullscreenQuad, camera, physicalDevice, logicalDevice);
+  profiler_clock_end("render_lighting");
 
+  profiler_clock_start("render_end");
   render_frame_end_render(renderFrame, queue);
-  profiler_clock_end("render_submit");
+  profiler_clock_end("render_end");
 }
 
 void render_frame_clear_buffers(

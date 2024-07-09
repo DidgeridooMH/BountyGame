@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Otter/Math/Transform.h"
-#include "Otter/Render/Mesh.h"
 #include <vulkan/vulkan.h>
+
+#include "Otter/Render/Mesh.h"
 
 typedef struct RenderCommand
 {
@@ -12,6 +12,5 @@ typedef struct RenderCommand
   MeshVertex* cpuVertices;
   size_t numOfVertices;
   uint16_t* cpuIndices;
-  Transform transform;
+  Mat4 transform;
 } RenderCommand;
-                
