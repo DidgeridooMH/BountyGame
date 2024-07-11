@@ -11,6 +11,12 @@ layout (set = 0, binding = 5) uniform CameraBuffer {
   vec3 cameraPositionWorldSpace;
 };
 
+const mat3 rec709toRec2020 = mat3(
+  0.6274040f, 0.3292820f, 0.0433136f,
+  0.0690970f, 0.9195400f, 0.0113612f,
+  0.0163916f, 0.0880132f, 0.8955950f
+);
+
 const float PI = 3.14159265359;
 
 vec3 ACESFilm(vec3 color) {
@@ -29,18 +35,29 @@ vec3 tonemap(vec3 color)
   return color;
 }
 
-vec3 perceptual_quantization(vec3 value)
+vec3 linearToST2084(vec3 value)
 {
-  const float range = 4096.0;
-  const float m1 = (2610.0 / range) * (1/4.0);
-  const float m2 = (2523.0 / range) * 128.0;
-  const float c1 = (3424.0 / range);
-  const float c2 = (2413.0 / range) * 32.0;
-  const float c3 = (2392.0 / range) * 32.0;
+  const float m1 = 2610.0 / 4096.0 / 4.0;
+  const float m2 = (2523.0 / 4096.0) * 128.0;
+  const float c1 = (3424.0 / 4096.0);
+  const float c2 = (2413.0 / 4096.0) * 32.0;
+  const float c3 = (2392.0 / 4096.0) * 32.0;
 
-  value = pow(value, vec3(1.0 / m2));
-  value = 10000.0 * pow(max(value - c1, 0.0) / (c2 - c3 * value), vec3(1.0 / m1));
+  value = pow(value, vec3(m1));
+  value = pow((c1 + c2 * value) / (1 + c3 * value), vec3(m2));
   return value;
+}
+
+vec3 mapToHdr10(vec3 lighting)
+{
+  // TODO: Allow adjusting this paperwhite parameter.
+  const float PaperWhite = 200.0;
+  const float ST2084Max = 10000.0;
+
+  lighting = lighting * rec709toRec2020;
+  lighting = (lighting * PaperWhite) / ST2084Max;
+  lighting = linearToST2084(lighting);
+  return lighting;
 }
 
 vec3 gamma_adjust(vec3 color, float gamma)
@@ -71,7 +88,7 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 }
 
 const vec3 lightPosition = vec3(16.0, -16.0, 16.0);
-const vec3 lightColor = vec3(5.0);
+const vec3 lightColor = vec3(1);
 const float lightConstant = 1.0;
 const float lightLinear = 0.09;
 const float lightQuadratic = 0.032;
@@ -122,10 +139,19 @@ void main()
 
   vec3 lighting = (kD * albedo / PI + specular) * radiance * cosThetaLight;
   // TODO: Include AO
-  lighting += vec3(0.03) * albedo;
-  lighting = tonemap(lighting);
-  //lighting = perceptual_quantization(lighting);
-  //lighting = gamma_adjust(lighting, 1.2);
+  lighting += vec3(0.01) * albedo;
+
+  // Convert RGB to Rec.2020
+  const bool useHdr = false;
+  if (useHdr)
+  {
+    lighting = mapToHdr10(lighting);
+  }
+  else
+  {
+    lighting = gamma_adjust(lighting, 1.2);
+    lighting = tonemap(lighting);
+  }
 
   outColor = vec4(lighting, 1.0);
 }
