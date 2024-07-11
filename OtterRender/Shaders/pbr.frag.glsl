@@ -142,7 +142,7 @@ void main()
   lighting += vec3(0.01) * albedo;
 
   // Convert RGB to Rec.2020
-  const bool useHdr = false;
+  const bool useHdr = true;
   if (useHdr)
   {
     lighting = mapToHdr10(lighting);
