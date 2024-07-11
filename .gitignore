@@ -68,3 +68,5 @@ build/
 *.spv
 *.glb
 
+
+build-release
