@@ -65,7 +65,7 @@ void gpu_buffer_free(GpuBuffer* buffer, VkDevice logicalDevice)
   vkDestroyBuffer(logicalDevice, buffer->buffer, NULL);
 }
 
-bool gpu_buffer_write(GpuBuffer* buffer, uint8_t* data, VkDeviceSize size,
+bool gpu_buffer_write(GpuBuffer* buffer, const uint8_t* data, VkDeviceSize size,
     VkDeviceSize offset, VkDevice logicalDevice)
 {
   void* mapping;

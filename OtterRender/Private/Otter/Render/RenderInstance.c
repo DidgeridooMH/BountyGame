@@ -982,8 +982,8 @@ void render_instance_draw(RenderInstance* renderInstance)
       (renderInstance->currentFrame + 1) % renderInstance->framesInFlight;
 }
 
-void render_instance_queue_mesh_draw(
-    Mesh* mesh, Mat4 transform, RenderInstance* renderInstance)
+void render_instance_queue_mesh_draw(Mesh* mesh, Mat4 transform,
+    ImageSampler* albedo, RenderInstance* renderInstance)
 {
   RenderCommand* command = auto_array_allocate(
       &renderInstance->frames[renderInstance->currentFrame].renderQueue);
@@ -992,13 +992,7 @@ void render_instance_queue_mesh_draw(
     return;
   }
 
-  // TODO: Probably just use mesh reference.
-  command->vertices      = mesh->vertices.buffer;
-  command->indices       = mesh->indices.buffer;
-  command->numOfIndices  = mesh->indices.size / sizeof(uint16_t);
-  command->cpuVertices   = mesh->cpuVertices;
-  command->numOfVertices = mesh->vertices.size / sizeof(MeshVertex);
-  command->cpuIndices    = mesh->cpuIndices;
+  command->mesh   = mesh;
+  command->albedo = albedo;
   memcpy(&command->transform, transform, sizeof(Mat4));
 }
-

@@ -20,9 +20,6 @@ typedef struct Mesh
 {
   GpuBuffer vertices;
   GpuBuffer indices;
-  // TODO: I hate this.
-  MeshVertex* cpuVertices;
-  uint16_t* cpuIndices;
 } Mesh;
 
 OTTERRENDER_API Mesh* mesh_create(const void* vertices, uint64_t vertexSize,

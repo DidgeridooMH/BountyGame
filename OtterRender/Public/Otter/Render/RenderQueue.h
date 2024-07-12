@@ -3,14 +3,12 @@
 #include <vulkan/vulkan.h>
 
 #include "Otter/Render/Mesh.h"
+#include "Otter/Render/Texture/ImageSampler.h"
 
 typedef struct RenderCommand
 {
-  VkBuffer vertices;
-  VkBuffer indices;
-  VkDeviceSize numOfIndices;
-  MeshVertex* cpuVertices;
-  size_t numOfVertices;
-  uint16_t* cpuIndices;
+  Mesh* mesh;
+  ImageSampler* albedo;
   Mat4 transform;
 } RenderCommand;
+

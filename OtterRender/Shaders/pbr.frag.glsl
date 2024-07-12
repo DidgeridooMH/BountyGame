@@ -110,12 +110,11 @@ void main()
 {
   if (subpassLoad(ainPosition).a < 1.0)
   {
-    // TODO: Draw a skybox
-    discard;
+    outColor = vec4(mapToHdr10(vec3(0.2, 0.2, 5.0)), 1.0);
+    return;
   }
 
-  //vec3 albedo = subpassLoad(ainColor).rgb;
-  vec3 albedo = vec3(1.0);
+  vec3 albedo = subpassLoad(ainColor).rgb;
   vec3 position = subpassLoad(ainPosition).rgb;
   vec3 normal = subpassLoad(ainNormal).rgb;
 

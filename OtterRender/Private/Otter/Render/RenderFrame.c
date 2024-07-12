@@ -113,12 +113,13 @@ static void render_frame_draw_mesh(RenderCommand* meshCommand,
       VK_SHADER_STAGE_VERTEX_BIT, 0, sizeof(Mat4), &meshCommand->transform);
 
   VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(
-      renderFrame->commandBuffer, 0, 1, &meshCommand->vertices, &offset);
-  vkCmdBindIndexBuffer(renderFrame->commandBuffer, meshCommand->indices, 0,
-      VK_INDEX_TYPE_UINT16);
+  vkCmdBindVertexBuffers(renderFrame->commandBuffer, 0, 1,
+      &meshCommand->mesh->vertices.buffer, &offset);
+  vkCmdBindIndexBuffer(renderFrame->commandBuffer,
+      meshCommand->mesh->indices.buffer, 0, VK_INDEX_TYPE_UINT16);
   vkCmdDrawIndexed(renderFrame->commandBuffer,
-      (uint32_t) meshCommand->numOfIndices, 1, 0, 0, 0);
+      (uint32_t) meshCommand->mesh->indices.size / sizeof(uint16_t), 1, 0, 0,
+      0);
 }
 
 static void render_frame_start_render(RenderFrame* renderFrame,

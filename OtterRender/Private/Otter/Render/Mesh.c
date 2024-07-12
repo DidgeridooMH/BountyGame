@@ -127,12 +127,6 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
   gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
   gpu_buffer_free(&indexStagingBuffer, logicalDevice);
 
-  // TODO: Kill me.
-  mesh->cpuVertices = malloc(sizeof(MeshVertex) * numOfVertices);
-  memcpy(mesh->cpuVertices, vertices, sizeof(MeshVertex) * numOfVertices);
-  mesh->cpuIndices = malloc(sizeof(uint16_t) * numOfIndices);
-  memcpy(mesh->cpuIndices, indices, sizeof(uint16_t) * numOfIndices);
-
   return mesh;
 }
 

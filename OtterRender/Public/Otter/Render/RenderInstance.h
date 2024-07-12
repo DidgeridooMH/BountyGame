@@ -8,6 +8,7 @@
 #include "Otter/Render/Pipeline/PbrPipeline.h"
 #include "Otter/Render/RenderFrame.h"
 #include "Otter/Render/RenderSwapchain.h"
+#include "Otter/Render/Texture/ImageSampler.h"
 #include "Otter/Render/export.h"
 
 enum DescriptorPoolId
@@ -72,6 +73,6 @@ OTTERRENDER_API void render_instance_destroy(RenderInstance* renderInstance);
 
 OTTERRENDER_API void render_instance_draw(RenderInstance* renderInstance);
 
-OTTERRENDER_API void render_instance_queue_mesh_draw(
-    Mesh* mesh, Mat4 transform, RenderInstance* renderInstance);
+OTTERRENDER_API void render_instance_queue_mesh_draw(Mesh* mesh, Mat4 transform,
+    ImageSampler* albedo, RenderInstance* renderInstance);
 

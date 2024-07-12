@@ -1,7 +1,8 @@
 #pragma once
 
-#include "Otter/Render/export.h"
 #include <vulkan/vulkan.h>
+
+#include "Otter/Render/export.h"
 
 typedef struct GpuBuffer
 {
@@ -17,7 +18,7 @@ OTTERRENDER_API bool gpu_buffer_allocate(GpuBuffer* buffer, VkDeviceSize size,
 
 OTTERRENDER_API void gpu_buffer_free(GpuBuffer* buffer, VkDevice logicalDevice);
 
-OTTERRENDER_API bool gpu_buffer_write(GpuBuffer* buffer, uint8_t* data,
+OTTERRENDER_API bool gpu_buffer_write(GpuBuffer* buffer, const uint8_t* data,
     VkDeviceSize size, VkDeviceSize offset, VkDevice logicalDevice);
 
 OTTERRENDER_API void gpu_buffer_transfer(
