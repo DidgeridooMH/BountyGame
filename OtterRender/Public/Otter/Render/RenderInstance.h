@@ -74,5 +74,9 @@ OTTERRENDER_API void render_instance_destroy(RenderInstance* renderInstance);
 OTTERRENDER_API void render_instance_draw(RenderInstance* renderInstance);
 
 OTTERRENDER_API void render_instance_queue_mesh_draw(Mesh* mesh, Mat4 transform,
+<<<<<<< Updated upstream
     ImageSampler* albedo, RenderInstance* renderInstance);
 
+=======
+    uint32_t material, RenderInstance* renderInstance);
+>>>>>>> Stashed changes

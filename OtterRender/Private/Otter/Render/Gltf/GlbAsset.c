@@ -136,6 +136,8 @@ OTTERRENDER_API bool glb_load_asset(
         }
 
         memcpy(&assetMesh->transform, &node->transform, sizeof(Mat4));
+
+        assetMesh->materialIndex = primitive->material;
       }
     }
   }
@@ -145,4 +147,3 @@ OTTERRENDER_API bool glb_load_asset(
 
   return true;
 }
-

@@ -11,12 +11,27 @@ typedef struct GlbAssetMesh
   uint16_t* indices;
   uint32_t numOfIndices;
   Mat4 transform;
+  uint32_t materialIndex;
 } GlbAssetMesh;
+
+typedef struct GlbAssetTexture
+{
+  uint8_t* data;
+  uint32_t width;
+  uint32_t height;
+  uint32_t channels;
+} GlbAssetTexture;
 
 typedef struct GlbAssetMaterial
 {
-  Vec4 baseColorFactor;
-  size_t baseColorTexture;
+  uint32_t baseColorTexture;
+  uint32_t normalTexture;
+  uint32_t metallicRoughnessTexture;
+  uint32_t emissiveTexture;
+  Vec4 baseColor;
+  float metallicFactor;
+  float roughnessFactor;
+  Vec3 emissive;
 } GlbAssetMaterial;
 
 typedef struct GlbAsset

@@ -25,7 +25,41 @@ typedef struct GlbMeshPrimitive
   uint32_t normal;
   uint32_t uv;
   uint32_t indices;
+  uint32_t material;
 } GlbMeshPrimitive;
+
+typedef struct GlbMaterial
+{
+  Vec3 baseColorFactor;
+  uint32_t baseColorTexture;
+  float metallicFactor;
+  float roughnessFactor;
+  uint32_t metallicRoughnessTexture;
+  uint32_t normalTexture;
+  uint32_t occlusionTexture;
+  Vec3 emissiveFactor;
+  uint32_t emissiveTexture;
+} GlbMaterial;
+
+typedef struct GlbTexture
+{
+  uint32_t source;
+  uint32_t sampler;
+} GlbTexture;
+
+typedef enum GlbImageMimeType
+{
+  GIM_JPEG,
+  GIM_PNG
+} GlbImageMimeType;
+
+typedef struct GlbImage
+{
+  uint32_t bufferView;
+  GlbImageMimeType mimeType;
+} GlbImage;
+
+// TODO: Implement samplers.
 
 typedef struct GlbMesh
 {
@@ -83,6 +117,9 @@ typedef struct GlbJsonChunk
   AutoArray accessors;
   AutoArray bufferViews;
   AutoArray buffers;
+  AutoArray materials;
+  AutoArray textures;
+  AutoArray images;
 } GlbJsonChunk;
 
 bool glb_json_chunk_parse(JsonValue* json, GlbJsonChunk* jsonChunk);

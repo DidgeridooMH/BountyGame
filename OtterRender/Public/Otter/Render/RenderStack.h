@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
-#include "Otter/Render/Texture/RenderImage.h"
+#include "Otter/Render/Texture/Image.h"
 
 #define G_BUFFER_LAYERS 4
 
@@ -19,8 +19,8 @@ enum RenderStackLayers
 
 typedef struct RenderStack
 {
-  RenderImage gBufferImage;
-  RenderImage depthBuffer;
+  Image gBufferImage;
+  Image depthBuffer;
   VkImageView bufferAttachments[NUM_OF_RENDER_STACK_LAYERS];
   VkFramebuffer framebuffer;
 } RenderStack;
