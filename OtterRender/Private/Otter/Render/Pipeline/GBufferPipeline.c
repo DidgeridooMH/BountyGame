@@ -4,6 +4,7 @@
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/Pipeline/Pipeline.h"
 #include "Otter/Render/RenderStack.h"
+#include "Otter/Render/Texture/ImageSampler.h"
 #include "Otter/Util/Log.h"
 
 bool g_buffer_pipeline_create(const char* shaderDirectory,
@@ -131,8 +132,26 @@ bool g_buffer_pipeline_create(const char* shaderDirectory,
       .pBindings    = layoutBindings,
       .bindingCount = _countof(layoutBindings)};
   if (vkCreateDescriptorSetLayout(logicalDevice, &descriptorSetLayoutCreateInfo,
-          NULL, &pipeline->descriptorSetLayouts))
+          NULL, &pipeline->descriptorSetLayouts[DSI_VP]))
   {
+    return false;
+  }
+
+  VkDescriptorSetLayoutBinding materialLayoutBindings[] = {{.binding = 0,
+      .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+      .descriptorCount = 1,
+      .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}};
+  VkDescriptorSetLayoutCreateInfo materialDescriptorSetLayoutCreateInfo = {
+      .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
+      .pBindings    = materialLayoutBindings,
+      .bindingCount = _countof(materialLayoutBindings)};
+  if (vkCreateDescriptorSetLayout(logicalDevice,
+          &materialDescriptorSetLayoutCreateInfo, NULL,
+          &pipeline->descriptorSetLayouts[DSI_MATERIAL])
+      != VK_SUCCESS)
+  {
+    vkDestroyDescriptorSetLayout(
+        logicalDevice, pipeline->descriptorSetLayouts[DSI_VP], NULL);
     return false;
   }
 
@@ -143,8 +162,8 @@ bool g_buffer_pipeline_create(const char* shaderDirectory,
 
   VkPipelineLayoutCreateInfo layoutCreateInfo = {
       .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
-      .pSetLayouts            = &pipeline->descriptorSetLayouts,
-      .setLayoutCount         = 1,
+      .pSetLayouts            = pipeline->descriptorSetLayouts,
+      .setLayoutCount         = _countof(pipeline->descriptorSetLayouts),
       .pushConstantRangeCount = 1,
       .pPushConstantRanges    = &pushConstantRange};
   if (vkCreatePipelineLayout(
@@ -199,24 +218,27 @@ bool g_buffer_pipeline_create(const char* shaderDirectory,
 void g_buffer_pipeline_destroy(
     GBufferPipeline* pipeline, VkDevice logicalDevice)
 {
-  vkDestroyDescriptorSetLayout(
-      logicalDevice, pipeline->descriptorSetLayouts, NULL);
+  for (int i = 0; i < _countof(pipeline->descriptorSetLayouts); i++)
+  {
+    vkDestroyDescriptorSetLayout(
+        logicalDevice, pipeline->descriptorSetLayouts[i], NULL);
+  }
   vkDestroyPipelineLayout(logicalDevice, pipeline->layout, NULL);
   vkDestroyPipeline(logicalDevice, pipeline->pipeline, NULL);
 }
 
-void g_buffer_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
+void g_buffer_pipeline_write_vp(VkCommandBuffer commandBuffer,
     VkDescriptorPool descriptorPool, VkDevice logicalDevice,
     GpuBuffer* vpBuffer, GBufferPipeline* pipeline)
 {
-  VkDescriptorSetAllocateInfo vpDescriptorSetAllocInfo = {
+  VkDescriptorSetAllocateInfo gBufferDescriptorSetAllocInfo = {
       .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
       .descriptorPool     = descriptorPool,
-      .pSetLayouts        = &pipeline->descriptorSetLayouts,
+      .pSetLayouts        = &pipeline->descriptorSetLayouts[DSI_VP],
       .descriptorSetCount = 1};
-  VkDescriptorSet vpDescriptorSet;
+  VkDescriptorSet gBufferDescriptorSet;
   if (vkAllocateDescriptorSets(
-          logicalDevice, &vpDescriptorSetAllocInfo, &vpDescriptorSet)
+          logicalDevice, &gBufferDescriptorSetAllocInfo, &gBufferDescriptorSet)
       != VK_SUCCESS)
   {
     LOG_ERROR("WARN: Unable to allocate descriptors");
@@ -224,17 +246,55 @@ void g_buffer_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
 
   VkDescriptorBufferInfo mvpBufferInfo = {
       .buffer = vpBuffer->buffer, .offset = 0, .range = vpBuffer->size};
-  VkWriteDescriptorSet mvpWrite = {
-      .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
-      .descriptorCount = 1,
-      .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-      .dstSet          = vpDescriptorSet,
-      .dstBinding      = 0,
-      .dstArrayElement = 0,
-      .pBufferInfo     = &mvpBufferInfo};
-  vkUpdateDescriptorSets(logicalDevice, 1, &mvpWrite, 0, NULL);
+  VkWriteDescriptorSet descriptorWrites[] = {
+      {.sType              = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .descriptorCount = 1,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
+          .dstSet          = gBufferDescriptorSet,
+          .dstBinding      = 0,
+          .dstArrayElement = 0,
+          .pBufferInfo     = &mvpBufferInfo}};
+  vkUpdateDescriptorSets(
+      logicalDevice, _countof(descriptorWrites), descriptorWrites, 0, NULL);
 
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      pipeline->layout, 0, 1, &vpDescriptorSet, 0, NULL);
+      pipeline->layout, 0, 1, &gBufferDescriptorSet, 0, NULL);
+}
+
+// TODO: Rework this so that we aren't writing a descriptor set for each object.
+void g_buffer_pipeline_write_material(VkCommandBuffer commandBuffer,
+    VkDescriptorPool descriptorPool, VkDevice logicalDevice,
+    ImageSampler* albedoSampler, GBufferPipeline* pipeline)
+{
+  VkDescriptorSetAllocateInfo gBufferDescriptorSetAllocInfo = {
+      .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool     = descriptorPool,
+      .pSetLayouts        = &pipeline->descriptorSetLayouts[DSI_MATERIAL],
+      .descriptorSetCount = 1};
+  VkDescriptorSet gBufferDescriptorSet;
+  if (vkAllocateDescriptorSets(
+          logicalDevice, &gBufferDescriptorSetAllocInfo, &gBufferDescriptorSet)
+      != VK_SUCCESS)
+  {
+    LOG_ERROR("WARN: Unable to allocate descriptors");
+  }
+
+  VkDescriptorImageInfo albedoImageInfo = {
+      .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      .imageView   = albedoSampler->view,
+      .sampler     = albedoSampler->sampler};
+  VkWriteDescriptorSet descriptorWrites[] = {
+      {.sType              = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .descriptorCount = 1,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .dstSet          = gBufferDescriptorSet,
+          .dstBinding      = 0,
+          .dstArrayElement = 0,
+          .pImageInfo      = &albedoImageInfo}};
+  vkUpdateDescriptorSets(
+      logicalDevice, _countof(descriptorWrites), descriptorWrites, 0, NULL);
+
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
+      pipeline->layout, 1, 1, &gBufferDescriptorSet, 0, NULL);
 }
 

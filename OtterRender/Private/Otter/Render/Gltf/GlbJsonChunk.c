@@ -30,7 +30,7 @@ static bool glb_json_chunk_parse_vec3(JsonValue* jsonValue, Vec3* result)
 
 static bool glb_json_chunk_parse_vec4(JsonValue* jsonValue, Vec4* result)
 {
-  if (jsonValue->type != JT_ARRAY || jsonValue->array.size != 3)
+  if (jsonValue->type != JT_ARRAY || jsonValue->array.size != 4)
   {
     return false;
   }
@@ -38,7 +38,7 @@ static bool glb_json_chunk_parse_vec4(JsonValue* jsonValue, Vec4* result)
   JsonValue* x = *(JsonValue**) auto_array_get(&jsonValue->array, 0);
   JsonValue* y = *(JsonValue**) auto_array_get(&jsonValue->array, 1);
   JsonValue* z = *(JsonValue**) auto_array_get(&jsonValue->array, 2);
-  JsonValue* w = *(JsonValue**) auto_array_get(&jsonValue->array, 4);
+  JsonValue* w = *(JsonValue**) auto_array_get(&jsonValue->array, 3);
   if ((x->type != JT_INTEGER && x->type != JT_FLOAT)
       || (y->type != JT_INTEGER && y->type != JT_FLOAT)
       || (z->type != JT_INTEGER && z->type != JT_FLOAT)
@@ -288,22 +288,46 @@ static void glb_json_chunk_parse_materials(
       continue;
     }
 
-    JsonValue* baseColorFactor = hash_map_get_value(
-        &materialElement->object, "baseColorFactor", strlen("baseColorFactor"));
-    if (baseColorFactor != NULL)
+    JsonValue* pbr = hash_map_get_value(&materialElement->object,
+        "pbrMetallicRoughness", strlen("pbrMetallicRoughness"));
+
+    if (pbr != NULL && pbr->type == JT_OBJECT)
     {
-      if (!glb_json_chunk_parse_vec3(
-              baseColorFactor, &material->baseColorFactor))
+      JsonValue* baseColorFactor = hash_map_get_value(
+          &pbr->object, "baseColorFactor", strlen("baseColorFactor"));
+      if (baseColorFactor != NULL)
       {
-        LOG_ERROR("Base color factor was not in the right format.");
+        if (!glb_json_chunk_parse_vec4(
+                baseColorFactor, &material->baseColorFactor))
+        {
+          LOG_ERROR("Base color factor was not in the right format.");
+        }
+      }
+
+      JsonValue* baseColorTexture = hash_map_get_value(
+          &pbr->object, "baseColorTexture", strlen("baseColorTexture"));
+      if (baseColorTexture != NULL && baseColorTexture->type == JT_OBJECT)
+      {
+        JsonValue* baseColorTextureSource = hash_map_get_value(
+            &baseColorTexture->object, "index", strlen("index"));
+        if (baseColorTextureSource != NULL
+            && baseColorTextureSource->type == JT_INTEGER)
+        {
+          material->baseColorTexture = baseColorTextureSource->integer;
+        }
+        else
+        {
+          LOG_WARNING("Base color texture source was not an integer.");
+        }
+      }
+      else
+      {
+        LOG_WARNING("Base color texture was not an object.");
       }
     }
-
-    JsonValue* baseColorTexture = hash_map_get_value(&materialElement->object,
-        "baseColorTexture", strlen("baseColorTexture"));
-    if (baseColorTexture != NULL && baseColorTexture->type == JT_INTEGER)
+    else
     {
-      material->baseColorTexture = baseColorTexture->integer;
+      LOG_WARNING("PBR was not an object.");
     }
 
     JsonValue* metallicFactor = hash_map_get_value(
@@ -568,6 +592,7 @@ bool glb_json_chunk_parse_buffers(JsonValue* buffers, AutoArray* array)
 {
   auto_array_create(array, sizeof(GlbBuffer));
 
+  LOG_DEBUG("Buffers size: %d", buffers->array.size);
   for (uint32_t i = 0; i < buffers->array.size; i++)
   {
     JsonValue* bufferElement =
@@ -609,6 +634,8 @@ bool glb_json_chunk_parse(JsonValue* json, GlbJsonChunk* jsonChunk)
       hash_map_get_value(&json->object, "materials", strlen("materials"));
   JsonValue* textures =
       hash_map_get_value(&json->object, "textures", strlen("textures"));
+  JsonValue* images =
+      hash_map_get_value(&json->object, "images", strlen("images"));
   JsonValue* accessors =
       hash_map_get_value(&json->object, "accessors", strlen("accessors"));
   JsonValue* bufferViews =
@@ -617,7 +644,9 @@ bool glb_json_chunk_parse(JsonValue* json, GlbJsonChunk* jsonChunk)
       hash_map_get_value(&json->object, "buffers", strlen("buffers"));
   if (nodes == NULL || nodes->type != JT_ARRAY || meshes == NULL
       || meshes->type != JT_ARRAY || materials == NULL
-      || materials->type != JT_ARRAY || accessors == NULL
+      || materials->type != JT_ARRAY || textures == NULL
+      || textures->type != JT_ARRAY || images == NULL
+      || images->type != JT_ARRAY || accessors == NULL
       || accessors->type != JT_ARRAY || bufferViews == NULL
       || bufferViews->type != JT_ARRAY || buffers == NULL
       || buffers->type != JT_ARRAY)
@@ -630,6 +659,7 @@ bool glb_json_chunk_parse(JsonValue* json, GlbJsonChunk* jsonChunk)
   glb_json_chunk_parse_meshes(meshes, &jsonChunk->meshes);
   glb_json_chunk_parse_materials(materials, &jsonChunk->materials);
   glb_json_chunk_parse_textures(textures, &jsonChunk->textures);
+  glb_json_chunk_parse_images(images, &jsonChunk->images);
   if (!glb_json_chunk_parse_accessors(accessors, &jsonChunk->accessors)
       || !glb_json_chunk_parse_buffer_views(
           bufferViews, &jsonChunk->bufferViews)

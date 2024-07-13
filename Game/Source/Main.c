@@ -5,9 +5,10 @@
 #include "Otter/Math/Transform.h"
 #include "Otter/Math/Vec.h"
 #include "Otter/Render/Gltf/GlbAsset.h"
+#include "Otter/Render/Material.h"
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/RenderInstance.h"
-#include "Otter/Render/Texture/ImageSampler.h"
+#include "Otter/Render/Texture/Texture.h"
 #include "Otter/Util/File.h"
 #include "Otter/Util/Log.h"
 #include "Otter/Util/Profiler.h"
@@ -220,6 +221,30 @@ int WINAPI wWinMain(
         renderInstance->physicalDevice, renderInstance->logicalDevice,
         renderInstance->commandPool, graphicsQueue);
   }
+
+  AutoArray textures;
+  auto_array_create(&textures, sizeof(Texture));
+  for (uint32_t i = 0; i < asset.images.size; i++)
+  {
+    GlbAssetImage* assetTexture = auto_array_get(&asset.images, i);
+
+    Texture* sampler = auto_array_allocate(&textures);
+    if (!texture_create(sampler, assetTexture->data, assetTexture->width,
+            assetTexture->height, assetTexture->channels,
+            renderInstance->physicalDevice, renderInstance->logicalDevice,
+            renderInstance->commandPool, graphicsQueue))
+    {
+      LOG_ERROR("Failed to create texture.");
+      auto_array_destroy(&buildingMesh);
+      game_config_destroy(&config);
+      task_scheduler_destroy();
+      mesh_destroy(cube, renderInstance->logicalDevice);
+      render_instance_destroy(renderInstance);
+      game_window_destroy(window);
+      profiler_destroy();
+      return -1;
+    }
+  }
   // ------
 
   LARGE_INTEGER lastFrameTime;
@@ -243,14 +268,13 @@ int WINAPI wWinMain(
   renderInstance->cameraTransform.position.y = -4.0f;
   renderInstance->cameraTransform.position.z = 100.0f;
 
-  Image defaultImage;
-  ImageSampler defaultSampler;
-  if (!image_create((VkExtent2D){1, 1}, 1, VK_FORMAT_R8G8B8A8_UNORM,
-          VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, renderInstance->physicalDevice,
-          renderInstance->logicalDevice, &defaultImage))
+  Texture defaultTexture;
+  uint8_t defaultTextureData[] = {0, 0, 255, 255};
+  if (!texture_create(&defaultTexture, defaultTextureData, 1, 1, 4,
+          renderInstance->physicalDevice, renderInstance->logicalDevice,
+          renderInstance->commandPool, graphicsQueue))
   {
-    LOG_ERROR("Failed to create default image.");
+    LOG_ERROR("Failed to create default texture.");
     auto_array_destroy(&buildingMesh);
     game_config_destroy(&config);
     input_map_destroy(&inputMap);
@@ -260,52 +284,6 @@ int WINAPI wWinMain(
     game_window_destroy(window);
     profiler_destroy();
     return -1;
-  }
-
-  {
-    GpuBuffer buffer;
-    if (!gpu_buffer_allocate(&buffer, 4, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-                | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-            renderInstance->physicalDevice, renderInstance->logicalDevice))
-    {
-      LOG_ERROR("Failed to create buffer.");
-      auto_array_destroy(&buildingMesh);
-      image_destroy(&defaultImage, renderInstance->logicalDevice);
-      game_config_destroy(&config);
-      input_map_destroy(&inputMap);
-      task_scheduler_destroy();
-      mesh_destroy(cube, renderInstance->logicalDevice);
-      render_instance_destroy(renderInstance);
-      game_window_destroy(window);
-      profiler_destroy();
-      return -1;
-    }
-
-    gpu_buffer_write(&buffer, (uint8_t[]){255, 255, 0, 255}, 4, 0,
-        renderInstance->logicalDevice);
-
-    VkCommandBuffer commandBuffer;
-    image_upload(
-        &buffer, commandBuffer, renderInstance->logicalDevice, &defaultImage);
-
-    gpu_buffer_free(&buffer, renderInstance->logicalDevice);
-
-    if (!image_sampler_create(
-            &defaultImage, renderInstance->logicalDevice, &defaultSampler))
-    {
-      LOG_ERROR("Failed to create default sampler.");
-      auto_array_destroy(&buildingMesh);
-      image_destroy(&defaultImage, renderInstance->logicalDevice);
-      game_config_destroy(&config);
-      input_map_destroy(&inputMap);
-      task_scheduler_destroy();
-      mesh_destroy(cube, renderInstance->logicalDevice);
-      render_instance_destroy(renderInstance);
-      game_window_destroy(window);
-      profiler_destroy();
-      return -1;
-    }
   }
 
   while (!game_window_process_message(window))
@@ -327,22 +305,32 @@ int WINAPI wWinMain(
     mat4_translate(floorTransform, 0.0f, 10.0f, 0.0f);
     mat4_scale(floorTransform, 100.0f, 1.0f, 100.0f);
     render_instance_queue_mesh_draw(
-        cube, floorTransform, &defaultSampler, renderInstance);
+        cube, floorTransform, &defaultTexture.sampler, renderInstance);
 
     // Draw light source
     Mat4 lightTransform;
     mat4_identity(lightTransform);
     mat4_translate(lightTransform, 16.0f, -16.0f, 16.0f);
     render_instance_queue_mesh_draw(
-        cube, lightTransform, &defaultSampler, renderInstance);
+        cube, lightTransform, &defaultTexture.sampler, renderInstance);
 
     for (uint32_t i = 0; i < buildingMesh.size; i++)
     {
       // TODO: Properly package assets
       Mesh** assetMesh       = auto_array_get(&buildingMesh, i);
       GlbAssetMesh* glbAsset = auto_array_get(&asset.meshes, i);
+      GlbAssetMaterial* material =
+          auto_array_get(&asset.materials, glbAsset->materialIndex);
+      ImageSampler* sampler = &defaultTexture.sampler;
+      if (material->baseColorTexture < textures.size)
+      {
+        uint32_t* textureIndex =
+            auto_array_get(&asset.textures, material->baseColorTexture);
+        Texture* texture = auto_array_get(&textures, *textureIndex);
+        sampler          = &texture->sampler;
+      }
       render_instance_queue_mesh_draw(
-          *assetMesh, glbAsset->transform, &defaultSampler, renderInstance);
+          *assetMesh, glbAsset->transform, sampler, renderInstance);
     }
     profiler_clock_end("preframe");
 
@@ -374,8 +362,12 @@ int WINAPI wWinMain(
     mesh_destroy(*assetMesh, renderInstance->logicalDevice);
   }
 
-  image_destroy(&defaultImage, renderInstance->logicalDevice);
-  image_sampler_destroy(&defaultSampler, renderInstance->logicalDevice);
+  for (uint32_t i = 0; i < textures.size; i++)
+  {
+    Texture* texture = auto_array_get(&textures, i);
+    texture_destroy(texture, renderInstance->logicalDevice);
+  }
+  texture_destroy(&defaultTexture, renderInstance->logicalDevice);
   auto_array_destroy(&buildingMesh);
   game_config_destroy(&config);
   input_map_destroy(&inputMap);

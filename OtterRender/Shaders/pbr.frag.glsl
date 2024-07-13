@@ -94,8 +94,6 @@ const float lightLinear = 0.09;
 const float lightQuadratic = 0.032;
 
 // TODO: Grab from M-buffer.
-const float roughness = 1.0;
-const float metallic = 0.0;
 vec3 calculateDirectLight(vec3 position, vec3 normal)
 {
   float distance = length(lightPosition - position);
@@ -117,6 +115,8 @@ void main()
   vec3 albedo = subpassLoad(ainColor).rgb;
   vec3 position = subpassLoad(ainPosition).rgb;
   vec3 normal = subpassLoad(ainNormal).rgb;
+  float roughness = subpassLoad(ainMaterial).r;
+  float metallic = subpassLoad(ainMaterial).g;
 
   vec3 radiance = calculateDirectLight(position, normal);
 

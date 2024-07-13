@@ -14,13 +14,13 @@ typedef struct GlbAssetMesh
   uint32_t materialIndex;
 } GlbAssetMesh;
 
-typedef struct GlbAssetTexture
+typedef struct GlbAssetImage
 {
   uint8_t* data;
-  uint32_t width;
-  uint32_t height;
-  uint32_t channels;
-} GlbAssetTexture;
+  int width;
+  int height;
+  int channels;
+} GlbAssetImage;
 
 typedef struct GlbAssetMaterial
 {
@@ -48,3 +48,4 @@ typedef struct GlbAsset
 
 OTTERRENDER_API bool glb_load_asset(
     char* content, size_t contentSize, GlbAsset* asset);
+

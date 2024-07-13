@@ -1,5 +1,7 @@
 #include "Otter/Render/Gltf/GlbAsset.h"
 
+#define STB_IMAGE_IMPLEMENTATION
+#include "Extern/stb_image.h"
 #include "Otter/Render/Gltf/GlbJsonChunk.h"
 #include "Otter/Util/Json/Json.h"
 #include "Otter/Util/Log.h"
@@ -142,8 +144,59 @@ OTTERRENDER_API bool glb_load_asset(
     }
   }
 
+  auto_array_create(&asset->materials, sizeof(GlbAssetMaterial));
+  for (uint32_t i = 0; i < parsedJsonChunk.materials.size; i++)
+  {
+    GlbMaterial* material = auto_array_get(&parsedJsonChunk.materials, i);
+    GlbAssetMaterial* assetMaterial = auto_array_allocate(&asset->materials);
+
+    assetMaterial->baseColorTexture = material->baseColorTexture;
+    assetMaterial->normalTexture    = material->normalTexture;
+    assetMaterial->metallicRoughnessTexture =
+        material->metallicRoughnessTexture;
+    assetMaterial->emissiveTexture = material->emissiveTexture;
+    memcpy(&assetMaterial->baseColor, &material->baseColorFactor, sizeof(Vec4));
+    assetMaterial->metallicFactor  = material->metallicFactor;
+    assetMaterial->roughnessFactor = material->roughnessFactor;
+    memcpy(&assetMaterial->emissive, &material->emissiveFactor, sizeof(Vec3));
+  }
+
+  auto_array_create(&asset->textures, sizeof(uint32_t));
+  for (uint32_t i = 0; i < parsedJsonChunk.textures.size; i++)
+  {
+    GlbTexture* texture    = auto_array_get(&parsedJsonChunk.textures, i);
+    uint32_t* assetTexture = auto_array_allocate(&asset->textures);
+    *assetTexture          = texture->source;
+  }
+
+  auto_array_create(&asset->images, sizeof(GlbAssetImage));
+  for (uint32_t i = 0; i < parsedJsonChunk.images.size; i++)
+  {
+    GlbImage* image = auto_array_get(&parsedJsonChunk.images, i);
+    GlbBufferView* imageBuffer =
+        auto_array_get(&parsedJsonChunk.bufferViews, image->bufferView);
+
+    GlbAssetImage* assetImage = auto_array_allocate(&asset->images);
+    assetImage->data          = stbi_load_from_memory(
+        (uint8_t*) &binaryChunk->data[imageBuffer->offset], imageBuffer->length,
+        &assetImage->width, &assetImage->height, &assetImage->channels,
+        STBI_rgb_alpha);
+    assetImage->channels = 4;
+
+    if (assetImage->data == NULL)
+    {
+      LOG_ERROR("Unable to load image.");
+      return false;
+    }
+  }
+
+  LOG_DEBUG("Loaded %d meshes, %d materials, %d textures, and %d images.",
+      asset->meshes.size, asset->materials.size, asset->textures.size,
+      asset->images.size);
+
   glb_json_chunk_destroy(&parsedJsonChunk);
   json_destroy(glbJsonData);
 
   return true;
 }
+

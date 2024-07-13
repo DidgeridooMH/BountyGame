@@ -248,13 +248,16 @@ static void render_frame_render_g_buffer(RenderFrame* renderFrame,
     return;
   }
 
-  g_buffer_pipeline_write_descriptor_set(renderFrame->commandBuffer,
+  g_buffer_pipeline_write_vp(renderFrame->commandBuffer,
       renderFrame->descriptorPool, logicalDevice, vpBuffer, gBufferPipeline);
 
   profiler_clock_start("render_meshes");
   for (uint32_t i = 0; i < renderFrame->renderQueue.size; i++)
   {
     RenderCommand* meshCommand = auto_array_get(&renderFrame->renderQueue, i);
+    g_buffer_pipeline_write_material(renderFrame->commandBuffer,
+        renderFrame->descriptorPool, logicalDevice, meshCommand->albedo,
+        gBufferPipeline);
     render_frame_draw_mesh(meshCommand, renderFrame, gBufferPipeline,
         physicalDevice, logicalDevice);
   }

@@ -30,7 +30,7 @@ typedef struct GlbMeshPrimitive
 
 typedef struct GlbMaterial
 {
-  Vec3 baseColorFactor;
+  Vec4 baseColorFactor;
   uint32_t baseColorTexture;
   float metallicFactor;
   float roughnessFactor;
@@ -125,4 +125,3 @@ typedef struct GlbJsonChunk
 bool glb_json_chunk_parse(JsonValue* json, GlbJsonChunk* jsonChunk);
 
 void glb_json_chunk_destroy(GlbJsonChunk* jsonChunk);
-

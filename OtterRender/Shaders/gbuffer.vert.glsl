@@ -8,7 +8,7 @@ layout (location = 4) in vec2 inUv;
 
 layout (location = 0) out vec3 outPosition;
 layout (location = 1) out vec3 outNormal;
-layout (location = 2) out vec3 outUv;
+layout (location = 2) out vec2 outUv;
 
 layout (binding = 0) uniform ModelViewProjection
 {
@@ -28,4 +28,5 @@ void main()
 
     // TODO: Move inverse model to the cpu.
     outNormal = mat3(transpose(inverse(model.model))) * normalize(inNormal);
+    outUv = inUv;
 }

@@ -17,7 +17,9 @@ bool image_create(VkExtent2D extents, uint32_t layers, VkFormat format,
       .format        = format,
       .tiling        = VK_IMAGE_TILING_OPTIMAL,
       .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-      .usage         = usage};
+      .usage         = usage,
+      .sharingMode   = VK_SHARING_MODE_EXCLUSIVE,
+      .flags         = 0};
 
   if (vkCreateImage(logicalDevice, &imageCreateInfo, NULL, &image->image)
       != VK_SUCCESS)
@@ -143,4 +145,4 @@ void image_destroy(Image* image, VkDevice logicalDevice)
     vkFreeMemory(logicalDevice, image->memory, NULL);
   }
 }
-
+ 
