@@ -130,6 +130,7 @@ int WINAPI wWinMain(
   (void) cmdShow;
 
   QueryPerformanceFrequency(&g_timerFrequency);
+  task_scheduler_init();
 
   GameConfig config;
   if (!game_config_parse(&config, DEFAULT_GAME_CONFIG_PATH))
@@ -156,7 +157,6 @@ int WINAPI wWinMain(
   }
   free(glbTest);
 
-  task_scheduler_init();
   profiler_init(g_timerFrequency);
   HWND window = game_window_create(config.width, config.height, WM_WINDOWED);
   RenderInstance* renderInstance =

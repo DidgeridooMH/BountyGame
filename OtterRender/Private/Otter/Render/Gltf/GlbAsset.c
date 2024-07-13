@@ -1,7 +1,10 @@
 #include "Otter/Render/Gltf/GlbAsset.h"
 
+#include "Otter/Util/AutoArray.h"
+
 #define STB_IMAGE_IMPLEMENTATION
 #include "Extern/stb_image.h"
+#include "Otter/Async/Scheduler.h"
 #include "Otter/Render/Gltf/GlbJsonChunk.h"
 #include "Otter/Util/Json/Json.h"
 #include "Otter/Util/Log.h"
@@ -27,6 +30,29 @@ typedef struct GlbChunk
   enum GlbChunkType type;
   char data[];
 } GlbChunk;
+
+typedef struct TextureLoadParams
+{
+  GlbBufferView* bufferView;
+  size_t index;
+  GlbChunk* binaryChunk;
+  GlbAssetImage* assetImage;
+} TextureLoadParams;
+
+static void glb_json_chunk_load_texture(TextureLoadParams* params)
+{
+  params->assetImage->data = stbi_load_from_memory(
+      (uint8_t*) &params->binaryChunk->data[params->bufferView->offset],
+      params->bufferView->length, &params->assetImage->width,
+      &params->assetImage->height, &params->assetImage->channels,
+      STBI_rgb_alpha);
+  params->assetImage->channels = 4;
+
+  if (params->assetImage->data == NULL)
+  {
+    LOG_ERROR("Unable to load image.");
+  }
+}
 
 // TODO: More closely examine where you're reading from content and ensure it
 // doesn't go over the contentSize.
@@ -145,10 +171,11 @@ OTTERRENDER_API bool glb_load_asset(
   }
 
   auto_array_create(&asset->materials, sizeof(GlbAssetMaterial));
+  auto_array_allocate_many(&asset->materials, parsedJsonChunk.materials.size);
   for (uint32_t i = 0; i < parsedJsonChunk.materials.size; i++)
   {
     GlbMaterial* material = auto_array_get(&parsedJsonChunk.materials, i);
-    GlbAssetMaterial* assetMaterial = auto_array_allocate(&asset->materials);
+    GlbAssetMaterial* assetMaterial = auto_array_get(&asset->materials, i);
 
     assetMaterial->baseColorTexture = material->baseColorTexture;
     assetMaterial->normalTexture    = material->normalTexture;
@@ -162,37 +189,55 @@ OTTERRENDER_API bool glb_load_asset(
   }
 
   auto_array_create(&asset->textures, sizeof(uint32_t));
+  auto_array_allocate_many(&asset->textures, parsedJsonChunk.textures.size);
   for (uint32_t i = 0; i < parsedJsonChunk.textures.size; i++)
   {
     GlbTexture* texture    = auto_array_get(&parsedJsonChunk.textures, i);
-    uint32_t* assetTexture = auto_array_allocate(&asset->textures);
+    uint32_t* assetTexture = auto_array_get(&asset->textures, i);
     *assetTexture          = texture->source;
   }
 
   auto_array_create(&asset->images, sizeof(GlbAssetImage));
+  auto_array_allocate_many(&asset->images, parsedJsonChunk.images.size);
+
+  AutoArray textureLoadTasks;
+  auto_array_create(&textureLoadTasks, sizeof(HANDLE));
+  auto_array_allocate_many(&textureLoadTasks, asset->images.size);
+
+  AutoArray textureLoadParams;
+  auto_array_create(&textureLoadParams, sizeof(TextureLoadParams));
+  auto_array_allocate_many(&textureLoadParams, asset->images.size);
+
   for (uint32_t i = 0; i < parsedJsonChunk.images.size; i++)
   {
     GlbImage* image = auto_array_get(&parsedJsonChunk.images, i);
     GlbBufferView* imageBuffer =
         auto_array_get(&parsedJsonChunk.bufferViews, image->bufferView);
+    GlbAssetImage* assetImage = auto_array_get(&asset->images, i);
 
-    GlbAssetImage* assetImage = auto_array_allocate(&asset->images);
-    assetImage->data          = stbi_load_from_memory(
-        (uint8_t*) &binaryChunk->data[imageBuffer->offset], imageBuffer->length,
-        &assetImage->width, &assetImage->height, &assetImage->channels,
-        STBI_rgb_alpha);
-    assetImage->channels = 4;
+    TextureLoadParams* taskParams = auto_array_get(&textureLoadParams, i);
+    taskParams->bufferView        = imageBuffer;
+    taskParams->index             = i;
+    taskParams->binaryChunk       = binaryChunk;
+    taskParams->assetImage        = assetImage;
 
-    if (assetImage->data == NULL)
-    {
-      LOG_ERROR("Unable to load image.");
-      return false;
-    }
+    HANDLE* task = auto_array_get(&textureLoadTasks, i);
+    *task        = task_scheduler_enqueue(
+        (TaskFunction) glb_json_chunk_load_texture, taskParams, 0);
+  }
+
+  for (uint32_t i = 0; i < textureLoadTasks.size; i++)
+  {
+    HANDLE* task = auto_array_get(&textureLoadTasks, i);
+    WaitForSingleObject(*task, INFINITE);
   }
 
   LOG_DEBUG("Loaded %d meshes, %d materials, %d textures, and %d images.",
       asset->meshes.size, asset->materials.size, asset->textures.size,
       asset->images.size);
+
+  auto_array_destroy(&textureLoadTasks);
+  auto_array_destroy(&textureLoadParams);
 
   glb_json_chunk_destroy(&parsedJsonChunk);
   json_destroy(glbJsonData);
