@@ -31,6 +31,17 @@ typedef struct GlbChunk
   char data[];
 } GlbChunk;
 
+typedef struct MeshLoadParams
+{
+  GlbMeshPrimitive* primitive;
+  AutoArray* accessors;
+  AutoArray* bufferViews;
+  char* binaryData;
+  size_t assetMeshIndex;
+  AutoArray* assetMeshes;
+  GlbNode* node;
+} MeshLoadParams;
+
 typedef struct TextureLoadParams
 {
   GlbBufferView* bufferView;
@@ -52,6 +63,58 @@ static void glb_json_chunk_load_texture(TextureLoadParams* params)
   {
     LOG_ERROR("Unable to load image.");
   }
+}
+
+static void glb_json_chunk_load_mesh(MeshLoadParams* params)
+{
+  GlbAccessor* positionAccessor =
+      auto_array_get(params->accessors, params->primitive->position);
+  GlbAccessor* normalAccessor =
+      auto_array_get(params->accessors, params->primitive->normal);
+  GlbAccessor* uvAccessor =
+      auto_array_get(params->accessors, params->primitive->uv);
+  GlbAccessor* indexAccessor =
+      auto_array_get(params->accessors, params->primitive->indices);
+
+  GlbBufferView* positionBuffer =
+      auto_array_get(params->bufferViews, positionAccessor->bufferView);
+  GlbBufferView* normalBuffer =
+      auto_array_get(params->bufferViews, normalAccessor->bufferView);
+  GlbBufferView* uvBuffer =
+      auto_array_get(params->bufferViews, uvAccessor->bufferView);
+  GlbBufferView* indicesBuffer =
+      auto_array_get(params->bufferViews, indexAccessor->bufferView);
+
+  // TODO: Figure out how multiple buffers would work.
+  Vec3* positions   = (Vec3*) &params->binaryData[positionBuffer->offset];
+  Vec3* normals     = (Vec3*) &params->binaryData[normalBuffer->offset];
+  Vec2* uvs         = (Vec2*) &params->binaryData[uvBuffer->offset];
+  uint16_t* indices = (uint16_t*) &params->binaryData[indicesBuffer->offset];
+
+  GlbAssetMesh* assetMesh =
+      auto_array_get(params->assetMeshes, params->assetMeshIndex);
+  assetMesh->vertices = malloc(sizeof(MeshVertex) * positionAccessor->count);
+  assetMesh->numOfVertices = positionAccessor->count;
+
+  assetMesh->indices      = malloc(sizeof(uint16_t) * indexAccessor->count);
+  assetMesh->numOfIndices = indexAccessor->count;
+
+  for (uint32_t attribute = 0; attribute < positionAccessor->count; attribute++)
+  {
+    // TODO: Take into consideration the buffer index.
+    assetMesh->vertices[attribute].position = positions[attribute];
+    assetMesh->vertices[attribute].normal   = normals[attribute];
+    assetMesh->vertices[attribute].uv       = uvs[attribute];
+  }
+
+  for (uint32_t index = 0; index < indexAccessor->count; index++)
+  {
+    assetMesh->indices[index] = indices[index];
+  }
+
+  memcpy(&assetMesh->transform, &params->node->transform, sizeof(Mat4));
+
+  assetMesh->materialIndex = params->primitive->material;
 }
 
 // TODO: More closely examine where you're reading from content and ensure it
@@ -104,6 +167,8 @@ OTTERRENDER_API bool glb_load_asset(
     return false;
   }
 
+  AutoArray meshLoadParams;
+  auto_array_create(&meshLoadParams, sizeof(MeshLoadParams));
   auto_array_create(&asset->meshes, sizeof(GlbAssetMesh));
   for (uint32_t i = 0; i < parsedJsonChunk.nodes.size; i++)
   {
@@ -113,61 +178,31 @@ OTTERRENDER_API bool glb_load_asset(
       GlbMesh* mesh = auto_array_get(&parsedJsonChunk.meshes, node->mesh);
       for (uint32_t p = 0; p < mesh->primitives.size; p++)
       {
-        // TODO: Do some checks to verify integrity.
+        GlbAssetMesh* assetMesh     = auto_array_allocate(&asset->meshes);
         GlbMeshPrimitive* primitive = auto_array_get(&mesh->primitives, p);
-        GlbAccessor* positionAccessor =
-            auto_array_get(&parsedJsonChunk.accessors, primitive->position);
-        GlbAccessor* normalAccessor =
-            auto_array_get(&parsedJsonChunk.accessors, primitive->normal);
-        GlbAccessor* uvAccessor =
-            auto_array_get(&parsedJsonChunk.accessors, primitive->uv);
-        GlbAccessor* indexAccessor =
-            auto_array_get(&parsedJsonChunk.accessors, primitive->indices);
 
-        GlbBufferView* positionBuffer = auto_array_get(
-            &parsedJsonChunk.bufferViews, positionAccessor->bufferView);
-        GlbBufferView* normalBuffer = auto_array_get(
-            &parsedJsonChunk.bufferViews, normalAccessor->bufferView);
-        GlbBufferView* uvBuffer = auto_array_get(
-            &parsedJsonChunk.bufferViews, uvAccessor->bufferView);
-        GlbBufferView* indicesBuffer = auto_array_get(
-            &parsedJsonChunk.bufferViews, indexAccessor->bufferView);
-
-        // TODO: Figure out how multiple buffers would work.
-        Vec3* positions = (Vec3*) &binaryChunk->data[positionBuffer->offset];
-        Vec3* normals   = (Vec3*) &binaryChunk->data[normalBuffer->offset];
-        Vec2* uvs       = (Vec2*) &binaryChunk->data[uvBuffer->offset];
-        uint16_t* indices =
-            (uint16_t*) &binaryChunk->data[indicesBuffer->offset];
-
-        GlbAssetMesh* assetMesh = auto_array_allocate(&asset->meshes);
-
-        assetMesh->vertices =
-            malloc(sizeof(MeshVertex) * positionAccessor->count);
-        assetMesh->numOfVertices = positionAccessor->count;
-
-        assetMesh->indices = malloc(sizeof(uint16_t) * indexAccessor->count);
-        assetMesh->numOfIndices = indexAccessor->count;
-
-        for (uint32_t attribute = 0; attribute < positionAccessor->count;
-             attribute++)
-        {
-          // TODO: Take into consideration the buffer index.
-          assetMesh->vertices[attribute].position = positions[attribute];
-          assetMesh->vertices[attribute].normal   = normals[attribute];
-          assetMesh->vertices[attribute].uv       = uvs[attribute];
-        }
-
-        for (uint32_t index = 0; index < indexAccessor->count; index++)
-        {
-          assetMesh->indices[index] = indices[index];
-        }
-
-        memcpy(&assetMesh->transform, &node->transform, sizeof(Mat4));
-
-        assetMesh->materialIndex = primitive->material;
+        MeshLoadParams* taskParams = auto_array_allocate(&meshLoadParams);
+        taskParams->primitive      = primitive;
+        taskParams->accessors      = &parsedJsonChunk.accessors;
+        taskParams->bufferViews    = &parsedJsonChunk.bufferViews;
+        taskParams->binaryData     = binaryChunk->data;
+        taskParams->assetMeshIndex = asset->meshes.size - 1;
+        taskParams->assetMeshes    = &asset->meshes;
+        taskParams->node           = node;
       }
     }
+  }
+
+  AutoArray meshLoadTasks;
+  auto_array_create(&meshLoadTasks, sizeof(HANDLE));
+  auto_array_allocate_many(&meshLoadTasks, meshLoadParams.size);
+  for (uint32_t i = 0; i < meshLoadTasks.size; i++)
+  {
+    MeshLoadParams* taskParams = auto_array_get(&meshLoadParams, i);
+
+    HANDLE* task = auto_array_get(&meshLoadTasks, i);
+    *task        = task_scheduler_enqueue(
+        (TaskFunction) glb_json_chunk_load_mesh, taskParams, 0);
   }
 
   auto_array_create(&asset->materials, sizeof(GlbAssetMaterial));
@@ -226,6 +261,12 @@ OTTERRENDER_API bool glb_load_asset(
         (TaskFunction) glb_json_chunk_load_texture, taskParams, 0);
   }
 
+  for (uint32_t i = 0; i < meshLoadTasks.size; i++)
+  {
+    HANDLE* task = auto_array_get(&meshLoadTasks, i);
+    WaitForSingleObject(*task, INFINITE);
+  }
+
   for (uint32_t i = 0; i < textureLoadTasks.size; i++)
   {
     HANDLE* task = auto_array_get(&textureLoadTasks, i);
@@ -236,6 +277,9 @@ OTTERRENDER_API bool glb_load_asset(
       asset->meshes.size, asset->materials.size, asset->textures.size,
       asset->images.size);
 
+  auto_array_destroy(&meshLoadTasks);
+  auto_array_destroy(&meshLoadParams);
+
   auto_array_destroy(&textureLoadTasks);
   auto_array_destroy(&textureLoadParams);
 
@@ -244,4 +288,3 @@ OTTERRENDER_API bool glb_load_asset(
 
   return true;
 }
-
