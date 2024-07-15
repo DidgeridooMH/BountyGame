@@ -88,12 +88,11 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
 }
 
 const vec3 lightPosition = vec3(16.0, -16.0, 16.0);
-const vec3 lightColor = vec3(1);
+const vec3 lightColor = vec3(10);
 const float lightConstant = 1.0;
 const float lightLinear = 0.09;
 const float lightQuadratic = 0.032;
 
-// TODO: Grab from M-buffer.
 vec3 calculateDirectLight(vec3 position, vec3 normal)
 {
   float distance = length(lightPosition - position);
@@ -108,7 +107,7 @@ void main()
 {
   if (subpassLoad(ainPosition).a < 1.0)
   {
-    outColor = vec4(mapToHdr10(vec3(0.2, 0.2, 5.0)), 1.0);
+    outColor = vec4(mapToHdr10(vec3(0.2, 0.2, 3.0)), 1.0);
     return;
   }
 
@@ -117,6 +116,7 @@ void main()
   vec3 normal = subpassLoad(ainNormal).rgb;
   float roughness = subpassLoad(ainMaterial).r;
   float metallic = subpassLoad(ainMaterial).g;
+  float ao = subpassLoad(ainMaterial).b;
 
   vec3 radiance = calculateDirectLight(position, normal);
 
@@ -137,8 +137,7 @@ void main()
   vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 
   vec3 lighting = (kD * albedo / PI + specular) * radiance * cosThetaLight;
-  // TODO: Include AO
-  lighting += vec3(0.01) * albedo;
+  lighting += vec3(0.1) * albedo * ao;
 
   // Convert RGB to Rec.2020
   const bool useHdr = true;

@@ -103,8 +103,10 @@ static void glb_json_chunk_load_mesh(MeshLoadParams* params)
   {
     // TODO: Take into consideration the buffer index.
     assetMesh->vertices[attribute].position = positions[attribute];
-    assetMesh->vertices[attribute].normal   = normals[attribute];
-    assetMesh->vertices[attribute].uv       = uvs[attribute];
+    assetMesh->vertices[attribute].position.y *= -1.0f;
+    assetMesh->vertices[attribute].normal = normals[attribute];
+    assetMesh->vertices[attribute].normal.y *= -1.0f;
+    assetMesh->vertices[attribute].uv = uvs[attribute];
   }
 
   for (uint32_t index = 0; index < indexAccessor->count; index++)

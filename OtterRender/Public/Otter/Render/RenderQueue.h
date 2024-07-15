@@ -9,6 +9,8 @@ typedef struct RenderCommand
 {
   Mesh* mesh;
   ImageSampler* albedo;
+  ImageSampler* normal;
+  ImageSampler* metallicRoughness;
+  ImageSampler* ao;
   Mat4 transform;
 } RenderCommand;
-

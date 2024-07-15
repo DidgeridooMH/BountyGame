@@ -93,7 +93,7 @@ bool g_buffer_pipeline_create(const char* shaderDirectory,
   VkPipelineRasterizationStateCreateInfo rasterizationStateCreateInfo = {
       .sType     = VK_STRUCTURE_TYPE_PIPELINE_RASTERIZATION_STATE_CREATE_INFO,
       .cullMode  = VK_CULL_MODE_BACK_BIT,
-      .frontFace = VK_FRONT_FACE_CLOCKWISE,
+      .frontFace = VK_FRONT_FACE_COUNTER_CLOCKWISE,
       .lineWidth = 1.0f};
 
   VkPipelineMultisampleStateCreateInfo multisamplingStateCreateInfo = {
@@ -137,10 +137,23 @@ bool g_buffer_pipeline_create(const char* shaderDirectory,
     return false;
   }
 
-  VkDescriptorSetLayoutBinding materialLayoutBindings[] = {{.binding = 0,
-      .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
-      .descriptorCount = 1,
-      .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}};
+  VkDescriptorSetLayoutBinding materialLayoutBindings[] = {
+      {.binding            = 0,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .descriptorCount = 1,
+          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT},
+      {.binding            = 1,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .descriptorCount = 1,
+          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT},
+      {.binding            = 2,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .descriptorCount = 1,
+          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT},
+      {.binding            = 3,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .descriptorCount = 1,
+          .stageFlags      = VK_SHADER_STAGE_FRAGMENT_BIT}};
   VkDescriptorSetLayoutCreateInfo materialDescriptorSetLayoutCreateInfo = {
       .sType        = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_LAYOUT_CREATE_INFO,
       .pBindings    = materialLayoutBindings,
@@ -264,7 +277,9 @@ void g_buffer_pipeline_write_vp(VkCommandBuffer commandBuffer,
 // TODO: Rework this so that we aren't writing a descriptor set for each object.
 void g_buffer_pipeline_write_material(VkCommandBuffer commandBuffer,
     VkDescriptorPool descriptorPool, VkDevice logicalDevice,
-    ImageSampler* albedoSampler, GBufferPipeline* pipeline)
+    ImageSampler* albedoSampler, ImageSampler* normalSampler,
+    ImageSampler* metallicRoughnessSampler, ImageSampler* aoSampler,
+    GBufferPipeline* pipeline)
 {
   VkDescriptorSetAllocateInfo gBufferDescriptorSetAllocInfo = {
       .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
@@ -283,6 +298,18 @@ void g_buffer_pipeline_write_material(VkCommandBuffer commandBuffer,
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       .imageView   = albedoSampler->view,
       .sampler     = albedoSampler->sampler};
+  VkDescriptorImageInfo normalImageInfo = {
+      .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      .imageView   = normalSampler->view,
+      .sampler     = normalSampler->sampler};
+  VkDescriptorImageInfo metallicRoughnessImageInfo = {
+      .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      .imageView   = metallicRoughnessSampler->view,
+      .sampler     = metallicRoughnessSampler->sampler};
+  VkDescriptorImageInfo aoImageInfo = {
+      .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      .imageView   = aoSampler->view,
+      .sampler     = aoSampler->sampler};
   VkWriteDescriptorSet descriptorWrites[] = {
       {.sType              = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
           .descriptorCount = 1,
@@ -290,11 +317,31 @@ void g_buffer_pipeline_write_material(VkCommandBuffer commandBuffer,
           .dstSet          = gBufferDescriptorSet,
           .dstBinding      = 0,
           .dstArrayElement = 0,
-          .pImageInfo      = &albedoImageInfo}};
+          .pImageInfo      = &albedoImageInfo},
+      {.sType              = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .descriptorCount = 1,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .dstSet          = gBufferDescriptorSet,
+          .dstBinding      = 1,
+          .dstArrayElement = 0,
+          .pImageInfo      = &normalImageInfo},
+      {.sType              = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .descriptorCount = 1,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .dstSet          = gBufferDescriptorSet,
+          .dstBinding      = 2,
+          .dstArrayElement = 0,
+          .pImageInfo      = &metallicRoughnessImageInfo},
+      {.sType              = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .descriptorCount = 1,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER,
+          .dstSet          = gBufferDescriptorSet,
+          .dstBinding      = 3,
+          .dstArrayElement = 0,
+          .pImageInfo      = &aoImageInfo}};
   vkUpdateDescriptorSets(
       logicalDevice, _countof(descriptorWrites), descriptorWrites, 0, NULL);
 
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       pipeline->layout, 1, 1, &gBufferDescriptorSet, 0, NULL);
 }
-

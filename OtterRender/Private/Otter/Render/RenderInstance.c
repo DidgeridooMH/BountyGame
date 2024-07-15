@@ -983,7 +983,8 @@ void render_instance_draw(RenderInstance* renderInstance)
 }
 
 void render_instance_queue_mesh_draw(Mesh* mesh, Mat4 transform,
-    ImageSampler* albedo, RenderInstance* renderInstance)
+    ImageSampler* albedo, ImageSampler* normal, ImageSampler* metalRoughness,
+    ImageSampler* ao, RenderInstance* renderInstance)
 {
   RenderCommand* command = auto_array_allocate(
       &renderInstance->frames[renderInstance->currentFrame].renderQueue);
@@ -992,7 +993,12 @@ void render_instance_queue_mesh_draw(Mesh* mesh, Mat4 transform,
     return;
   }
 
-  command->mesh   = mesh;
-  command->albedo = albedo;
+  command->mesh              = mesh;
+  command->albedo            = albedo;
+  command->normal            = normal;
+  command->metallicRoughness = metalRoughness;
+  command->ao                = ao;
+
   memcpy(&command->transform, transform, sizeof(Mat4));
 }
+

@@ -129,7 +129,7 @@ static bool glb_json_chunk_parse_node_transformation(
 
   // NOTE: Vulkan uses -y for its up axis. Our glb currently uses +y for its
   // up axis.
-  mat4_rotate(newNode->transform, 0, 0, M_PI);
+  //  mat4_rotate(newNode->transform, 0, 0, M_PI);
 
   return true;
 }
@@ -320,9 +320,38 @@ static void glb_json_chunk_parse_materials(
           LOG_WARNING("Base color texture source was not an integer.");
         }
       }
-      else
+
+      JsonValue* metallicFactor = hash_map_get_value(
+          &pbr->object, "metallicFactor", strlen("metallicFactor"));
+      if (metallicFactor != NULL && metallicFactor->type == JT_FLOAT)
       {
-        LOG_WARNING("Base color texture was not an object.");
+        material->metallicFactor = metallicFactor->floatingPoint;
+      }
+
+      JsonValue* roughnessFactor = hash_map_get_value(
+          &pbr->object, "roughnessFactor", strlen("roughnessFactor"));
+      if (roughnessFactor != NULL && roughnessFactor->type == JT_FLOAT)
+      {
+        material->roughnessFactor = roughnessFactor->floatingPoint;
+      }
+
+      JsonValue* metallicRoughnessTexture = hash_map_get_value(&pbr->object,
+          "metallicRoughnessTexture", strlen("metallicRoughnessTexture"));
+      if (metallicRoughnessTexture != NULL
+          && metallicRoughnessTexture->type == JT_OBJECT)
+      {
+        JsonValue* metallicRoughnessTextureSource = hash_map_get_value(
+            &metallicRoughnessTexture->object, "index", strlen("index"));
+        if (metallicRoughnessTextureSource != NULL
+            && metallicRoughnessTextureSource->type == JT_INTEGER)
+        {
+          material->metallicRoughnessTexture =
+              metallicRoughnessTextureSource->integer;
+        }
+        else
+        {
+          LOG_WARNING("Metallic roughness texture source was not an integer.");
+        }
       }
     }
     else
@@ -330,41 +359,38 @@ static void glb_json_chunk_parse_materials(
       LOG_WARNING("PBR was not an object.");
     }
 
-    JsonValue* metallicFactor = hash_map_get_value(
-        &materialElement->object, "metallicFactor", strlen("metallicFactor"));
-    if (metallicFactor != NULL && metallicFactor->type == JT_FLOAT)
-    {
-      material->metallicFactor = metallicFactor->floatingPoint;
-    }
-
-    JsonValue* roughnessFactor = hash_map_get_value(
-        &materialElement->object, "roughnessFactor", strlen("roughnessFactor"));
-    if (roughnessFactor != NULL && roughnessFactor->type == JT_FLOAT)
-    {
-      material->roughnessFactor = roughnessFactor->floatingPoint;
-    }
-
-    JsonValue* metallicRoughnessTexture =
-        hash_map_get_value(&materialElement->object, "metallicRoughnessTexture",
-            strlen("metallicRoughnessTexture"));
-    if (metallicRoughnessTexture != NULL
-        && metallicRoughnessTexture->type == JT_INTEGER)
-    {
-      material->metallicRoughnessTexture = metallicRoughnessTexture->integer;
-    }
-
     JsonValue* normalTexture = hash_map_get_value(
         &materialElement->object, "normalTexture", strlen("normalTexture"));
-    if (normalTexture != NULL && normalTexture->type == JT_INTEGER)
+    if (normalTexture != NULL && normalTexture->type == JT_OBJECT)
     {
-      material->normalTexture = normalTexture->integer;
+      JsonValue* normalTextureSource =
+          hash_map_get_value(&normalTexture->object, "index", strlen("index"));
+      if (normalTextureSource != NULL
+          && normalTextureSource->type == JT_INTEGER)
+      {
+        material->normalTexture = normalTextureSource->integer;
+      }
+      else
+      {
+        LOG_WARNING("Normal texture source was not an integer.");
+      }
     }
 
     JsonValue* occlusionTexture = hash_map_get_value(&materialElement->object,
         "occlusionTexture", strlen("occlusionTexture"));
-    if (occlusionTexture != NULL && occlusionTexture->type == JT_INTEGER)
+    if (occlusionTexture != NULL && occlusionTexture->type == JT_OBJECT)
     {
-      material->occlusionTexture = occlusionTexture->integer;
+      JsonValue* occlusionTextureSource = hash_map_get_value(
+          &occlusionTexture->object, "index", strlen("index"));
+      if (occlusionTextureSource != NULL
+          && occlusionTextureSource->type == JT_INTEGER)
+      {
+        material->occlusionTexture = occlusionTextureSource->integer;
+      }
+      else
+      {
+        LOG_WARNING("Occlusion texture source was not an integer.");
+      }
     }
 
     JsonValue* emissiveFactor = hash_map_get_value(
@@ -379,9 +405,19 @@ static void glb_json_chunk_parse_materials(
 
     JsonValue* emissiveTexture = hash_map_get_value(
         &materialElement->object, "emissiveTexture", strlen("emissiveTexture"));
-    if (emissiveTexture != NULL && emissiveTexture->type == JT_INTEGER)
+    if (emissiveTexture != NULL && emissiveTexture->type == JT_OBJECT)
     {
-      material->emissiveTexture = emissiveTexture->integer;
+      JsonValue* emissiveTextureSource = hash_map_get_value(
+          &emissiveTexture->object, "index", strlen("index"));
+      if (emissiveTextureSource != NULL
+          && emissiveTextureSource->type == JT_INTEGER)
+      {
+        material->emissiveTexture = emissiveTextureSource->integer;
+      }
+      else
+      {
+        LOG_WARNING("Emissive texture source was not an integer.");
+      }
     }
   }
 }

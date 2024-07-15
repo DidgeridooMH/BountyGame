@@ -30,4 +30,6 @@ void g_buffer_pipeline_write_vp(VkCommandBuffer commandBuffer,
 
 void g_buffer_pipeline_write_material(VkCommandBuffer commandBuffer,
     VkDescriptorPool descriptorPool, VkDevice logicalDevice,
-    ImageSampler* albedoSampler, GBufferPipeline* pipeline);
+    ImageSampler* albedoSampler, ImageSampler* normalSampler,
+    ImageSampler* metallicRoughnessSampler, ImageSampler* aoSampler,
+    GBufferPipeline* pipeline);
