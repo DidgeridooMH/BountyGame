@@ -27,10 +27,12 @@ typedef struct GlbAssetMaterial
   uint32_t baseColorTexture;
   uint32_t normalTexture;
   uint32_t metallicRoughnessTexture;
+  uint32_t occlusionTexture;
   uint32_t emissiveTexture;
   Vec4 baseColor;
   float metallicFactor;
   float roughnessFactor;
+  float occlusionStrength;
   Vec3 emissive;
 } GlbAssetMaterial;
 

@@ -383,7 +383,8 @@ static bool render_instance_create_logical_device(
     RenderInstance* renderInstance)
 {
   const char* deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-  float queuePriority            = 0.0f;
+  const VkPhysicalDeviceFeatures deviceFeatures = {.independentBlend = VK_TRUE};
+  float queuePriority                           = 0.0f;
 
   VkDeviceQueueCreateInfo deviceQueueCreateInfo = {
       .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,
@@ -398,7 +399,7 @@ static bool render_instance_create_logical_device(
       .pQueueCreateInfos       = &deviceQueueCreateInfo,
       .enabledExtensionCount   = 1,
       .ppEnabledExtensionNames = deviceExtensions,
-  };
+      .pEnabledFeatures        = &deviceFeatures};
 
   if (vkCreateDevice(renderInstance->physicalDevice, &deviceCreateInfo, NULL,
           &renderInstance->logicalDevice)
@@ -982,9 +983,8 @@ void render_instance_draw(RenderInstance* renderInstance)
       (renderInstance->currentFrame + 1) % renderInstance->framesInFlight;
 }
 
-void render_instance_queue_mesh_draw(Mesh* mesh, Mat4 transform,
-    ImageSampler* albedo, ImageSampler* normal, ImageSampler* metalRoughness,
-    ImageSampler* ao, RenderInstance* renderInstance)
+void render_instance_queue_mesh_draw(Mesh* mesh, const Material* material,
+    const Mat4 transform, RenderInstance* renderInstance)
 {
   RenderCommand* command = auto_array_allocate(
       &renderInstance->frames[renderInstance->currentFrame].renderQueue);
@@ -993,12 +993,8 @@ void render_instance_queue_mesh_draw(Mesh* mesh, Mat4 transform,
     return;
   }
 
-  command->mesh              = mesh;
-  command->albedo            = albedo;
-  command->normal            = normal;
-  command->metallicRoughness = metalRoughness;
-  command->ao                = ao;
-
+  command->mesh = mesh;
+  memcpy(&command->material, material, sizeof(Material));
   memcpy(&command->transform, transform, sizeof(Mat4));
 }
 

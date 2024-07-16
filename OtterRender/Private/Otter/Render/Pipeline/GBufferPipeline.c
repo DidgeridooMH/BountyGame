@@ -1,10 +1,13 @@
 #include "Otter/Render/Pipeline/GBufferPipeline.h"
 
+#include <vulkan/vulkan_core.h>
+
 #include "Otter/Math/MatDef.h"
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/Pipeline/Pipeline.h"
 #include "Otter/Render/RenderStack.h"
 #include "Otter/Render/Texture/ImageSampler.h"
+#include "Otter/Render/Uniform/Material.h"
 #include "Otter/Util/Log.h"
 
 bool g_buffer_pipeline_create(const char* shaderDirectory,
@@ -103,9 +106,10 @@ bool g_buffer_pipeline_create(const char* shaderDirectory,
 
   VkPipelineColorBlendAttachmentState colorBlendAttachment[G_BUFFER_LAYERS] = {
       0};
+  // TODO: Fix transparency pipeline. This seems super complex.
   for (int i = 0; i < _countof(colorBlendAttachment); i++)
   {
-    colorBlendAttachment[i].blendEnable         = true;
+    colorBlendAttachment[i].blendEnable = i == RSL_COLOR ? VK_FALSE : VK_FALSE;
     colorBlendAttachment[i].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
     colorBlendAttachment[i].dstColorBlendFactor =
         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -168,17 +172,20 @@ bool g_buffer_pipeline_create(const char* shaderDirectory,
     return false;
   }
 
-  VkPushConstantRange pushConstantRange = {
-      .stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
-      .offset     = 0,
-      .size       = sizeof(Mat4)};
+  VkPushConstantRange pushConstantRange[] = {
+      {.stageFlags = VK_SHADER_STAGE_VERTEX_BIT,
+          .offset  = 0,
+          .size    = sizeof(Mat4)},
+      {.stageFlags = VK_SHADER_STAGE_FRAGMENT_BIT,
+          .offset  = sizeof(Mat4),
+          .size    = sizeof(MaterialConstant)}};
 
   VkPipelineLayoutCreateInfo layoutCreateInfo = {
       .sType                  = VK_STRUCTURE_TYPE_PIPELINE_LAYOUT_CREATE_INFO,
       .pSetLayouts            = pipeline->descriptorSetLayouts,
       .setLayoutCount         = _countof(pipeline->descriptorSetLayouts),
-      .pushConstantRangeCount = 1,
-      .pPushConstantRanges    = &pushConstantRange};
+      .pushConstantRangeCount = _countof(pushConstantRange),
+      .pPushConstantRanges    = pushConstantRange};
   if (vkCreatePipelineLayout(
           logicalDevice, &layoutCreateInfo, NULL, &pipeline->layout)
       != VK_SUCCESS)
@@ -276,9 +283,7 @@ void g_buffer_pipeline_write_vp(VkCommandBuffer commandBuffer,
 
 // TODO: Rework this so that we aren't writing a descriptor set for each object.
 void g_buffer_pipeline_write_material(VkCommandBuffer commandBuffer,
-    VkDescriptorPool descriptorPool, VkDevice logicalDevice,
-    ImageSampler* albedoSampler, ImageSampler* normalSampler,
-    ImageSampler* metallicRoughnessSampler, ImageSampler* aoSampler,
+    VkDescriptorPool descriptorPool, VkDevice logicalDevice, Material* material,
     GBufferPipeline* pipeline)
 {
   VkDescriptorSetAllocateInfo gBufferDescriptorSetAllocInfo = {
@@ -296,20 +301,20 @@ void g_buffer_pipeline_write_material(VkCommandBuffer commandBuffer,
 
   VkDescriptorImageInfo albedoImageInfo = {
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      .imageView   = albedoSampler->view,
-      .sampler     = albedoSampler->sampler};
+      .imageView   = material->baseColorTexture->view,
+      .sampler     = material->baseColorTexture->sampler};
   VkDescriptorImageInfo normalImageInfo = {
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      .imageView   = normalSampler->view,
-      .sampler     = normalSampler->sampler};
+      .imageView   = material->normalTexture->view,
+      .sampler     = material->normalTexture->sampler};
   VkDescriptorImageInfo metallicRoughnessImageInfo = {
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      .imageView   = metallicRoughnessSampler->view,
-      .sampler     = metallicRoughnessSampler->sampler};
+      .imageView   = material->metallicRoughnessTexture->view,
+      .sampler     = material->metallicRoughnessTexture->sampler};
   VkDescriptorImageInfo aoImageInfo = {
       .imageLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      .imageView   = aoSampler->view,
-      .sampler     = aoSampler->sampler};
+      .imageView   = material->occlusionTexture->view,
+      .sampler     = material->occlusionTexture->sampler};
   VkWriteDescriptorSet descriptorWrites[] = {
       {.sType              = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
           .descriptorCount = 1,
@@ -344,4 +349,9 @@ void g_buffer_pipeline_write_material(VkCommandBuffer commandBuffer,
 
   vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       pipeline->layout, 1, 1, &gBufferDescriptorSet, 0, NULL);
+
+  vkCmdPushConstants(commandBuffer, pipeline->layout,
+      VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(Mat4), sizeof(MaterialConstant),
+      &material->constant);
 }
+

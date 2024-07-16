@@ -3,14 +3,11 @@
 #include <vulkan/vulkan.h>
 
 #include "Otter/Render/Mesh.h"
-#include "Otter/Render/Texture/ImageSampler.h"
+#include "Otter/Render/Uniform/Material.h"
 
 typedef struct RenderCommand
 {
   Mesh* mesh;
-  ImageSampler* albedo;
-  ImageSampler* normal;
-  ImageSampler* metallicRoughness;
-  ImageSampler* ao;
+  Material material;
   Mat4 transform;
 } RenderCommand;

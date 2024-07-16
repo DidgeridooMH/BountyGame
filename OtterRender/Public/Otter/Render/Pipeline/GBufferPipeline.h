@@ -3,7 +3,7 @@
 #include <vulkan/vulkan.h>
 
 #include "Otter/Render/Memory/GpuBuffer.h"
-#include "Otter/Render/Texture/ImageSampler.h"
+#include "Otter/Render/Uniform/Material.h"
 
 typedef enum DescriptorSetIndex
 {
@@ -29,7 +29,5 @@ void g_buffer_pipeline_write_vp(VkCommandBuffer commandBuffer,
     GpuBuffer* vpBuffer, GBufferPipeline* pipeline);
 
 void g_buffer_pipeline_write_material(VkCommandBuffer commandBuffer,
-    VkDescriptorPool descriptorPool, VkDevice logicalDevice,
-    ImageSampler* albedoSampler, ImageSampler* normalSampler,
-    ImageSampler* metallicRoughnessSampler, ImageSampler* aoSampler,
+    VkDescriptorPool descriptorPool, VkDevice logicalDevice, Material* material,
     GBufferPipeline* pipeline);

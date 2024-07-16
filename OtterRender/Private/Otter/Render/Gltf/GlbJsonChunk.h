@@ -37,6 +37,7 @@ typedef struct GlbMaterial
   uint32_t metallicRoughnessTexture;
   uint32_t normalTexture;
   uint32_t occlusionTexture;
+  float occlusionStrength;
   Vec3 emissiveFactor;
   uint32_t emissiveTexture;
 } GlbMaterial;

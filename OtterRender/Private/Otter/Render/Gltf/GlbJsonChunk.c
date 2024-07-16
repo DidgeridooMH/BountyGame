@@ -127,10 +127,6 @@ static bool glb_json_chunk_parse_node_transformation(
     }
   }
 
-  // NOTE: Vulkan uses -y for its up axis. Our glb currently uses +y for its
-  // up axis.
-  //  mat4_rotate(newNode->transform, 0, 0, M_PI);
-
   return true;
 }
 
@@ -269,12 +265,14 @@ static void glb_json_chunk_parse_materials(
     material->baseColorFactor.x        = 1.0f;
     material->baseColorFactor.y        = 1.0f;
     material->baseColorFactor.z        = 1.0f;
+    material->baseColorFactor.w        = 1.0f;
     material->baseColorTexture         = -1;
     material->metallicFactor           = 1.0f;
     material->roughnessFactor          = 1.0f;
     material->metallicRoughnessTexture = -1;
     material->normalTexture            = -1;
     material->occlusionTexture         = -1;
+    material->occlusionStrength        = 0.0f;
     material->emissiveFactor.x         = 0.0f;
     material->emissiveFactor.y         = 0.0f;
     material->emissiveFactor.z         = 0.0f;
@@ -390,6 +388,13 @@ static void glb_json_chunk_parse_materials(
       else
       {
         LOG_WARNING("Occlusion texture source was not an integer.");
+      }
+
+      JsonValue* occlusionStrength = hash_map_get_value(
+          &occlusionTexture->object, "strength", strlen("strength"));
+      if (occlusionStrength != NULL && occlusionStrength->type == JT_FLOAT)
+      {
+        material->occlusionStrength = occlusionStrength->floatingPoint;
       }
     }
 

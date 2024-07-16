@@ -131,13 +131,13 @@ void main()
   float microGeometry = schlickGGX(cosTheta, roughness) *
     schlickGGX(cosThetaLight, roughness);
   vec3 F0 = mix(vec3(0.04), albedo, metallic);
-  vec3 kS = fresnelSchlick(cosTheta, vec3(0.04));
+  vec3 kS = fresnelSchlick(cosTheta, F0);
   vec3 specular = (kS * ndf * microGeometry) / ((4.0 * cosTheta * cosThetaLight) + 0.0001);
 
   vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
 
   vec3 lighting = (kD * albedo / PI + specular) * radiance * cosThetaLight;
-  lighting += vec3(0.1) * albedo * ao;
+  lighting += vec3(0.01) * albedo * (1.0 - ao);
 
   // Convert RGB to Rec.2020
   const bool useHdr = true;

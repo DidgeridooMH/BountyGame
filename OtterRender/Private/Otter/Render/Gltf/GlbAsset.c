@@ -218,10 +218,12 @@ OTTERRENDER_API bool glb_load_asset(
     assetMaterial->normalTexture    = material->normalTexture;
     assetMaterial->metallicRoughnessTexture =
         material->metallicRoughnessTexture;
-    assetMaterial->emissiveTexture = material->emissiveTexture;
+    assetMaterial->occlusionTexture = material->occlusionTexture;
+    assetMaterial->emissiveTexture  = material->emissiveTexture;
     memcpy(&assetMaterial->baseColor, &material->baseColorFactor, sizeof(Vec4));
-    assetMaterial->metallicFactor  = material->metallicFactor;
-    assetMaterial->roughnessFactor = material->roughnessFactor;
+    assetMaterial->metallicFactor    = material->metallicFactor;
+    assetMaterial->roughnessFactor   = material->roughnessFactor;
+    assetMaterial->occlusionStrength = material->occlusionStrength;
     memcpy(&assetMaterial->emissive, &material->emissiveFactor, sizeof(Vec3));
   }
 

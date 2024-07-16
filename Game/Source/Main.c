@@ -191,12 +191,12 @@ int WINAPI wWinMain(
       {.position  = {0.5f, 0.5f, -0.5f},
           .normal = {baseComp, baseComp, -baseComp}}};
   const uint16_t indices[] = {
-      1, 2, 0, 1, 3, 2, // Front
-      5, 3, 1, 5, 7, 3, // Right
-      4, 7, 5, 4, 6, 7, // Back
-      0, 6, 4, 0, 2, 6, // Left
-      1, 0, 4, 5, 1, 4, // Top
-      3, 6, 2, 3, 7, 6 // Bottom
+      0, 2, 1, 2, 3, 1, // Front
+      1, 3, 5, 3, 7, 5, // Right
+      5, 7, 4, 7, 6, 4, // Back
+      4, 6, 0, 6, 2, 0, // Left
+      4, 0, 1, 4, 1, 5, // Top
+      2, 6, 3, 6, 7, 3 // Bottom
   };
 
   VkQueue graphicsQueue;
@@ -285,6 +285,19 @@ int WINAPI wWinMain(
     return -1;
   }
 
+  Material defaultMaterial = {
+      .constant                 = {.baseColorFactor    = {1.0f, 1.0f, 1.0f, 1.0f},
+                          .useBaseColorTexture         = false,
+                          .metallicFactor              = 0.0f,
+                          .roughnessFactor             = 1.0f,
+                          .useMetallicRoughnessTexture = false,
+                          .occlusionStrength           = 0.0f,
+                          .useOcclusionTexture         = false},
+      .baseColorTexture         = &defaultTexture.sampler,
+      .normalTexture            = &defaultTexture.sampler,
+      .metallicRoughnessTexture = &defaultTexture.sampler,
+      .occlusionTexture         = &defaultTexture.sampler};
+
   while (!game_window_process_message(window))
   {
     profiler_clock_start("preframe");
@@ -303,57 +316,76 @@ int WINAPI wWinMain(
     mat4_identity(floorTransform);
     mat4_translate(floorTransform, 0.0f, 10.0f, 0.0f);
     mat4_scale(floorTransform, 100.0f, 1.0f, 100.0f);
-    render_instance_queue_mesh_draw(cube, floorTransform,
-        &defaultTexture.sampler, &defaultTexture.sampler,
-        &defaultTexture.sampler, &defaultTexture.sampler, renderInstance);
+    render_instance_queue_mesh_draw(
+        cube, &defaultMaterial, floorTransform, renderInstance);
 
     // Draw light source
     Mat4 lightTransform;
     mat4_identity(lightTransform);
     mat4_translate(lightTransform, 16.0f, -16.0f, 16.0f);
-    render_instance_queue_mesh_draw(cube, lightTransform,
-        &defaultTexture.sampler, &defaultTexture.sampler,
-        &defaultTexture.sampler, &defaultTexture.sampler, renderInstance);
+    render_instance_queue_mesh_draw(
+        cube, &defaultMaterial, lightTransform, renderInstance);
 
     for (uint32_t i = 0; i < buildingMesh.size; i++)
     {
       // TODO: Properly package assets
       Mesh** assetMesh       = auto_array_get(&buildingMesh, i);
       GlbAssetMesh* glbAsset = auto_array_get(&asset.meshes, i);
-      GlbAssetMaterial* material =
+      GlbAssetMaterial* assetMaterial =
           auto_array_get(&asset.materials, glbAsset->materialIndex);
 
-      ImageSampler* albedo = &defaultTexture.sampler;
-      if (material->baseColorTexture < textures.size)
+      Material material = {
+          .constant         = {.baseColorFactor    = assetMaterial->baseColor,
+                      .metallicFactor              = assetMaterial->metallicFactor,
+                      .roughnessFactor             = assetMaterial->roughnessFactor,
+                      .occlusionStrength           = assetMaterial->occlusionStrength,
+                      .useBaseColorTexture         = VK_FALSE,
+                      .useNormalTexture            = VK_FALSE,
+                      .useMetallicRoughnessTexture = VK_FALSE,
+                      .useOcclusionTexture         = VK_FALSE},
+          .baseColorTexture = &defaultTexture.sampler,
+          .normalTexture    = &defaultTexture.sampler,
+          .metallicRoughnessTexture = &defaultTexture.sampler,
+          .occlusionTexture         = &defaultTexture.sampler};
+
+      if (assetMaterial->baseColorTexture < textures.size)
       {
         uint32_t* textureIndex =
-            auto_array_get(&asset.textures, material->baseColorTexture);
+            auto_array_get(&asset.textures, assetMaterial->baseColorTexture);
+        Texture* texture          = auto_array_get(&textures, *textureIndex);
+        material.baseColorTexture = &texture->sampler;
+        material.constant.useBaseColorTexture = VK_TRUE;
+      }
+
+      if (assetMaterial->normalTexture < textures.size)
+      {
+        uint32_t* textureIndex =
+            auto_array_get(&asset.textures, assetMaterial->normalTexture);
+        Texture* texture       = auto_array_get(&textures, *textureIndex);
+        material.normalTexture = &texture->sampler;
+        material.constant.useNormalTexture = VK_TRUE;
+      }
+
+      if (assetMaterial->metallicRoughnessTexture < textures.size)
+      {
+        uint32_t* textureIndex = auto_array_get(
+            &asset.textures, assetMaterial->metallicRoughnessTexture);
         Texture* texture = auto_array_get(&textures, *textureIndex);
-        albedo           = &texture->sampler;
+        material.metallicRoughnessTexture             = &texture->sampler;
+        material.constant.useMetallicRoughnessTexture = VK_TRUE;
       }
 
-      ImageSampler* normal = &defaultTexture.sampler;
-      if (material->normalTexture < textures.size)
+      if (assetMaterial->occlusionTexture < textures.size)
       {
         uint32_t* textureIndex =
-            auto_array_get(&asset.textures, material->normalTexture);
-        Texture* texture = auto_array_get(&textures, *textureIndex);
-        normal           = &texture->sampler;
+            auto_array_get(&asset.textures, assetMaterial->occlusionTexture);
+        Texture* texture          = auto_array_get(&textures, *textureIndex);
+        material.occlusionTexture = &texture->sampler;
+        material.constant.useOcclusionTexture = VK_TRUE;
       }
 
-      ImageSampler* metallicRoughness = &defaultTexture.sampler;
-      if (material->metallicRoughnessTexture < textures.size)
-      {
-        uint32_t* textureIndex =
-            auto_array_get(&asset.textures, material->metallicRoughnessTexture);
-        Texture* texture  = auto_array_get(&textures, *textureIndex);
-        metallicRoughness = &texture->sampler;
-      }
-
-      ImageSampler* ao = &defaultTexture.sampler;
-
-      render_instance_queue_mesh_draw(*assetMesh, glbAsset->transform, albedo,
-          normal, metallicRoughness, ao, renderInstance);
+      render_instance_queue_mesh_draw(
+          *assetMesh, &material, glbAsset->transform, renderInstance);
     }
     profiler_clock_end("preframe");
 

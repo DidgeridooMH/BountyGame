@@ -256,8 +256,7 @@ static void render_frame_render_g_buffer(RenderFrame* renderFrame,
   {
     RenderCommand* meshCommand = auto_array_get(&renderFrame->renderQueue, i);
     g_buffer_pipeline_write_material(renderFrame->commandBuffer,
-        renderFrame->descriptorPool, logicalDevice, meshCommand->albedo,
-        meshCommand->normal, meshCommand->metallicRoughness, meshCommand->ao,
+        renderFrame->descriptorPool, logicalDevice, &meshCommand->material,
         gBufferPipeline);
     render_frame_draw_mesh(meshCommand, renderFrame, gBufferPipeline,
         physicalDevice, logicalDevice);
@@ -349,3 +348,4 @@ void render_frame_clear_buffers(
   }
   auto_array_clear(&renderFrame->perRenderBuffers);
 }
+ 
