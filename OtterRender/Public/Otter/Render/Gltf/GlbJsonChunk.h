@@ -24,6 +24,7 @@ typedef struct GlbMeshPrimitive
   uint32_t position;
   uint32_t normal;
   uint32_t uv;
+  uint32_t tangent;
   uint32_t indices;
   uint32_t material;
 } GlbMeshPrimitive;
@@ -54,10 +55,17 @@ typedef enum GlbImageMimeType
   GIM_PNG
 } GlbImageMimeType;
 
+typedef enum GlbImageColorType
+{
+  GICT_SRGB,
+  GICT_LINEAR
+} GlbImageColorType;
+
 typedef struct GlbImage
 {
   uint32_t bufferView;
   GlbImageMimeType mimeType;
+  GlbImageColorType colorType;
 } GlbImage;
 
 // TODO: Implement samplers.
@@ -126,3 +134,4 @@ typedef struct GlbJsonChunk
 bool glb_json_chunk_parse(JsonValue* json, GlbJsonChunk* jsonChunk);
 
 void glb_json_chunk_destroy(GlbJsonChunk* jsonChunk);
+

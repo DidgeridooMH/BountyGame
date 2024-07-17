@@ -6,7 +6,6 @@
 #include "Extern/stb_image.h"
 #include "Otter/Async/Scheduler.h"
 #include "Otter/Render/Gltf/GlbJsonChunk.h"
-#include "Otter/Util/File.h"
 #include "Otter/Util/Json/Json.h"
 #include "Otter/Util/Log.h"
 
@@ -72,6 +71,8 @@ static void glb_json_chunk_load_mesh(MeshLoadParams* params)
       auto_array_get(params->accessors, params->primitive->position);
   GlbAccessor* normalAccessor =
       auto_array_get(params->accessors, params->primitive->normal);
+  GlbAccessor* tangentAccessor =
+      auto_array_get(params->accessors, params->primitive->tangent);
   GlbAccessor* uvAccessor =
       auto_array_get(params->accessors, params->primitive->uv);
   GlbAccessor* indexAccessor =
@@ -81,6 +82,8 @@ static void glb_json_chunk_load_mesh(MeshLoadParams* params)
       auto_array_get(params->bufferViews, positionAccessor->bufferView);
   GlbBufferView* normalBuffer =
       auto_array_get(params->bufferViews, normalAccessor->bufferView);
+  GlbBufferView* tangentBuffer =
+      auto_array_get(params->bufferViews, tangentAccessor->bufferView);
   GlbBufferView* uvBuffer =
       auto_array_get(params->bufferViews, uvAccessor->bufferView);
   GlbBufferView* indicesBuffer =
@@ -89,6 +92,7 @@ static void glb_json_chunk_load_mesh(MeshLoadParams* params)
   // TODO: Figure out how multiple buffers would work.
   Vec3* positions   = (Vec3*) &params->binaryData[positionBuffer->offset];
   Vec3* normals     = (Vec3*) &params->binaryData[normalBuffer->offset];
+  Vec4* tangents    = (Vec4*) &params->binaryData[tangentBuffer->offset];
   Vec2* uvs         = (Vec2*) &params->binaryData[uvBuffer->offset];
   uint16_t* indices = (uint16_t*) &params->binaryData[indicesBuffer->offset];
 
@@ -107,6 +111,8 @@ static void glb_json_chunk_load_mesh(MeshLoadParams* params)
     assetMesh->vertices[attribute].position.y *= -1.0f;
     assetMesh->vertices[attribute].normal = normals[attribute];
     assetMesh->vertices[attribute].normal.y *= -1.0f;
+    assetMesh->vertices[attribute].tangent = tangents[attribute];
+    assetMesh->vertices[attribute].tangent.y *= -1.0f;
     assetMesh->vertices[attribute].uv = uvs[attribute];
   }
 
@@ -254,6 +260,7 @@ OTTERRENDER_API bool glb_load_asset(
     GlbBufferView* imageBuffer =
         auto_array_get(&parsedJsonChunk.bufferViews, image->bufferView);
     GlbAssetImage* assetImage = auto_array_get(&asset->images, i);
+    assetImage->colorType     = image->colorType;
 
     TextureLoadParams* taskParams = auto_array_get(&textureLoadParams, i);
     taskParams->bufferView        = imageBuffer;

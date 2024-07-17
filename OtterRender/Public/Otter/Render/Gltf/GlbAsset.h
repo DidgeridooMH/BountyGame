@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Otter/Render/Gltf/GlbJsonChunk.h"
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/export.h"
 #include "Otter/Util/AutoArray.h"
@@ -20,6 +21,7 @@ typedef struct GlbAssetImage
   int width;
   int height;
   int channels;
+  GlbImageColorType colorType;
 } GlbAssetImage;
 
 typedef struct GlbAssetMaterial

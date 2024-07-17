@@ -231,6 +231,7 @@ int WINAPI wWinMain(
     Texture* sampler = auto_array_get(&textureImages, i);
     if (!texture_create(sampler, assetTexture->data, assetTexture->width,
             assetTexture->height, assetTexture->channels,
+            assetTexture->colorType == GICT_SRGB ? TT_COLOR : TT_NONCOLOR,
             renderInstance->physicalDevice, renderInstance->logicalDevice,
             renderInstance->commandPool, graphicsQueue))
     {
@@ -270,7 +271,7 @@ int WINAPI wWinMain(
 
   Texture defaultTexture;
   uint8_t defaultTextureData[] = {0, 0, 255, 255};
-  if (!texture_create(&defaultTexture, defaultTextureData, 1, 1, 4,
+  if (!texture_create(&defaultTexture, defaultTextureData, 1, 1, 4, TT_COLOR,
           renderInstance->physicalDevice, renderInstance->logicalDevice,
           renderInstance->commandPool, graphicsQueue))
   {
@@ -435,3 +436,4 @@ int WINAPI wWinMain(
 
   return 0;
 }
+

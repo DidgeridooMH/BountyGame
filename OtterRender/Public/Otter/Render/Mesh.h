@@ -11,8 +11,7 @@ typedef struct MeshVertex
 {
   Vec3 position;
   Vec3 normal;
-  Vec3 tangent;
-  Vec3 bitangent;
+  Vec4 tangent;
   Vec2 uv;
 } MeshVertex;
 

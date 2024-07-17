@@ -239,13 +239,16 @@ static void glb_json_chunk_parse_meshes(JsonValue* meshes, AutoArray* array)
           &attributes->object, "POSITION", strlen("POSITION"));
       JsonValue* normal =
           hash_map_get_value(&attributes->object, "NORMAL", strlen("NORMAL"));
+      JsonValue* tangent =
+          hash_map_get_value(&attributes->object, "TANGENT", strlen("TANGENT"));
       JsonValue* uv = hash_map_get_value(
           &attributes->object, "TEXCOORD_0", strlen("TEXCOORD_0"));
       JsonValue* material = hash_map_get_value(
           &primitive->object, "material", strlen("material"));
       if (position == NULL || position->type != JT_INTEGER || normal == NULL
           || normal->type != JT_INTEGER || uv == NULL || uv->type != JT_INTEGER
-          || material == NULL || material->type != JT_INTEGER)
+          || material == NULL || material->type != JT_INTEGER || tangent == NULL
+          || tangent->type != JT_INTEGER)
       {
         LOG_ERROR(
             "position, normal, uv, or material were not in the right format.");
@@ -255,6 +258,7 @@ static void glb_json_chunk_parse_meshes(JsonValue* meshes, AutoArray* array)
       GlbMeshPrimitive* meshPrimitives = auto_array_allocate(&mesh->primitives);
       meshPrimitives->position         = position->integer;
       meshPrimitives->normal           = normal->integer;
+      meshPrimitives->tangent          = tangent->integer;
       meshPrimitives->uv               = uv->integer;
       meshPrimitives->indices          = indices->integer;
       meshPrimitives->material         = material->integer;
@@ -497,6 +501,7 @@ static void glb_json_chunk_parse_images(JsonValue* images, AutoArray* array)
   {
     GlbImage* image   = auto_array_allocate(array);
     image->bufferView = -1;
+    image->colorType  = GICT_SRGB;
     image->mimeType   = GIM_JPEG;
 
     JsonValue* imageElement = *(JsonValue**) auto_array_get(&images->array, i);
@@ -511,6 +516,14 @@ static void glb_json_chunk_parse_images(JsonValue* images, AutoArray* array)
     if (bufferView != NULL && bufferView->type == JT_INTEGER)
     {
       image->bufferView = bufferView->integer;
+    }
+
+    JsonValue* name =
+        hash_map_get_value(&imageElement->object, "name", strlen("name"));
+    if (name != NULL && name->type == JT_STRING
+        && strstr(name->string, "_BaseColor") == NULL)
+    {
+      image->colorType = GICT_LINEAR;
     }
 
     JsonValue* mimeType = hash_map_get_value(

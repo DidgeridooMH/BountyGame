@@ -4,8 +4,9 @@
 #include "Otter/Util/Log.h"
 
 bool texture_create(Texture* texture, const uint8_t* data, uint32_t width,
-    uint32_t height, uint32_t channels, VkPhysicalDevice physicalDevice,
-    VkDevice logicalDevice, VkCommandPool commandPool, VkQueue commandQueue)
+    uint32_t height, uint32_t channels, TextureType textureType,
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
+    VkCommandPool commandPool, VkQueue commandQueue)
 {
   GpuBuffer transferBuffer = {0};
 
@@ -26,17 +27,20 @@ bool texture_create(Texture* texture, const uint8_t* data, uint32_t width,
     return false;
   }
 
-  VkFormat format = VK_FORMAT_R8G8B8A8_SRGB;
+  VkFormat format = textureType == TT_COLOR ? VK_FORMAT_R8G8B8A8_SRGB
+                                            : VK_FORMAT_R8G8B8A8_UNORM;
   switch (channels)
   {
   case 1:
-    format = VK_FORMAT_R8_SRGB;
+    format = textureType == TT_COLOR ? VK_FORMAT_R8_SRGB : VK_FORMAT_R8_UNORM;
     break;
   case 2:
-    format = VK_FORMAT_R8G8_SRGB;
+    format =
+        textureType == TT_COLOR ? VK_FORMAT_R8G8_SRGB : VK_FORMAT_R8G8_UNORM;
     break;
   case 3:
-    format = VK_FORMAT_R8G8B8_SRGB;
+    format = textureType == TT_COLOR ? VK_FORMAT_R8G8B8_SRGB
+                                     : VK_FORMAT_R8G8B8_UNORM;
     break;
   default:
     break;

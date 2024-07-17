@@ -17,13 +17,13 @@ set(SOURCES
 )
 
 set(PRIVATE_HEADERS
-  Private/Otter/Render/Gltf/GlbJsonChunk.h
   Private/pch.h
   Private/Extern/stb_image.h
 )
 
 set(PUBLIC_HEADERS
   Public/Otter/Render/Gltf/GlbAsset.h
+  Public/Otter/Render/Gltf/GlbJsonChunk.h
   Public/Otter/Render/Memory/GpuBuffer.h
   Public/Otter/Render/Memory/MemoryType.h
   Public/Otter/Render/Pipeline/GBufferPipeline.h

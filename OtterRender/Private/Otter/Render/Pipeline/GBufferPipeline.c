@@ -67,14 +67,10 @@ bool g_buffer_pipeline_create(const char* shaderDirectory,
           .offset   = offsetof(MeshVertex, normal)},
       {.binding     = 0,
           .location = 2,
-          .format   = VK_FORMAT_R32G32B32_SFLOAT,
+          .format   = VK_FORMAT_R32G32B32A32_SFLOAT,
           .offset   = offsetof(MeshVertex, tangent)},
       {.binding     = 0,
           .location = 3,
-          .format   = VK_FORMAT_R32G32B32_SFLOAT,
-          .offset   = offsetof(MeshVertex, bitangent)},
-      {.binding     = 0,
-          .location = 4,
           .format   = VK_FORMAT_R32G32_SFLOAT,
           .offset   = offsetof(MeshVertex, uv)}};
   VkPipelineVertexInputStateCreateInfo vertexInputCreateInfo = {
@@ -109,7 +105,7 @@ bool g_buffer_pipeline_create(const char* shaderDirectory,
   // TODO: Fix transparency pipeline. This seems super complex.
   for (int i = 0; i < _countof(colorBlendAttachment); i++)
   {
-    colorBlendAttachment[i].blendEnable = i == RSL_COLOR ? VK_FALSE : VK_FALSE;
+    colorBlendAttachment[i].blendEnable = i == RSL_COLOR ? VK_TRUE : VK_FALSE;
     colorBlendAttachment[i].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
     colorBlendAttachment[i].dstColorBlendFactor =
         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -354,4 +350,3 @@ void g_buffer_pipeline_write_material(VkCommandBuffer commandBuffer,
       VK_SHADER_STAGE_FRAGMENT_BIT, sizeof(Mat4), sizeof(MaterialConstant),
       &material->constant);
 }
-

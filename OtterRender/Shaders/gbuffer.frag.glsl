@@ -3,6 +3,7 @@
 layout (location = 0) in vec3 inPosition;
 layout (location = 1) in vec3 inNormal;
 layout (location = 2) in vec2 inUv;
+layout (location = 3) in mat3 inTBN;
 
 layout (location = 0) out vec4 outPosition;
 layout (location = 1) out vec4 outNormal;
@@ -35,7 +36,13 @@ void main()
   if (outColor.a < 1) discard;
 
   outPosition = vec4(inPosition, 1.0);
+
   outNormal = vec4(inNormal, 1.0);
+  if (material.useNormalTexture > 0) {
+    vec3 normal = texture(normalTexture, inUv).xyz * 2.0 - 1.0;
+    normal = normalize(inTBN * normal);
+    outNormal = vec4(mix(inNormal, normal, 0.5), 1.0);
+  }
 
   float metallic = material.metallicFactor;
   float roughness = material.roughnessFactor;

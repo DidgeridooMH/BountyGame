@@ -10,10 +10,15 @@ typedef struct Texture
   ImageSampler sampler;
 } Texture;
 
+typedef enum TexureType
+{
+  TT_COLOR,
+  TT_NONCOLOR
+} TextureType;
+
 OTTERRENDER_API bool texture_create(Texture* texture, const uint8_t* data,
-    uint32_t width, uint32_t height, uint32_t channels,
+    uint32_t width, uint32_t height, uint32_t channels, TextureType textureType,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
     VkCommandPool commandPool, VkQueue commandQueue);
 
 OTTERRENDER_API void texture_destroy(Texture* texture, VkDevice logicalDevice);
-
