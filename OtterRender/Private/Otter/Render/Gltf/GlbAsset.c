@@ -6,6 +6,7 @@
 #include "Extern/stb_image.h"
 #include "Otter/Async/Scheduler.h"
 #include "Otter/Render/Gltf/GlbJsonChunk.h"
+#include "Otter/Util/File.h"
 #include "Otter/Util/Json/Json.h"
 #include "Otter/Util/Log.h"
 
@@ -292,3 +293,4 @@ OTTERRENDER_API bool glb_load_asset(
 
   return true;
 }
+ 

@@ -91,3 +91,12 @@ TEST(HashMapTest, CustomDestructor)
   EXPECT_EQ(value, 44);
 }
 
+TEST(HashMapTest, SetValueDuplicate)
+{
+  HashMap map;
+  EXPECT_TRUE(
+      hash_map_create(&map, HASH_MAP_DEFAULT_BUCKETS, HASH_MAP_DEFAULT_COEF));
+
+  uint32_t key    = 23;
+  uint32_t value1 = 42;
+}

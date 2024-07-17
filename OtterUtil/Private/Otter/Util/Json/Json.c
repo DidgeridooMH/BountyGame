@@ -238,7 +238,7 @@ JsonValue* json_parse(
         return NULL;
       }
       numberValue->type          = JT_FLOAT;
-      numberValue->floatingPoint = token.tokenInteger;
+      numberValue->floatingPoint = token.tokenFloat;
       return numberValue;
     }
   case JTT_TRUE:

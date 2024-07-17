@@ -221,13 +221,14 @@ int WINAPI wWinMain(
         renderInstance->commandPool, graphicsQueue);
   }
 
-  AutoArray textures;
-  auto_array_create(&textures, sizeof(Texture));
+  AutoArray textureImages;
+  auto_array_create(&textureImages, sizeof(Texture));
+  auto_array_allocate_many(&textureImages, asset.images.size);
   for (uint32_t i = 0; i < asset.images.size; i++)
   {
     GlbAssetImage* assetTexture = auto_array_get(&asset.images, i);
 
-    Texture* sampler = auto_array_allocate(&textures);
+    Texture* sampler = auto_array_get(&textureImages, i);
     if (!texture_create(sampler, assetTexture->data, assetTexture->width,
             assetTexture->height, assetTexture->channels,
             renderInstance->physicalDevice, renderInstance->logicalDevice,
@@ -348,39 +349,39 @@ int WINAPI wWinMain(
           .metallicRoughnessTexture = &defaultTexture.sampler,
           .occlusionTexture         = &defaultTexture.sampler};
 
-      if (assetMaterial->baseColorTexture < textures.size)
+      if (assetMaterial->baseColorTexture < asset.textures.size)
       {
         uint32_t* textureIndex =
             auto_array_get(&asset.textures, assetMaterial->baseColorTexture);
-        Texture* texture          = auto_array_get(&textures, *textureIndex);
-        material.baseColorTexture = &texture->sampler;
+        Texture* texture = auto_array_get(&textureImages, *textureIndex);
+        material.baseColorTexture             = &texture->sampler;
         material.constant.useBaseColorTexture = VK_TRUE;
       }
 
-      if (assetMaterial->normalTexture < textures.size)
+      if (assetMaterial->normalTexture < asset.textures.size)
       {
         uint32_t* textureIndex =
             auto_array_get(&asset.textures, assetMaterial->normalTexture);
-        Texture* texture       = auto_array_get(&textures, *textureIndex);
+        Texture* texture       = auto_array_get(&textureImages, *textureIndex);
         material.normalTexture = &texture->sampler;
         material.constant.useNormalTexture = VK_TRUE;
       }
 
-      if (assetMaterial->metallicRoughnessTexture < textures.size)
+      if (assetMaterial->metallicRoughnessTexture < asset.textures.size)
       {
         uint32_t* textureIndex = auto_array_get(
             &asset.textures, assetMaterial->metallicRoughnessTexture);
-        Texture* texture = auto_array_get(&textures, *textureIndex);
+        Texture* texture = auto_array_get(&textureImages, *textureIndex);
         material.metallicRoughnessTexture             = &texture->sampler;
         material.constant.useMetallicRoughnessTexture = VK_TRUE;
       }
 
-      if (assetMaterial->occlusionTexture < textures.size)
+      if (assetMaterial->occlusionTexture < asset.textures.size)
       {
         uint32_t* textureIndex =
             auto_array_get(&asset.textures, assetMaterial->occlusionTexture);
-        Texture* texture          = auto_array_get(&textures, *textureIndex);
-        material.occlusionTexture = &texture->sampler;
+        Texture* texture = auto_array_get(&textureImages, *textureIndex);
+        material.occlusionTexture             = &texture->sampler;
         material.constant.useOcclusionTexture = VK_TRUE;
       }
 
@@ -417,9 +418,9 @@ int WINAPI wWinMain(
     mesh_destroy(*assetMesh, renderInstance->logicalDevice);
   }
 
-  for (uint32_t i = 0; i < textures.size; i++)
+  for (uint32_t i = 0; i < textureImages.size; i++)
   {
-    Texture* texture = auto_array_get(&textures, i);
+    Texture* texture = auto_array_get(&textureImages, i);
     texture_destroy(texture, renderInstance->logicalDevice);
   }
   texture_destroy(&defaultTexture, renderInstance->logicalDevice);
@@ -434,4 +435,3 @@ int WINAPI wWinMain(
 
   return 0;
 }
-

@@ -28,11 +28,11 @@ layout (push_constant) uniform MaterialConstant {
 
 void main()
 {
-  outColor = vec4(material.baseColorFactor.rgb, 1.0);
+  outColor = material.baseColorFactor;
   if (material.useBaseColorTexture > 0) {
     outColor = texture(albedoTexture, inUv);
   }
-  if (outColor.a < 0.1) discard;
+  if (outColor.a < 1) discard;
 
   outPosition = vec4(inPosition, 1.0);
   outNormal = vec4(inNormal, 1.0);

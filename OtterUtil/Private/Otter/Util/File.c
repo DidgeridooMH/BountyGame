@@ -1,46 +1,60 @@
 #include "Otter/Util/File.h"
 
+#include "Otter/Util/Log.h"
+
 char* file_load(const char* path, uint64_t* fileLength)
 {
-  // TODO: Switch this to UNICODE standard.
-  HANDLE file = CreateFileA(path, GENERIC_READ, FILE_SHARE_READ, NULL,
-      OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
-  if (file == INVALID_HANDLE_VALUE)
+  FILE* file;
+  if (fopen_s(&file, path, "rb") != 0)
   {
+    LOG_ERROR("Failed to open file for reading: %s", path);
     return NULL;
   }
 
-  LARGE_INTEGER fileSize = {0};
-  fileSize.LowPart       = GetFileSize(file, (LPDWORD) &fileSize.HighPart);
+  _fseeki64(file, 0, SEEK_END);
+  int64_t length = _ftelli64(file);
+  rewind(file);
+
+  if (length < 0)
+  {
+    LOG_ERROR("Failed to get file length: %s", path);
+    fclose(file);
+    return NULL;
+  }
+
+  char* text = malloc(length + 1);
+  if (text == NULL)
+  {
+    LOG_ERROR("Failed to allocate memory for file: %s", path);
+    fclose(file);
+    return NULL;
+  }
+
+  text[length] = '\0';
+
+  fread(text, 1, length, file);
+  fclose(file);
 
   if (fileLength != NULL)
   {
-    *fileLength = fileSize.QuadPart;
+    *fileLength = length;
   }
 
-  char* text = malloc(fileSize.QuadPart + 1);
-  if (text == NULL)
-  {
-    CloseHandle(file);
-    return NULL;
-  }
-
-  text[fileSize.QuadPart] = '\0';
-
-  uint64_t totalRead = 0;
-  while (fileSize.QuadPart > 0)
-  {
-    ULONG bytesRead = 0;
-    if (!ReadFile(file, &text[totalRead], fileSize.LowPart, &bytesRead, NULL))
-    {
-      free(text);
-      CloseHandle(file);
-      return NULL;
-    }
-    fileSize.QuadPart -= bytesRead;
-    totalRead += bytesRead;
-  }
+  LOG_DEBUG("Loaded file: %s (%llu)", path, length);
 
   return text;
+}
+
+void file_write(const char* path, const char* data, uint64_t length)
+{
+  FILE* file;
+  if (fopen_s(&file, path, "w") != 0)
+  {
+    LOG_ERROR("Failed to open file for writing: %s", path);
+    return;
+  }
+
+  fwrite(data, 1, length, file);
+  fclose(file);
 }
 
