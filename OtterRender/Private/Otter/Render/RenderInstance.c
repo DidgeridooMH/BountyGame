@@ -810,7 +810,8 @@ RenderInstance* render_instance_create(HWND window, const char* shaderDirectory)
   for (uint32_t i = 0; i < renderInstance->framesInFlight; i++)
   {
     if (!render_frame_create(&renderInstance->frames[i],
-            renderInstance->logicalDevice, renderInstance->commandPool))
+            renderInstance->graphicsQueueFamily, renderInstance->logicalDevice,
+            renderInstance->commandPool))
     {
       return NULL;
     }
@@ -997,4 +998,3 @@ void render_instance_queue_mesh_draw(Mesh* mesh, const Material* material,
   memcpy(&command->material, material, sizeof(Material));
   memcpy(&command->transform, transform, sizeof(Mat4));
 }
-

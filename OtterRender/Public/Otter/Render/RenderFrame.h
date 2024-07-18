@@ -12,6 +12,8 @@
 typedef struct RenderFrame
 {
   VkCommandBuffer commandBuffer;
+  VkCommandPool secondaryCommandPool;
+  AutoArray meshCommandBuffers;
   VkDescriptorPool descriptorPool;
   VkSemaphore imageAvailableSemaphore;
   VkSemaphore renderFinishedSemaphore;
@@ -21,8 +23,8 @@ typedef struct RenderFrame
   AutoArray perRenderBuffers;
 } RenderFrame;
 
-bool render_frame_create(RenderFrame* renderFrame, VkDevice logicalDevice,
-    VkCommandPool commandPool);
+bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
+    VkDevice logicalDevice, VkCommandPool commandPool);
 
 void render_frame_destroy(RenderFrame* renderFrame, VkCommandPool commandPool,
     VkDevice logicalDevice);
@@ -35,3 +37,4 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
 
 void render_frame_clear_buffers(
     RenderFrame* renderFrame, VkDevice logicalDevice);
+
