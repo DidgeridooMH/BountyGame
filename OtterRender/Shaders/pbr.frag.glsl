@@ -93,14 +93,29 @@ const float lightConstant = 1.0;
 const float lightLinear = 0.09;
 const float lightQuadratic = 0.032;
 
-vec3 calculateDirectLight(vec3 position, vec3 normal)
+struct PointLight
+{
+  vec3 position;
+  vec3 color;
+  float constant;
+  float linear;
+  float quadratic;
+};
+
+float calculatePointLightAttenuation(PointLight light, vec3 position)
 {
   float distance = length(lightPosition - position);
-  float attenuation = 1.0 / (
+  return 1.0 / (
       lightConstant +
       lightLinear * distance +
       lightQuadratic * (distance * distance));
-  return lightColor * attenuation * max(dot(normal, lightPosition), 0.0);
+}
+
+vec3 calculateDirectLight(vec3 position, vec3 normal)
+{
+  vec3 lightPosition = vec3(5, -5, 5);
+  vec3 lightColor = vec3(1);
+  return lightColor *  max(dot(normal, lightPosition), 0.0);
 }
 
 void main()
