@@ -11,6 +11,7 @@ typedef struct TaskData
 
 typedef struct ThreadData
 {
+  int threadId;
   HANDLE functionReady;
   HANDLE endThread;
   HANDLE threadIdle;
@@ -22,6 +23,12 @@ static HANDLE g_schedulerThread;
 static CRITICAL_SECTION g_taskQueueLock;
 static TaskData* g_taskQueueHead;
 static TaskData* g_taskQueueTail;
+static int g_numberOfThreads;
+
+int task_scheduler_get_number_of_threads()
+{
+  return g_numberOfThreads;
+}
 
 static TaskData* task_scheduler_dequeue()
 {
@@ -54,7 +61,8 @@ static DWORD WINAPI task_process(ThreadData* threadData)
       break;
     }
 
-    threadData->taskData->function(threadData->taskData->userData);
+    threadData->taskData->function(
+        threadData->taskData->userData, threadData->threadId);
     if (threadData->taskData->completionHandle != NULL)
     {
       SetEvent(threadData->taskData->completionHandle);
@@ -74,6 +82,8 @@ static DWORD WINAPI task_process(ThreadData* threadData)
 
 static DWORD WINAPI task_scheduler(void* unused)
 {
+  g_numberOfThreads = TASK_SCHEDULER_THREADS;
+
   HANDLE threadEvent[TASK_SCHEDULER_THREADS + 1] = {0};
   threadEvent[0]                                 = g_endOfProcess;
 
@@ -81,6 +91,7 @@ static DWORD WINAPI task_scheduler(void* unused)
   HANDLE threadHandles[TASK_SCHEDULER_THREADS]  = {0};
   for (int i = 0; i < TASK_SCHEDULER_THREADS; i++)
   {
+    threadData[i].threadId      = i;
     threadData[i].functionReady = CreateEvent(NULL, false, false, NULL);
     threadData[i].endThread     = g_endOfProcess;
     threadData[i].threadIdle    = CreateEvent(NULL, true, false, NULL);
@@ -166,3 +177,4 @@ HANDLE task_scheduler_enqueue(
 
   return taskData->completionHandle;
 }
+ 

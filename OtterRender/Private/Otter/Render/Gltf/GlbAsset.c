@@ -50,8 +50,10 @@ typedef struct TextureLoadParams
   GlbAssetImage* assetImage;
 } TextureLoadParams;
 
-static void glb_json_chunk_load_texture(TextureLoadParams* params)
+static void glb_json_chunk_load_texture(TextureLoadParams* params, int threadId)
 {
+  (void) threadId;
+
   params->assetImage->data = stbi_load_from_memory(
       (uint8_t*) &params->binaryChunk->data[params->bufferView->offset],
       params->bufferView->length, &params->assetImage->width,
@@ -65,8 +67,10 @@ static void glb_json_chunk_load_texture(TextureLoadParams* params)
   }
 }
 
-static void glb_json_chunk_load_mesh(MeshLoadParams* params)
+static void glb_json_chunk_load_mesh(MeshLoadParams* params, int threadId)
 {
+  (void) threadId;
+
   GlbAccessor* positionAccessor =
       auto_array_get(params->accessors, params->primitive->position);
   GlbAccessor* normalAccessor =
@@ -300,4 +304,4 @@ OTTERRENDER_API bool glb_load_asset(
 
   return true;
 }
- 
+

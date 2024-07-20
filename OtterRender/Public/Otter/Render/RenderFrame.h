@@ -12,9 +12,9 @@
 typedef struct RenderFrame
 {
   VkCommandBuffer commandBuffer;
-  VkCommandPool secondaryCommandPool;
-  AutoArray meshCommandBuffers;
-  VkDescriptorPool descriptorPool;
+  AutoArray secondaryCommandPools;
+  AutoArray meshCommandBufferLists;
+  AutoArray descriptorPools;
   VkSemaphore imageAvailableSemaphore;
   VkSemaphore renderFinishedSemaphore;
   VkFence inflightFence;
@@ -37,4 +37,3 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
 
 void render_frame_clear_buffers(
     RenderFrame* renderFrame, VkDevice logicalDevice);
-
