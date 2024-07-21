@@ -11,10 +11,11 @@ typedef struct Image
   VkFormat format;
   VkDeviceMemory memory;
   VkExtent2D size;
+  uint32_t mipLevels;
 } Image;
 
 OTTERRENDER_API bool image_create(VkExtent2D extents, uint32_t layers,
-    VkFormat format, VkImageUsageFlags usage,
+    VkFormat format, VkImageUsageFlags usage, bool useMipMap,
     VkMemoryPropertyFlags memoryProperties, VkPhysicalDevice physicalDevice,
     VkDevice logicalDevice, Image* image);
 
@@ -22,3 +23,4 @@ OTTERRENDER_API void image_upload(GpuBuffer* buffer,
     VkCommandBuffer commandBuffer, VkDevice logicalDevice, Image* image);
 
 OTTERRENDER_API void image_destroy(Image* image, VkDevice logicalDevice);
+

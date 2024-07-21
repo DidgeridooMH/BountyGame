@@ -6,11 +6,12 @@ bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
     VkExtent2D extents, VkFormat renderFormat, VkRenderPass renderPass,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
 {
+  // TODO: Check if this is correct for HDR.
   if (!image_create(extents, G_BUFFER_LAYERS, VK_FORMAT_R16G16B16A16_SFLOAT,
           VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
               | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
-          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice,
-          &renderStack->gBufferImage))
+          false, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice,
+          logicalDevice, &renderStack->gBufferImage))
   {
     return false;
   }
@@ -58,7 +59,7 @@ bool render_stack_create(RenderStack* renderStack, VkImage renderImage,
   }
 
   if (!image_create(extents, 1, VK_FORMAT_D32_SFLOAT,
-          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT,
+          VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, false,
           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice,
           &renderStack->depthBuffer))
   {
@@ -125,3 +126,4 @@ void render_stack_destroy(RenderStack* renderStack, VkDevice logicalDevice)
   image_destroy(&renderStack->gBufferImage, logicalDevice);
   image_destroy(&renderStack->depthBuffer, logicalDevice);
 }
+

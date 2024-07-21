@@ -18,7 +18,7 @@ typedef enum TexureType
 
 OTTERRENDER_API bool texture_create(Texture* texture, const uint8_t* data,
     uint32_t width, uint32_t height, uint32_t channels, TextureType textureType,
-    VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
+    bool useMipMap, VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
     VkCommandPool commandPool, VkQueue commandQueue);
 
 OTTERRENDER_API void texture_destroy(Texture* texture, VkDevice logicalDevice);

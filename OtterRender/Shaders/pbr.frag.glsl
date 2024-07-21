@@ -87,11 +87,12 @@ vec3 fresnelSchlick(float cosTheta, vec3 F0)
   return F0 + (1.0 - F0) * pow(clamp(1.0 - cosTheta, 0.0, 1.0), 5.0);
 }
 
-const vec3 lightPosition = vec3(16.0, -16.0, 16.0);
-const vec3 lightColor = vec3(10);
-const float lightConstant = 1.0;
-const float lightLinear = 0.09;
-const float lightQuadratic = 0.032;
+struct DirectionalLight
+{
+  vec3 position;
+  vec3 color;
+  float intensity;
+};
 
 struct PointLight
 {
@@ -102,20 +103,28 @@ struct PointLight
   float quadratic;
 };
 
-float calculatePointLightAttenuation(PointLight light, vec3 position)
+vec3 brdf(vec3 lightDirection, vec3 position, vec3 normal, vec3 albedo,
+  float roughness, float metallic)
 {
-  float distance = length(lightPosition - position);
-  return 1.0 / (
-      lightConstant +
-      lightLinear * distance +
-      lightQuadratic * (distance * distance));
-}
+  vec3 viewDirection = normalize(cameraPositionWorldSpace - position);
+  vec3 halfway = normalize(lightDirection + viewDirection);
 
-vec3 calculateDirectLight(vec3 position, vec3 normal)
-{
-  vec3 lightPosition = vec3(5, -5, 5);
-  vec3 lightColor = vec3(1);
-  return lightColor *  max(dot(normal, lightPosition), 0.0);
+
+  float ndf = ggxNormalDistribution(normal, halfway, roughness);
+
+  float cosTheta = max(dot(normal, viewDirection), 0.0);
+  float cosThetaLight = max(dot(normal, lightDirection), 0.0);
+
+  float microGeometry = schlickGGX(cosTheta, roughness) *
+    schlickGGX(cosThetaLight, roughness);
+
+  vec3 F0 = mix(vec3(0.04), albedo, metallic);
+  vec3 kS = fresnelSchlick(max(dot(halfway, viewDirection), 0.0), F0);
+  vec3 specular = (kS * ndf * microGeometry) / ((4.0 * cosTheta * cosThetaLight) + 0.0001);
+
+  vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
+
+  return (kD * albedo / PI + specular) * cosThetaLight;
 }
 
 void main()
@@ -133,25 +142,14 @@ void main()
   float metallic = subpassLoad(ainMaterial).g;
   float ao = subpassLoad(ainMaterial).b;
 
-  vec3 radiance = calculateDirectLight(position, normal);
+  DirectionalLight sunlight;
+  sunlight.position = vec3(1.0, -1.0, 1.0);
+  sunlight.color = vec3(1);
+  sunlight.intensity = 5.0;
 
-  vec3 lightDirection = normalize(lightPosition - position);
-  vec3 viewDirection = normalize(cameraPositionWorldSpace - position);
-  vec3 halfway = normalize(lightDirection + viewDirection);
-
-  float cosTheta = max(dot(normal, viewDirection), 0.0);
-  float cosThetaLight = max(dot(normal, lightDirection), 0.0);
-
-  float ndf = ggxNormalDistribution(normal, halfway, roughness);
-  float microGeometry = schlickGGX(cosTheta, roughness) *
-    schlickGGX(cosThetaLight, roughness);
-  vec3 F0 = mix(vec3(0.04), albedo, metallic);
-  vec3 kS = fresnelSchlick(cosTheta, F0);
-  vec3 specular = (kS * ndf * microGeometry) / ((4.0 * cosTheta * cosThetaLight) + 0.0001);
-
-  vec3 kD = (vec3(1.0) - kS) * (1.0 - metallic);
-
-  vec3 lighting = (kD * albedo / PI + specular) * radiance * cosThetaLight;
+  vec3 lighting = brdf(normalize(sunlight.position), position, normal, albedo, roughness, metallic);
+  vec3 radiance = sunlight.intensity * sunlight.color * max(dot(normal, sunlight.position), 0.0);
+  lighting *= radiance;
   lighting += vec3(0.01) * albedo * (1.0 - ao);
 
   // Convert RGB to Rec.2020

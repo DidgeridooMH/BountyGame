@@ -2,8 +2,6 @@
 
 #include "Otter/Util/Log.h"
 
-// TODO: Implement anisotropy
-
 bool image_sampler_create(Image* image, VkDevice device, ImageSampler* sampler)
 {
   VkImageViewCreateInfo viewCreateInfo = {
@@ -17,7 +15,7 @@ bool image_sampler_create(Image* image, VkDevice device, ImageSampler* sampler)
                 .a            = VK_COMPONENT_SWIZZLE_IDENTITY},
       .subresourceRange = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
           .baseMipLevel                = 0,
-          .levelCount                  = 1,
+          .levelCount                  = image->mipLevels,
           .baseArrayLayer              = 0,
           .layerCount                  = 1}};
 
@@ -35,8 +33,8 @@ bool image_sampler_create(Image* image, VkDevice device, ImageSampler* sampler)
       .addressModeU            = VK_SAMPLER_ADDRESS_MODE_REPEAT,
       .addressModeV            = VK_SAMPLER_ADDRESS_MODE_REPEAT,
       .addressModeW            = VK_SAMPLER_ADDRESS_MODE_REPEAT,
-      .anisotropyEnable        = VK_FALSE,
-      .maxAnisotropy           = 1,
+      .anisotropyEnable        = VK_TRUE,
+      .maxAnisotropy           = 16,
       .borderColor             = VK_BORDER_COLOR_INT_OPAQUE_BLACK,
       .unnormalizedCoordinates = VK_FALSE,
       .compareEnable           = VK_FALSE,
@@ -44,7 +42,7 @@ bool image_sampler_create(Image* image, VkDevice device, ImageSampler* sampler)
       .mipmapMode              = VK_SAMPLER_MIPMAP_MODE_LINEAR,
       .mipLodBias              = 0.0f,
       .minLod                  = 0.0f,
-      .maxLod                  = 0.0f};
+      .maxLod                  = image->mipLevels};
 
   if (vkCreateSampler(device, &samplerCreateInfo, NULL, &sampler->sampler)
       != VK_SUCCESS)

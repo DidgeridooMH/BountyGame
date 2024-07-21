@@ -4,7 +4,7 @@
 #include "Otter/Util/Log.h"
 
 bool texture_create(Texture* texture, const uint8_t* data, uint32_t width,
-    uint32_t height, uint32_t channels, TextureType textureType,
+    uint32_t height, uint32_t channels, TextureType textureType, bool useMipMap,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
     VkCommandPool commandPool, VkQueue commandQueue)
 {
@@ -48,8 +48,8 @@ bool texture_create(Texture* texture, const uint8_t* data, uint32_t width,
 
   if (!image_create((VkExtent2D){width, height}, 1, format,
           VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT,
-          VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice,
-          &texture->image))
+          useMipMap, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice,
+          logicalDevice, &texture->image))
   {
     LOG_ERROR("Failed to create image for texture");
     gpu_buffer_free(&transferBuffer, logicalDevice);
@@ -124,4 +124,3 @@ void texture_destroy(Texture* texture, VkDevice logicalDevice)
   image_destroy(&texture->image, logicalDevice);
   image_sampler_destroy(&texture->sampler, logicalDevice);
 }
-

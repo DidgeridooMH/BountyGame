@@ -251,21 +251,29 @@ static bool render_instance_fetch_device(RenderInstance* renderInstance)
   {
     LOG_ERROR("Unable to enumerate physical devices with count %u",
         physicalDeviceCount);
+    free(availableDevices);
     return false;
   }
 
   renderInstance->physicalDevice = availableDevices[0];
   VkPhysicalDeviceProperties properties;
   vkGetPhysicalDeviceProperties(availableDevices[0], &properties);
+  VkPhysicalDeviceFeatures features;
+  vkGetPhysicalDeviceFeatures(availableDevices[0], &features);
   for (uint32_t i = 1; i < physicalDeviceCount; i++)
   {
     vkGetPhysicalDeviceProperties(availableDevices[i], &properties);
-    if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU)
+    vkGetPhysicalDeviceFeatures(availableDevices[i], &features);
+    if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+        && features.independentBlend == VK_TRUE
+        && features.samplerAnisotropy == VK_TRUE)
     {
       renderInstance->physicalDevice = availableDevices[i];
       break;
     }
   }
+
+  free(availableDevices);
 
   LOG_DEBUG("Using %s for rendering", properties.deviceName);
 
@@ -383,8 +391,9 @@ static bool render_instance_create_logical_device(
     RenderInstance* renderInstance)
 {
   const char* deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-  const VkPhysicalDeviceFeatures deviceFeatures = {.independentBlend = VK_TRUE};
-  float queuePriority                           = 0.0f;
+  const VkPhysicalDeviceFeatures deviceFeatures = {
+      .independentBlend = VK_TRUE, .samplerAnisotropy = VK_TRUE};
+  float queuePriority = 0.0f;
 
   VkDeviceQueueCreateInfo deviceQueueCreateInfo = {
       .sType            = VK_STRUCTURE_TYPE_DEVICE_QUEUE_CREATE_INFO,

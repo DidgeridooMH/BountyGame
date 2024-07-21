@@ -41,7 +41,7 @@ void main()
   if (material.useNormalTexture > 0) {
     vec3 normal = texture(normalTexture, inUv).xyz * 2.0 - 1.0;
     normal = normalize(inTBN * normal);
-    outNormal = vec4(mix(inNormal, normal, 0.5), 1.0);
+    outNormal = vec4(mix(inNormal, normal, 0.6), 1.0);
   }
 
   float metallic = material.metallicFactor;

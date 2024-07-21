@@ -7,8 +7,8 @@
 #include "Otter/Util/AutoArray.h"
 #include "Otter/Util/Profiler.h"
 
-#define DESCRIPTOR_POOL_SIZE 128
-#define DESCRIPTOR_SET_LIMIT 16 * 1024
+#define DESCRIPTOR_POOL_SIZE 64
+#define DESCRIPTOR_SET_LIMIT 8 * 1024
 
 bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
     VkDevice logicalDevice, VkCommandPool commandPool)
@@ -536,4 +536,3 @@ void render_frame_clear_buffers(
     vkResetCommandPool(logicalDevice, *commandPool, 0);
   }
 }
-
