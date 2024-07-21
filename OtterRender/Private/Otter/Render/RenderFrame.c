@@ -11,7 +11,8 @@
 #define DESCRIPTOR_SET_LIMIT 8 * 1024
 
 bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
-    VkDevice logicalDevice, VkCommandPool commandPool)
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
+    VkCommandPool commandPool)
 {
   memset(renderFrame, 0, sizeof(RenderFrame));
 
@@ -104,6 +105,16 @@ bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
     return false;
   }
 
+  if (!gpu_buffer_allocate(&renderFrame->vpBuffer, sizeof(ViewProjection),
+          VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+              | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+          physicalDevice, logicalDevice))
+  {
+    LOG_ERROR("Error: Failed to allocate VP buffer");
+    return false;
+  }
+
   auto_array_create(&renderFrame->renderQueue, sizeof(RenderCommand));
   auto_array_create(&renderFrame->perRenderBuffers, sizeof(GpuBuffer));
 
@@ -142,6 +153,8 @@ void render_frame_destroy(
   }
   auto_array_destroy(&renderFrame->meshCommandBufferLists);
   auto_array_destroy(&renderFrame->secondaryCommandPools);
+
+  gpu_buffer_free(&renderFrame->vpBuffer, logicalDevice);
 
   auto_array_destroy(&renderFrame->perRenderBuffers);
   auto_array_destroy(&renderFrame->renderQueue);
@@ -267,7 +280,6 @@ typedef struct RecordGBufferCommandsParams
   VkFramebuffer framebuffer;
   VkDevice logicalDevice;
   VkPhysicalDevice physicalDevice;
-  GpuBuffer* vpBuffer;
   VkExtent2D imageSize;
 } RecordGBufferCommandsParams;
 
@@ -310,7 +322,8 @@ static void render_frame_record_g_buffer_commands(
   vkCmdBindPipeline(*commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
       params->gBufferPipeline->pipeline);
   g_buffer_pipeline_write_vp(*commandBuffer, descriptorPool,
-      params->logicalDevice, params->vpBuffer, params->gBufferPipeline);
+      params->logicalDevice, &params->renderFrame->vpBuffer,
+      params->gBufferPipeline);
   VkViewport viewport = {.x = 0.0f,
       .y                    = 0.0f,
       .width                = (float) params->imageSize.width,
@@ -347,30 +360,10 @@ static void render_frame_render_g_buffer(RenderFrame* renderFrame,
           / (float) renderStack->gBufferImage.size.height,
       1000.0f, 0.1f);
 
-  // TODO: make this a one time allocation in the instance/frame.
-  GpuBuffer* vpBuffer = auto_array_allocate(&renderFrame->perRenderBuffers);
-  if (vpBuffer == NULL)
-  {
-    LOG_ERROR("Unable to allocate VP buffer");
-    return;
-  }
-
-  if (!gpu_buffer_allocate(vpBuffer, sizeof(ViewProjection),
-          VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-              | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-          physicalDevice, logicalDevice))
-  {
-    LOG_ERROR("Warning: Could not allocate temporary gpu buffer...but I "
-              "also don't know what to do about that.");
-    return;
-  }
-
-  if (!gpu_buffer_write(
-          vpBuffer, (uint8_t*) &vp, sizeof(ViewProjection), 0, logicalDevice))
+  if (!gpu_buffer_write(&renderFrame->vpBuffer, (uint8_t*) &vp,
+          sizeof(ViewProjection), 0, logicalDevice))
   {
     LOG_ERROR("WARN: Unable to write VP buffer");
-    gpu_buffer_free(vpBuffer, logicalDevice);
     return;
   }
 
@@ -395,7 +388,6 @@ static void render_frame_render_g_buffer(RenderFrame* renderFrame,
     params->framebuffer                 = renderStack->framebuffer;
     params->logicalDevice               = logicalDevice;
     params->physicalDevice              = physicalDevice;
-    params->vpBuffer                    = vpBuffer;
     params->imageSize                   = renderStack->gBufferImage.size;
 
     *(HANDLE*) auto_array_get(&recordTasks, i) = task_scheduler_enqueue(
@@ -536,3 +528,4 @@ void render_frame_clear_buffers(
     vkResetCommandPool(logicalDevice, *commandPool, 0);
   }
 }
+

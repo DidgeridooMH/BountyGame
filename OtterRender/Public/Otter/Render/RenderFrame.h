@@ -18,13 +18,15 @@ typedef struct RenderFrame
   VkSemaphore imageAvailableSemaphore;
   VkSemaphore renderFinishedSemaphore;
   VkFence inflightFence;
+  GpuBuffer vpBuffer;
 
   AutoArray renderQueue;
   AutoArray perRenderBuffers;
 } RenderFrame;
 
 bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
-    VkDevice logicalDevice, VkCommandPool commandPool);
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
+    VkCommandPool commandPool);
 
 void render_frame_destroy(RenderFrame* renderFrame, VkCommandPool commandPool,
     VkDevice logicalDevice);
