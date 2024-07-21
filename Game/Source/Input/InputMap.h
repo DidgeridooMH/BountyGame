@@ -82,6 +82,7 @@ typedef struct InputMap
   HashMap actionValues;
   XINPUT_STATE previousControllerState[XUSER_MAX_COUNT];
   Heap rumbleQueue[XUSER_MAX_COUNT][2];
+  XINPUT_VIBRATION rumbleState[XUSER_MAX_COUNT];
 } InputMap;
 
 /**

@@ -7,6 +7,11 @@ bool input_map_create(InputMap* map)
 {
   for (size_t i = 0; i < XUSER_MAX_COUNT; ++i)
   {
+    map->rumbleState[i] = (XINPUT_VIBRATION){0};
+  }
+
+  for (size_t i = 0; i < XUSER_MAX_COUNT; ++i)
+  {
     heap_create(&map->rumbleQueue[i][0]);
     heap_create(&map->rumbleQueue[i][1]);
   }
@@ -264,9 +269,20 @@ void input_map_update(InputMap* map, AutoArray* inputs, float deltaTime)
       }
     }
 
-    XInputSetState(userIndex,
-        &(XINPUT_VIBRATION){.wLeftMotorSpeed = motorStrength[RP_LOW_FREQUENCY],
-            .wRightMotorSpeed = motorStrength[RP_HIGH_FREQUENCY]});
+    if (map->rumbleState[userIndex].wLeftMotorSpeed
+            != motorStrength[RP_LOW_FREQUENCY]
+        || map->rumbleState[userIndex].wRightMotorSpeed
+               != motorStrength[RP_HIGH_FREQUENCY])
+    {
+      map->rumbleState[userIndex].wLeftMotorSpeed =
+          motorStrength[RP_LOW_FREQUENCY];
+      map->rumbleState[userIndex].wRightMotorSpeed =
+          motorStrength[RP_HIGH_FREQUENCY];
+      XInputSetState(
+          userIndex, &(XINPUT_VIBRATION){
+                         .wLeftMotorSpeed  = motorStrength[RP_LOW_FREQUENCY],
+                         .wRightMotorSpeed = motorStrength[RP_HIGH_FREQUENCY]});
+    }
   }
 }
 
