@@ -277,12 +277,14 @@ OTTERRENDER_API bool glb_load_asset(
         (TaskFunction) glb_json_chunk_load_texture, taskParams, 0);
   }
 
+  LOG_DEBUG("Waiting for meshes to load");
   for (uint32_t i = 0; i < meshLoadTasks.size; i++)
   {
     HANDLE* task = auto_array_get(&meshLoadTasks, i);
     WaitForSingleObject(*task, INFINITE);
   }
 
+  LOG_DEBUG("Waiting for textures to load");
   for (uint32_t i = 0; i < textureLoadTasks.size; i++)
   {
     HANDLE* task = auto_array_get(&textureLoadTasks, i);
@@ -304,4 +306,3 @@ OTTERRENDER_API bool glb_load_asset(
 
   return true;
 }
-

@@ -204,24 +204,52 @@ int WINAPI wWinMain(
       renderInstance->graphicsQueueFamily, 0, &graphicsQueue);
 
   // TODO: Move copy command to outside of mesh create to allow for batching.
-  Mesh* cube = mesh_create(vertices, sizeof(MeshVertex), _countof(vertices),
-      indices, _countof(indices), renderInstance->physicalDevice,
-      renderInstance->logicalDevice, renderInstance->commandPool,
-      graphicsQueue);
-
-  AutoArray buildingMesh;
-  auto_array_create(&buildingMesh, sizeof(Mesh*));
-  for (uint32_t i = 0; i < asset.meshes.size; i++)
+  Mesh cube;
+  if (!mesh_create(&cube, vertices, sizeof(MeshVertex), _countof(vertices),
+          indices, _countof(indices), renderInstance->physicalDevice,
+          renderInstance->logicalDevice, renderInstance->commandPool,
+          graphicsQueue))
   {
-    Mesh** mesh             = auto_array_allocate(&buildingMesh);
-    GlbAssetMesh* assetMesh = auto_array_get(&asset.meshes, i);
-    *mesh = mesh_create(assetMesh->vertices, sizeof(MeshVertex),
-        assetMesh->numOfVertices, assetMesh->indices, assetMesh->numOfIndices,
-        renderInstance->physicalDevice, renderInstance->logicalDevice,
-        renderInstance->commandPool, graphicsQueue);
+    LOG_ERROR("Failed to create cube mesh.");
+    game_config_destroy(&config);
+    task_scheduler_destroy();
+    render_instance_destroy(renderInstance);
+    game_window_destroy(window);
+    profiler_destroy();
+    return -1;
   }
 
+  Texture defaultTexture;
+  uint8_t defaultTextureData[] = {0, 0, 255, 255};
+  if (!texture_create(&defaultTexture, defaultTextureData, 1, 1, 4, TT_COLOR,
+          true, renderInstance->physicalDevice, renderInstance->logicalDevice,
+          renderInstance->commandPool, graphicsQueue))
+  {
+    LOG_ERROR("Failed to create default texture.");
+    game_config_destroy(&config);
+    task_scheduler_destroy();
+    mesh_destroy(&cube, renderInstance->logicalDevice);
+    render_instance_destroy(renderInstance);
+    game_window_destroy(window);
+    profiler_destroy();
+    return -1;
+  }
+
+  Material defaultMaterial = {
+      .constant                 = {.baseColorFactor    = {1.0f, 1.0f, 1.0f, 1.0f},
+                          .useBaseColorTexture         = false,
+                          .metallicFactor              = 0.0f,
+                          .roughnessFactor             = 1.0f,
+                          .useMetallicRoughnessTexture = false,
+                          .occlusionStrength           = 0.0f,
+                          .useOcclusionTexture         = false},
+      .baseColorTexture         = &defaultTexture.sampler,
+      .normalTexture            = &defaultTexture.sampler,
+      .metallicRoughnessTexture = &defaultTexture.sampler,
+      .occlusionTexture         = &defaultTexture.sampler};
+
   AutoArray textureImages;
+  LOG_DEBUG("Loading textures to GPU");
   auto_array_create(&textureImages, sizeof(Texture));
   auto_array_allocate_many(&textureImages, asset.images.size);
   for (uint32_t i = 0; i < asset.images.size; i++)
@@ -236,10 +264,92 @@ int WINAPI wWinMain(
             renderInstance->commandPool, graphicsQueue))
     {
       LOG_ERROR("Failed to create texture.");
-      auto_array_destroy(&buildingMesh);
       game_config_destroy(&config);
       task_scheduler_destroy();
-      mesh_destroy(cube, renderInstance->logicalDevice);
+      mesh_destroy(&cube, renderInstance->logicalDevice);
+      render_instance_destroy(renderInstance);
+      game_window_destroy(window);
+      profiler_destroy();
+      return -1;
+    }
+  }
+
+  StableAutoArray materials;
+  stable_auto_array_create(
+      &materials, sizeof(Material), SAA_DEFAULT_CHUNK_SIZE);
+  for (size_t i = 0; i < asset.materials.size; i++)
+  {
+    GlbAssetMaterial* assetMaterial = auto_array_get(&asset.materials, i);
+
+    Material* material                 = stable_auto_array_allocate(&materials);
+    material->constant.baseColorFactor = assetMaterial->baseColor;
+    material->constant.metallicFactor  = assetMaterial->metallicFactor;
+    material->constant.roughnessFactor = assetMaterial->roughnessFactor;
+    material->constant.occlusionStrength   = assetMaterial->occlusionStrength;
+    material->constant.useBaseColorTexture = VK_FALSE;
+    material->constant.useNormalTexture    = VK_FALSE;
+    material->constant.useMetallicRoughnessTexture = VK_FALSE;
+    material->constant.useOcclusionTexture         = VK_FALSE;
+    material->baseColorTexture                     = &defaultTexture.sampler;
+    material->normalTexture                        = &defaultTexture.sampler;
+    material->metallicRoughnessTexture             = &defaultTexture.sampler;
+    material->occlusionTexture                     = &defaultTexture.sampler;
+
+    if (assetMaterial->baseColorTexture < asset.textures.size)
+    {
+      uint32_t* textureIndex =
+          auto_array_get(&asset.textures, assetMaterial->baseColorTexture);
+      Texture* texture = auto_array_get(&textureImages, *textureIndex);
+      material->baseColorTexture             = &texture->sampler;
+      material->constant.useBaseColorTexture = VK_TRUE;
+    }
+
+    if (assetMaterial->normalTexture < asset.textures.size)
+    {
+      uint32_t* textureIndex =
+          auto_array_get(&asset.textures, assetMaterial->normalTexture);
+      Texture* texture        = auto_array_get(&textureImages, *textureIndex);
+      material->normalTexture = &texture->sampler;
+      material->constant.useNormalTexture = VK_TRUE;
+    }
+
+    if (assetMaterial->metallicRoughnessTexture < asset.textures.size)
+    {
+      uint32_t* textureIndex = auto_array_get(
+          &asset.textures, assetMaterial->metallicRoughnessTexture);
+      Texture* texture = auto_array_get(&textureImages, *textureIndex);
+      material->metallicRoughnessTexture             = &texture->sampler;
+      material->constant.useMetallicRoughnessTexture = VK_TRUE;
+    }
+
+    if (assetMaterial->occlusionTexture < asset.textures.size)
+    {
+      uint32_t* textureIndex =
+          auto_array_get(&asset.textures, assetMaterial->occlusionTexture);
+      Texture* texture = auto_array_get(&textureImages, *textureIndex);
+      material->occlusionTexture             = &texture->sampler;
+      material->constant.useOcclusionTexture = VK_TRUE;
+    }
+  }
+
+  AutoArray buildingMesh;
+  auto_array_create(&buildingMesh, sizeof(Mesh));
+  LOG_DEBUG("Loading meshes to GPU");
+  for (uint32_t i = 0; i < asset.meshes.size; i++)
+  {
+
+    Mesh* mesh              = auto_array_allocate(&buildingMesh);
+    GlbAssetMesh* assetMesh = auto_array_get(&asset.meshes, i);
+    if (!mesh_create(mesh, assetMesh->vertices, sizeof(MeshVertex),
+            assetMesh->numOfVertices, assetMesh->indices,
+            assetMesh->numOfIndices, renderInstance->physicalDevice,
+            renderInstance->logicalDevice, renderInstance->commandPool,
+            graphicsQueue))
+    {
+      LOG_ERROR("Failed to create mesh.");
+      game_config_destroy(&config);
+      task_scheduler_destroy();
+      mesh_destroy(&cube, renderInstance->logicalDevice);
       render_instance_destroy(renderInstance);
       game_window_destroy(window);
       profiler_destroy();
@@ -269,37 +379,6 @@ int WINAPI wWinMain(
   renderInstance->cameraTransform.position.y = -4.0f;
   renderInstance->cameraTransform.position.z = 100.0f;
 
-  Texture defaultTexture;
-  uint8_t defaultTextureData[] = {0, 0, 255, 255};
-  if (!texture_create(&defaultTexture, defaultTextureData, 1, 1, 4, TT_COLOR,
-          true, renderInstance->physicalDevice, renderInstance->logicalDevice,
-          renderInstance->commandPool, graphicsQueue))
-  {
-    LOG_ERROR("Failed to create default texture.");
-    auto_array_destroy(&buildingMesh);
-    game_config_destroy(&config);
-    input_map_destroy(&inputMap);
-    task_scheduler_destroy();
-    mesh_destroy(cube, renderInstance->logicalDevice);
-    render_instance_destroy(renderInstance);
-    game_window_destroy(window);
-    profiler_destroy();
-    return -1;
-  }
-
-  Material defaultMaterial = {
-      .constant                 = {.baseColorFactor    = {1.0f, 1.0f, 1.0f, 1.0f},
-                          .useBaseColorTexture         = false,
-                          .metallicFactor              = 0.0f,
-                          .roughnessFactor             = 1.0f,
-                          .useMetallicRoughnessTexture = false,
-                          .occlusionStrength           = 0.0f,
-                          .useOcclusionTexture         = false},
-      .baseColorTexture         = &defaultTexture.sampler,
-      .normalTexture            = &defaultTexture.sampler,
-      .metallicRoughnessTexture = &defaultTexture.sampler,
-      .occlusionTexture         = &defaultTexture.sampler};
-
   while (!game_window_process_message(window))
   {
     profiler_clock_start("preframe");
@@ -319,75 +398,30 @@ int WINAPI wWinMain(
     mat4_translate(floorTransform, 0.0f, 10.0f, 0.0f);
     mat4_scale(floorTransform, 100.0f, 1.0f, 100.0f);
     render_instance_queue_mesh_draw(
-        cube, &defaultMaterial, floorTransform, renderInstance);
+        &cube, &defaultMaterial, floorTransform, renderInstance);
 
     // Draw light source
     Mat4 lightTransform;
     mat4_identity(lightTransform);
     mat4_translate(lightTransform, 16.0f, -16.0f, 16.0f);
     render_instance_queue_mesh_draw(
-        cube, &defaultMaterial, lightTransform, renderInstance);
+        &cube, &defaultMaterial, lightTransform, renderInstance);
 
     for (uint32_t i = 0; i < buildingMesh.size; i++)
     {
       // TODO: Properly package assets
-      Mesh** assetMesh       = auto_array_get(&buildingMesh, i);
+      Mesh* assetMesh = auto_array_get(&buildingMesh, i);
+
+      // TODO: Remap this to use only our representation of materials
       GlbAssetMesh* glbAsset = auto_array_get(&asset.meshes, i);
       GlbAssetMaterial* assetMaterial =
           auto_array_get(&asset.materials, glbAsset->materialIndex);
 
-      Material material = {
-          .constant         = {.baseColorFactor    = assetMaterial->baseColor,
-                      .metallicFactor              = assetMaterial->metallicFactor,
-                      .roughnessFactor             = assetMaterial->roughnessFactor,
-                      .occlusionStrength           = assetMaterial->occlusionStrength,
-                      .useBaseColorTexture         = VK_FALSE,
-                      .useNormalTexture            = VK_FALSE,
-                      .useMetallicRoughnessTexture = VK_FALSE,
-                      .useOcclusionTexture         = VK_FALSE},
-          .baseColorTexture = &defaultTexture.sampler,
-          .normalTexture    = &defaultTexture.sampler,
-          .metallicRoughnessTexture = &defaultTexture.sampler,
-          .occlusionTexture         = &defaultTexture.sampler};
-
-      if (assetMaterial->baseColorTexture < asset.textures.size)
-      {
-        uint32_t* textureIndex =
-            auto_array_get(&asset.textures, assetMaterial->baseColorTexture);
-        Texture* texture = auto_array_get(&textureImages, *textureIndex);
-        material.baseColorTexture             = &texture->sampler;
-        material.constant.useBaseColorTexture = VK_TRUE;
-      }
-
-      if (assetMaterial->normalTexture < asset.textures.size)
-      {
-        uint32_t* textureIndex =
-            auto_array_get(&asset.textures, assetMaterial->normalTexture);
-        Texture* texture       = auto_array_get(&textureImages, *textureIndex);
-        material.normalTexture = &texture->sampler;
-        material.constant.useNormalTexture = VK_TRUE;
-      }
-
-      if (assetMaterial->metallicRoughnessTexture < asset.textures.size)
-      {
-        uint32_t* textureIndex = auto_array_get(
-            &asset.textures, assetMaterial->metallicRoughnessTexture);
-        Texture* texture = auto_array_get(&textureImages, *textureIndex);
-        material.metallicRoughnessTexture             = &texture->sampler;
-        material.constant.useMetallicRoughnessTexture = VK_TRUE;
-      }
-
-      if (assetMaterial->occlusionTexture < asset.textures.size)
-      {
-        uint32_t* textureIndex =
-            auto_array_get(&asset.textures, assetMaterial->occlusionTexture);
-        Texture* texture = auto_array_get(&textureImages, *textureIndex);
-        material.occlusionTexture             = &texture->sampler;
-        material.constant.useOcclusionTexture = VK_TRUE;
-      }
+      Material* material =
+          stable_auto_array_get(&materials, glbAsset->materialIndex);
 
       render_instance_queue_mesh_draw(
-          *assetMesh, &material, glbAsset->transform, renderInstance);
+          assetMesh, material, glbAsset->transform, renderInstance);
     }
     profiler_clock_end("preframe");
 
@@ -412,27 +446,33 @@ int WINAPI wWinMain(
 
   render_instance_wait_for_idle(renderInstance);
 
+  LOG_DEBUG("Cleaning up resources.");
+
   for (uint32_t i = 0; i < buildingMesh.size; i++)
   {
     // TODO: Properly package assets
-    Mesh** assetMesh = auto_array_get(&buildingMesh, i);
-    mesh_destroy(*assetMesh, renderInstance->logicalDevice);
+    Mesh* assetMesh = auto_array_get(&buildingMesh, i);
+    mesh_destroy(assetMesh, renderInstance->logicalDevice);
   }
+  auto_array_destroy(&buildingMesh);
 
   for (uint32_t i = 0; i < textureImages.size; i++)
   {
     Texture* texture = auto_array_get(&textureImages, i);
     texture_destroy(texture, renderInstance->logicalDevice);
   }
+  auto_array_destroy(&textureImages);
+
+  stable_auto_array_destroy(&materials);
   texture_destroy(&defaultTexture, renderInstance->logicalDevice);
-  auto_array_destroy(&buildingMesh);
   game_config_destroy(&config);
   input_map_destroy(&inputMap);
   task_scheduler_destroy();
-  mesh_destroy(cube, renderInstance->logicalDevice);
+  mesh_destroy(&cube, renderInstance->logicalDevice);
   render_instance_destroy(renderInstance);
   game_window_destroy(window);
   profiler_destroy();
 
   return 0;
 }
+

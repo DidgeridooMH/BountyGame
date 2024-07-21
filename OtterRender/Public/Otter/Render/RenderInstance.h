@@ -57,8 +57,7 @@ typedef struct RenderInstance
 
   GBufferPipeline gBufferPipeline;
   PbrPipeline pbrPipeline;
-  // TODO: Rewrite mesh to not have to be a pointer.
-  Mesh* fullscreenQuad;
+  Mesh fullscreenQuad;
 
   Transform cameraTransform;
 } RenderInstance;
@@ -76,4 +75,3 @@ OTTERRENDER_API void render_instance_draw(RenderInstance* renderInstance);
 OTTERRENDER_API void render_instance_queue_mesh_draw(Mesh* mesh,
     const Material* material, const Mat4 transform,
     RenderInstance* renderInstance);
-

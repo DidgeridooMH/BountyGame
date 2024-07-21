@@ -844,11 +844,10 @@ RenderInstance* render_instance_create(HWND window, const char* shaderDirectory)
   VkQueue transferQueue;
   vkGetDeviceQueue(renderInstance->logicalDevice,
       renderInstance->graphicsQueueFamily, 0, &transferQueue);
-  renderInstance->fullscreenQuad = mesh_create(vertices, sizeof(Vec3),
-      _countof(vertices), indices, _countof(indices),
-      renderInstance->physicalDevice, renderInstance->logicalDevice,
-      renderInstance->commandPool, transferQueue);
-  if (renderInstance->fullscreenQuad == NULL)
+  if (!mesh_create(&renderInstance->fullscreenQuad, vertices, sizeof(Vec3),
+          _countof(vertices), indices, _countof(indices),
+          renderInstance->physicalDevice, renderInstance->logicalDevice,
+          renderInstance->commandPool, transferQueue))
   {
     return NULL;
   }
@@ -858,6 +857,7 @@ RenderInstance* render_instance_create(HWND window, const char* shaderDirectory)
 
 void render_instance_wait_for_idle(RenderInstance* renderInstance)
 {
+  LOG_DEBUG("Waiting for render instance to be idle.");
   vkDeviceWaitIdle(renderInstance->logicalDevice);
 }
 
@@ -874,10 +874,7 @@ void render_instance_destroy(RenderInstance* renderInstance)
   }
 
   LOG_DEBUG("Destroying full screen mesh");
-  if (renderInstance->fullscreenQuad != NULL)
-  {
-    mesh_destroy(renderInstance->fullscreenQuad, renderInstance->logicalDevice);
-  }
+  mesh_destroy(&renderInstance->fullscreenQuad, renderInstance->logicalDevice);
 
   LOG_DEBUG("Destroying pipelines");
   pbr_pipeline_destroy(
@@ -967,7 +964,7 @@ void render_instance_draw(RenderInstance* renderInstance)
   render_frame_draw(&renderInstance->frames[renderInstance->currentFrame],
       &renderInstance->swapchain->renderStacks[image],
       &renderInstance->gBufferPipeline, &renderInstance->pbrPipeline,
-      renderInstance->fullscreenQuad, &renderInstance->cameraTransform,
+      &renderInstance->fullscreenQuad, &renderInstance->cameraTransform,
       renderInstance->renderPass, graphicsQueue, renderInstance->commandPool,
       renderInstance->physicalDevice, renderInstance->logicalDevice);
 
@@ -1007,3 +1004,4 @@ void render_instance_queue_mesh_draw(Mesh* mesh, const Material* material,
   memcpy(&command->material, material, sizeof(Material));
   memcpy(&command->transform, transform, sizeof(Mat4));
 }
+

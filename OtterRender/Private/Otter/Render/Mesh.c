@@ -2,17 +2,11 @@
 
 #include "Otter/Util/Log.h"
 
-Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
+bool mesh_create(Mesh* mesh, const void* vertices, uint64_t vertexSize,
     uint64_t numOfVertices, const uint16_t indices[], uint64_t numOfIndices,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
     VkCommandPool commandPool, VkQueue commandQueue)
 {
-  Mesh* mesh = calloc(1, sizeof(Mesh));
-  if (mesh == NULL)
-  {
-    return NULL;
-  }
-
   GpuBuffer vertexStagingBuffer = {0};
   GpuBuffer indexStagingBuffer  = {0};
   if (!gpu_buffer_allocate(&vertexStagingBuffer, numOfVertices * vertexSize,
@@ -29,7 +23,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
     gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
     gpu_buffer_free(&indexStagingBuffer, logicalDevice);
     mesh_destroy(mesh, logicalDevice);
-    return NULL;
+    return false;
   }
 
   if (!gpu_buffer_allocate(&mesh->vertices, numOfVertices * vertexSize,
@@ -41,7 +35,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
   {
     LOG_ERROR("There was a problem allocating the mesh");
     mesh_destroy(mesh, logicalDevice);
-    return NULL;
+    return false;
   }
 
   if (!gpu_buffer_write(&vertexStagingBuffer, (uint8_t*) vertices,
@@ -53,7 +47,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
     gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
     gpu_buffer_free(&indexStagingBuffer, logicalDevice);
     mesh_destroy(mesh, logicalDevice);
-    return NULL;
+    return false;
   }
 
   VkCommandBufferAllocateInfo transferCommandsAlloc = {
@@ -70,7 +64,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
     gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
     gpu_buffer_free(&indexStagingBuffer, logicalDevice);
     mesh_destroy(mesh, logicalDevice);
-    return NULL;
+    return false;
   }
 
   VkCommandBufferBeginInfo beginInfo = {
@@ -83,7 +77,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
     gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
     gpu_buffer_free(&indexStagingBuffer, logicalDevice);
     mesh_destroy(mesh, logicalDevice);
-    return NULL;
+    return false;
   }
 
   gpu_buffer_transfer(&vertexStagingBuffer, &mesh->vertices, transferCommands);
@@ -96,7 +90,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
     gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
     gpu_buffer_free(&indexStagingBuffer, logicalDevice);
     mesh_destroy(mesh, logicalDevice);
-    return NULL;
+    return false;
   }
 
   VkSubmitInfo submitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -109,7 +103,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
     gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
     gpu_buffer_free(&indexStagingBuffer, logicalDevice);
     mesh_destroy(mesh, logicalDevice);
-    return NULL;
+    return false;
   }
 
   if (vkQueueWaitIdle(commandQueue) != VK_SUCCESS)
@@ -119,7 +113,7 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
     gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
     gpu_buffer_free(&indexStagingBuffer, logicalDevice);
     mesh_destroy(mesh, logicalDevice);
-    return NULL;
+    return false;
   }
 
   vkFreeCommandBuffers(logicalDevice, commandPool, 1, &transferCommands);
@@ -127,12 +121,11 @@ Mesh* mesh_create(const void* vertices, uint64_t vertexSize,
   gpu_buffer_free(&vertexStagingBuffer, logicalDevice);
   gpu_buffer_free(&indexStagingBuffer, logicalDevice);
 
-  return mesh;
+  return true;
 }
 
 void mesh_destroy(Mesh* mesh, VkDevice logicalDevice)
 {
   gpu_buffer_free(&mesh->vertices, logicalDevice);
   gpu_buffer_free(&mesh->indices, logicalDevice);
-  free(mesh);
 }
