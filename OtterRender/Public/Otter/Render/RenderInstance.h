@@ -73,5 +73,4 @@ OTTERRENDER_API void render_instance_destroy(RenderInstance* renderInstance);
 OTTERRENDER_API void render_instance_draw(RenderInstance* renderInstance);
 
 OTTERRENDER_API void render_instance_queue_mesh_draw(Mesh* mesh,
-    const Material* material, const Mat4 transform,
-    RenderInstance* renderInstance);
+    Material* material, const Mat4 transform, RenderInstance* renderInstance);

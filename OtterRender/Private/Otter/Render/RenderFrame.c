@@ -10,6 +10,19 @@
 #define DESCRIPTOR_POOL_SIZE 64
 #define DESCRIPTOR_SET_LIMIT 8 * 1024
 
+typedef struct RecordGBufferCommandsParams
+{
+  RenderFrame* renderFrame;
+  size_t meshCommandIndex;
+  size_t meshCommandCount;
+  VkRenderPass renderPass;
+  GBufferPipeline* gBufferPipeline;
+  VkFramebuffer framebuffer;
+  VkDevice logicalDevice;
+  VkPhysicalDevice physicalDevice;
+  VkExtent2D imageSize;
+} RecordGBufferCommandsParams;
+
 bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
     VkCommandPool commandPool)
@@ -115,6 +128,10 @@ bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
     return false;
   }
 
+  auto_array_create(&renderFrame->recordTasks, sizeof(HANDLE));
+  auto_array_create(
+      &renderFrame->recordCommands, sizeof(RecordGBufferCommandsParams));
+
   auto_array_create(&renderFrame->renderQueue, sizeof(RenderCommand));
   auto_array_create(&renderFrame->perRenderBuffers, sizeof(GpuBuffer));
 
@@ -155,6 +172,9 @@ void render_frame_destroy(
   auto_array_destroy(&renderFrame->secondaryCommandPools);
 
   gpu_buffer_free(&renderFrame->vpBuffer, logicalDevice);
+
+  auto_array_destroy(&renderFrame->recordTasks);
+  auto_array_destroy(&renderFrame->recordCommands);
 
   auto_array_destroy(&renderFrame->perRenderBuffers);
   auto_array_destroy(&renderFrame->renderQueue);
@@ -271,18 +291,6 @@ static void render_frame_end_render(RenderFrame* renderFrame, VkQueue queue)
   auto_array_clear(&renderFrame->renderQueue);
 }
 
-typedef struct RecordGBufferCommandsParams
-{
-  RenderFrame* renderFrame;
-  RenderCommand* meshCommand;
-  VkRenderPass renderPass;
-  GBufferPipeline* gBufferPipeline;
-  VkFramebuffer framebuffer;
-  VkDevice logicalDevice;
-  VkPhysicalDevice physicalDevice;
-  VkExtent2D imageSize;
-} RecordGBufferCommandsParams;
-
 static void render_frame_record_g_buffer_commands(
     RecordGBufferCommandsParams* params, int threadId)
 {
@@ -335,11 +343,17 @@ static void render_frame_record_g_buffer_commands(
   VkRect2D scissor = {{0, 0}, params->imageSize};
   vkCmdSetScissor(*commandBuffer, 0, 1, &scissor);
 
+  RenderCommand* meshCommand = auto_array_get(
+      &params->renderFrame->renderQueue, params->meshCommandIndex);
   g_buffer_pipeline_write_material(*commandBuffer, descriptorPool,
-      params->logicalDevice, &params->meshCommand->material,
-      params->gBufferPipeline);
-  render_frame_draw_mesh(params->meshCommand, *commandBuffer,
-      params->gBufferPipeline, params->physicalDevice, params->logicalDevice);
+      params->logicalDevice, meshCommand->material, params->gBufferPipeline);
+  for (size_t i = params->meshCommandIndex;
+       i < params->meshCommandIndex + params->meshCommandCount; i++)
+  {
+    meshCommand = auto_array_get(&params->renderFrame->renderQueue, i);
+    render_frame_draw_mesh(meshCommand, *commandBuffer, params->gBufferPipeline,
+        params->physicalDevice, params->logicalDevice);
+  }
 
   vkEndCommandBuffer(*commandBuffer);
 }
@@ -367,40 +381,58 @@ static void render_frame_render_g_buffer(RenderFrame* renderFrame,
     return;
   }
 
+  profiler_clock_start("sort_meshes");
+  qsort(renderFrame->renderQueue.buffer, renderFrame->renderQueue.size,
+      sizeof(RenderCommand),
+      (int (*)(const void*, const void*)) render_command_compare);
+  profiler_clock_end("sort_meshes");
+
   profiler_clock_start("render_meshes");
 
-  AutoArray recordTasks;
-  auto_array_create(&recordTasks, sizeof(HANDLE));
-  auto_array_allocate_many(&recordTasks, renderFrame->renderQueue.size);
-
-  AutoArray recordCommands;
-  auto_array_create(&recordCommands, sizeof(RecordGBufferCommandsParams));
-  auto_array_allocate_many(&recordCommands, renderFrame->renderQueue.size);
+  uint32_t lastMaterialIndex = 0;
   for (uint32_t i = 0; i < renderFrame->renderQueue.size; i++)
   {
     RenderCommand* meshCommand = auto_array_get(&renderFrame->renderQueue, i);
+    RenderCommand* nextMeshCommand =
+        renderFrame->renderQueue.size > i + 1
+            ? auto_array_get(&renderFrame->renderQueue, i + 1)
+            : NULL;
 
-    RecordGBufferCommandsParams* params = auto_array_get(&recordCommands, i);
-    params->renderFrame                 = renderFrame;
-    params->meshCommand                 = meshCommand;
-    params->renderPass                  = renderPass;
-    params->gBufferPipeline             = gBufferPipeline;
-    params->framebuffer                 = renderStack->framebuffer;
-    params->logicalDevice               = logicalDevice;
-    params->physicalDevice              = physicalDevice;
-    params->imageSize                   = renderStack->gBufferImage.size;
+    if (nextMeshCommand == NULL
+        || meshCommand->material != nextMeshCommand->material)
+    {
+      RecordGBufferCommandsParams* params =
+          auto_array_allocate(&renderFrame->recordCommands);
+      params->renderFrame      = renderFrame;
+      params->meshCommandIndex = lastMaterialIndex;
+      params->meshCommandCount = i - lastMaterialIndex + 1;
+      params->renderPass       = renderPass;
+      params->gBufferPipeline  = gBufferPipeline;
+      params->framebuffer      = renderStack->framebuffer;
+      params->logicalDevice    = logicalDevice;
+      params->physicalDevice   = physicalDevice;
+      params->imageSize        = renderStack->gBufferImage.size;
 
-    *(HANDLE*) auto_array_get(&recordTasks, i) = task_scheduler_enqueue(
-        (TaskFunction) render_frame_record_g_buffer_commands, params, 0);
+      lastMaterialIndex = i + 1;
+    }
   }
 
-  for (size_t i = 0; i < recordTasks.size; i++)
+  auto_array_allocate_many(
+      &renderFrame->recordTasks, renderFrame->recordCommands.size);
+  for (size_t i = 0; i < renderFrame->recordTasks.size; i++)
   {
-    WaitForSingleObject(*(HANDLE*) auto_array_get(&recordTasks, i), INFINITE);
+    RecordGBufferCommandsParams* params =
+        auto_array_get(&renderFrame->recordCommands, i);
+    *(HANDLE*) auto_array_get(&renderFrame->recordTasks, i) =
+        task_scheduler_enqueue(
+            (TaskFunction) render_frame_record_g_buffer_commands, params, 0);
   }
 
-  auto_array_destroy(&recordCommands);
-  auto_array_destroy(&recordTasks);
+  for (size_t i = 0; i < renderFrame->recordTasks.size; i++)
+  {
+    WaitForSingleObject(
+        *(HANDLE*) auto_array_get(&renderFrame->recordTasks, i), INFINITE);
+  }
 
   for (int i = 0; i < renderFrame->meshCommandBufferLists.size; i++)
   {
@@ -524,6 +556,10 @@ void render_frame_clear_buffers(
       vkFreeCommandBuffers(logicalDevice, *commandPool,
           meshCommandBuffers->size, meshCommandBuffers->buffer);
     }
+
+    auto_array_clear(&renderFrame->recordTasks);
+    auto_array_clear(&renderFrame->recordCommands);
+
     auto_array_clear(meshCommandBuffers);
     vkResetCommandPool(logicalDevice, *commandPool, 0);
   }

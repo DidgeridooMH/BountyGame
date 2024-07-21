@@ -990,7 +990,7 @@ void render_instance_draw(RenderInstance* renderInstance)
       (renderInstance->currentFrame + 1) % renderInstance->framesInFlight;
 }
 
-void render_instance_queue_mesh_draw(Mesh* mesh, const Material* material,
+void render_instance_queue_mesh_draw(Mesh* mesh, Material* material,
     const Mat4 transform, RenderInstance* renderInstance)
 {
   RenderCommand* command = auto_array_allocate(
@@ -1000,7 +1000,7 @@ void render_instance_queue_mesh_draw(Mesh* mesh, const Material* material,
     return;
   }
 
-  command->mesh = mesh;
-  memcpy(&command->material, material, sizeof(Material));
+  command->mesh     = mesh;
+  command->material = material;
   memcpy(&command->transform, transform, sizeof(Mat4));
 }

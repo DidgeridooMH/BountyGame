@@ -20,6 +20,9 @@ typedef struct RenderFrame
   VkFence inflightFence;
   GpuBuffer vpBuffer;
 
+  AutoArray recordTasks;
+  AutoArray recordCommands;
+
   AutoArray renderQueue;
   AutoArray perRenderBuffers;
 } RenderFrame;
@@ -39,3 +42,4 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
 
 void render_frame_clear_buffers(
     RenderFrame* renderFrame, VkDevice logicalDevice);
+

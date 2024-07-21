@@ -126,4 +126,3 @@ void render_stack_destroy(RenderStack* renderStack, VkDevice logicalDevice)
   image_destroy(&renderStack->gBufferImage, logicalDevice);
   image_destroy(&renderStack->depthBuffer, logicalDevice);
 }
-

@@ -12,6 +12,7 @@ set(SOURCES
   Private/Otter/Render/Mesh.c
   Private/Otter/Render/RenderFrame.c
   Private/Otter/Render/RenderInstance.c
+  Private/Otter/Render/RenderQueue.c
   Private/Otter/Render/RenderStack.c
   Private/Otter/Render/RenderSwapchain.c
 )
