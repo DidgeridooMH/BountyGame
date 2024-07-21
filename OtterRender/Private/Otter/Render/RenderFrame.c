@@ -128,6 +128,17 @@ bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
     return false;
   }
 
+  if (!gpu_buffer_allocate(&renderFrame->lightBuffer, sizeof(LightingData),
+          VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
+          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
+              | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
+          physicalDevice, logicalDevice))
+  {
+    LOG_ERROR("Warning: Could not allocate temporary gpu buffer...but I "
+              "also don't know what to do about that.");
+    return false;
+  }
+
   auto_array_create(&renderFrame->recordTasks, sizeof(HANDLE));
   auto_array_create(
       &renderFrame->recordCommands, sizeof(RecordGBufferCommandsParams));
@@ -172,6 +183,7 @@ void render_frame_destroy(
   auto_array_destroy(&renderFrame->secondaryCommandPools);
 
   gpu_buffer_free(&renderFrame->vpBuffer, logicalDevice);
+  gpu_buffer_free(&renderFrame->lightBuffer, logicalDevice);
 
   auto_array_destroy(&renderFrame->recordTasks);
   auto_array_destroy(&renderFrame->recordCommands);
@@ -466,29 +478,10 @@ static void render_frame_render_lighting(RenderFrame* renderFrame,
 
   LightingData lightingData = {.cameraPositionWorldSpace = camera->position};
 
-  GpuBuffer* pbrData = auto_array_allocate(&renderFrame->perRenderBuffers);
-  if (pbrData == NULL)
+  if (!gpu_buffer_write(&renderFrame->lightBuffer, (uint8_t*) &lightingData,
+          sizeof(lightingData), 0, logicalDevice))
   {
-    LOG_ERROR("Unable to allocate lighting data");
-    return;
-  }
-
-  if (!gpu_buffer_allocate(pbrData, sizeof(lightingData),
-          VK_BUFFER_USAGE_UNIFORM_BUFFER_BIT,
-          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
-              | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT,
-          physicalDevice, logicalDevice))
-  {
-    LOG_ERROR("Warning: Could not allocate temporary gpu buffer...but I "
-              "also don't know what to do about that.");
-    return;
-  }
-
-  if (!gpu_buffer_write(pbrData, (uint8_t*) &lightingData, sizeof(lightingData),
-          0, logicalDevice))
-  {
-    LOG_ERROR("WARN: Unable to write MVP buffer");
-    gpu_buffer_free(pbrData, logicalDevice);
+    LOG_ERROR("WARN: Unable to write light buffer");
     return;
   }
 
@@ -497,7 +490,7 @@ static void render_frame_render_lighting(RenderFrame* renderFrame,
   VkDescriptorPool* descriptorPool =
       auto_array_get(&renderFrame->descriptorPools, 0);
   pbr_pipeline_write_descriptor_set(renderFrame->commandBuffer, *descriptorPool,
-      logicalDevice, renderStack, pbrData, pbrPipeline);
+      logicalDevice, renderStack, &renderFrame->lightBuffer, pbrPipeline);
 
   VkDeviceSize offset = 0;
   vkCmdBindVertexBuffers(renderFrame->commandBuffer, 0, 1,

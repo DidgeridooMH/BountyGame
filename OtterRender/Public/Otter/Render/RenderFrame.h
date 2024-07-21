@@ -18,7 +18,9 @@ typedef struct RenderFrame
   VkSemaphore imageAvailableSemaphore;
   VkSemaphore renderFinishedSemaphore;
   VkFence inflightFence;
+
   GpuBuffer vpBuffer;
+  GpuBuffer lightBuffer;
 
   AutoArray recordTasks;
   AutoArray recordCommands;
@@ -42,4 +44,3 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
 
 void render_frame_clear_buffers(
     RenderFrame* renderFrame, VkDevice logicalDevice);
-
