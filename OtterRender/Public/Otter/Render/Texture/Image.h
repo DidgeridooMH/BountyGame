@@ -19,6 +19,11 @@ OTTERRENDER_API bool image_create(VkExtent2D extents, uint32_t layers,
     VkMemoryPropertyFlags memoryProperties, VkPhysicalDevice physicalDevice,
     VkDevice logicalDevice, Image* image);
 
+OTTERRENDER_API void image_transition_layout(VkImageLayout oldLayout,
+    VkImageLayout newLayout, uint32_t subresourceIndex,
+    uint32_t subresourceCount, uint32_t layerIndex, uint32_t layerCount,
+    VkCommandBuffer commandBuffer, Image* image);
+
 OTTERRENDER_API void image_upload(GpuBuffer* buffer,
     VkCommandBuffer commandBuffer, VkDevice logicalDevice, Image* image);
 

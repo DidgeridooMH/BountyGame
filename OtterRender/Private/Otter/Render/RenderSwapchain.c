@@ -1,7 +1,8 @@
 #include "Otter/Render/RenderSwapchain.h"
 
+#include <vulkan/vulkan_core.h>
+
 #include "Otter/Math/Clamp.h"
-#include "Otter/Render/Memory/MemoryType.h"
 #include "Otter/Util/Log.h"
 
 static bool render_swapchain_create_swapchain(RenderSwapchain* renderSwapchain,
@@ -92,10 +93,16 @@ void render_swapchain_destroy(
     for (size_t i = 0; i < renderSwapchain->numOfSwapchainImages; i++)
     {
       LOG_DEBUG("Destroying render stack %llu", i);
-      render_stack_destroy(&renderSwapchain->renderStacks[i], logicalDevice);
+      gbuffer_pass_destroy(
+          &renderSwapchain->renderStacks[i].gbufferPass, logicalDevice);
+      lighting_pass_destroy(
+          &renderSwapchain->renderStacks[i].lightingPass, logicalDevice);
     }
     free(renderSwapchain->renderStacks);
   }
+
+  vkDestroyRenderPass(logicalDevice, renderSwapchain->gbufferPass, NULL);
+  vkDestroyRenderPass(logicalDevice, renderSwapchain->lightingPass, NULL);
 
   if (renderSwapchain->swapchain != VK_NULL_HANDLE)
   {
@@ -107,8 +114,7 @@ void render_swapchain_destroy(
 }
 
 bool render_swapchain_create_render_stacks(RenderSwapchain* renderSwapchain,
-    VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
-    VkRenderPass renderPass)
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
 {
   if (vkGetSwapchainImagesKHR(logicalDevice, renderSwapchain->swapchain,
           &renderSwapchain->numOfSwapchainImages, NULL)
@@ -147,10 +153,19 @@ bool render_swapchain_create_render_stacks(RenderSwapchain* renderSwapchain,
 
   for (uint32_t i = 0; i < renderSwapchain->numOfSwapchainImages; i++)
   {
-    if (!render_stack_create(&renderSwapchain->renderStacks[i],
-            swapchainImages[i], renderSwapchain->extents,
-            renderSwapchain->format.format, renderPass, physicalDevice,
-            logicalDevice))
+    if (!gbuffer_pass_create(&renderSwapchain->renderStacks[i].gbufferPass,
+            renderSwapchain->gbufferPass, renderSwapchain->extents,
+            physicalDevice, logicalDevice))
+    {
+      free(swapchainImages);
+      return false;
+    }
+
+    if (!lighting_pass_create(&renderSwapchain->renderStacks[i].lightingPass,
+            &renderSwapchain->renderStacks[i].gbufferPass,
+            renderSwapchain->lightingPass, swapchainImages[i],
+            renderSwapchain->extents, renderSwapchain->format.format,
+            physicalDevice, logicalDevice))
     {
       free(swapchainImages);
       return false;
@@ -191,3 +206,4 @@ bool render_swapchain_get_next_image(RenderSwapchain* renderSwapchain,
 
   return true;
 }
+

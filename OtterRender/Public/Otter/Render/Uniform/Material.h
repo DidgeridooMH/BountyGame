@@ -23,4 +23,3 @@ typedef struct Material
   ImageSampler* occlusionTexture;
   ImageSampler* normalTexture;
 } Material;
-

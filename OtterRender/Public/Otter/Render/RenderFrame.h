@@ -11,11 +11,14 @@
 
 typedef struct RenderFrame
 {
-  VkCommandBuffer commandBuffer;
+  VkCommandBuffer gBufferCommandBuffer;
+  VkCommandBuffer lightingCommandBuffer;
+
   AutoArray secondaryCommandPools;
   AutoArray meshCommandBufferLists;
   AutoArray descriptorPools;
   VkSemaphore imageAvailableSemaphore;
+  VkSemaphore gBufferFinishedSemaphore;
   VkSemaphore renderFinishedSemaphore;
   VkFence inflightFence;
 
@@ -38,9 +41,9 @@ void render_frame_destroy(RenderFrame* renderFrame, VkCommandPool commandPool,
 
 void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     GBufferPipeline* gBufferPipeline, PbrPipeline* pbrPipeline,
-    Mesh* fullscreenQuad, Transform* camera, VkRenderPass renderPass,
-    VkQueue queue, VkCommandPool commandPool, VkPhysicalDevice physicalDevice,
-    VkDevice logicalDevice);
+    Mesh* fullscreenQuad, Transform* camera, VkRenderPass gbufferPass,
+    VkRenderPass lightingPass, VkQueue queue, VkCommandPool commandPool,
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice);
 
 void render_frame_clear_buffers(
     RenderFrame* renderFrame, VkDevice logicalDevice);

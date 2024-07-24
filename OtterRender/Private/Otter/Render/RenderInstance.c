@@ -2,6 +2,8 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include "Otter/Render/RenderPass/GBufferPass.h"
+#include "Otter/Render/RenderPass/LightingPass.h"
 #include "Otter/Render/RenderQueue.h"
 
 #define VK_VALIDATION_LAYER_NAME   "VK_LAYER_KHRONOS_validation"
@@ -559,123 +561,17 @@ static bool render_instance_create_swapchain(RenderInstance* renderInstance)
 
 static bool render_instance_create_render_pass(RenderInstance* renderInstance)
 {
-  VkAttachmentDescription attachments[NUM_OF_RENDER_STACK_LAYERS] = {
-      {
-          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
-          .samples       = VK_SAMPLE_COUNT_1_BIT,
-          .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
-          .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
-          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-          .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      },
-      {
-          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
-          .samples       = VK_SAMPLE_COUNT_1_BIT,
-          .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
-          .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
-          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-          .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      },
-      {
-          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
-          .samples       = VK_SAMPLE_COUNT_1_BIT,
-          .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
-          .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
-          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-          .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      },
-      {
-          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
-          .samples       = VK_SAMPLE_COUNT_1_BIT,
-          .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
-          .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
-          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-          .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
-      },
-      {
-          .format        = renderInstance->swapchain->format.format,
-          .samples       = VK_SAMPLE_COUNT_1_BIT,
-          .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
-          .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
-          .initialLayout = VK_IMAGE_LAYOUT_UNDEFINED,
-          .finalLayout   = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR,
-      },
-      {.format            = VK_FORMAT_D32_SFLOAT,
-          .samples        = VK_SAMPLE_COUNT_1_BIT,
-          .loadOp         = VK_ATTACHMENT_LOAD_OP_CLEAR,
-          .storeOp        = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-          .stencilLoadOp  = VK_ATTACHMENT_LOAD_OP_DONT_CARE,
-          .stencilStoreOp = VK_ATTACHMENT_STORE_OP_DONT_CARE,
-          .initialLayout  = VK_IMAGE_LAYOUT_UNDEFINED,
-          .finalLayout    = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL}};
-
-  VkSubpassDependency dependencies[] = {
-      {.srcSubpass      = VK_SUBPASS_EXTERNAL,
-          .dstSubpass   = 0,
-          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                        | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT
-                        | VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
-          .dstAccessMask = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT
-                         | VK_ACCESS_DEPTH_STENCIL_ATTACHMENT_WRITE_BIT},
-      {.srcSubpass      = 0,
-          .dstSubpass   = 1,
-          .srcStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
-          .dstStageMask = VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT}};
-
-  VkAttachmentReference gbufferAttachmentRef[] = {
-      {.attachment = RSL_POSITION,
-          .layout  = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-      {.attachment = RSL_NORMAL,
-          .layout  = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-      {.attachment = RSL_COLOR,
-          .layout  = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL},
-      {.attachment = RSL_MATERIAL,
-          .layout  = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
-
-  VkAttachmentReference depthAttachmentRef = {.attachment = 5,
-      .layout = VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL};
-
-  VkAttachmentReference lightingBufferAttachmentRef[] = {
-      {.attachment = RSL_LIGHTING,
-          .layout  = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}};
-
-  VkAttachmentReference lightingInputAttachmentRef[] = {
-      {.attachment = RSL_POSITION,
-          .layout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-      {.attachment = RSL_NORMAL,
-          .layout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-      {.attachment = RSL_COLOR,
-          .layout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
-      {.attachment = RSL_MATERIAL,
-          .layout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
-
-  VkSubpassDescription subpassDescriptions[] = {
-      {.pipelineBindPoint          = VK_PIPELINE_BIND_POINT_GRAPHICS,
-          .colorAttachmentCount    = _countof(gbufferAttachmentRef),
-          .pColorAttachments       = gbufferAttachmentRef,
-          .pDepthStencilAttachment = &depthAttachmentRef},
-      {.pipelineBindPoint       = VK_PIPELINE_BIND_POINT_GRAPHICS,
-          .colorAttachmentCount = _countof(lightingBufferAttachmentRef),
-          .pColorAttachments    = lightingBufferAttachmentRef,
-          .inputAttachmentCount = _countof(lightingInputAttachmentRef),
-          .pInputAttachments    = lightingInputAttachmentRef}};
-
-  VkRenderPassCreateInfo renderPassInfo = {
-      .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_CREATE_INFO,
-      .attachmentCount = _countof(attachments),
-      .pAttachments    = attachments,
-      .subpassCount    = _countof(subpassDescriptions),
-      .pSubpasses      = subpassDescriptions,
-      .dependencyCount = _countof(dependencies),
-      .pDependencies   = dependencies,
-  };
-
-  VkResult result = vkCreateRenderPass(renderInstance->logicalDevice,
-      &renderPassInfo, NULL, &renderInstance->renderPass);
-  if (result != VK_SUCCESS)
+  if (!gbuffer_pass_create_render_pass(&renderInstance->swapchain->gbufferPass,
+          renderInstance->logicalDevice))
   {
-    LOG_ERROR("Unable to create the render pass");
+    return false;
+  }
+
+  if (!lighting_pass_create_render_pass(
+          &renderInstance->swapchain->lightingPass,
+          renderInstance->swapchain->format.format,
+          renderInstance->logicalDevice))
+  {
     return false;
   }
 
@@ -714,8 +610,7 @@ static bool render_instance_create_render_surface(
   }
 
   if (!render_swapchain_create_render_stacks(renderInstance->swapchain,
-          renderInstance->physicalDevice, renderInstance->logicalDevice,
-          renderInstance->renderPass))
+          renderInstance->physicalDevice, renderInstance->logicalDevice))
   {
     return false;
   }
@@ -827,13 +722,15 @@ RenderInstance* render_instance_create(HWND window, const char* shaderDirectory)
   }
 
   if (!g_buffer_pipeline_create(shaderDirectory, renderInstance->logicalDevice,
-          renderInstance->renderPass, &renderInstance->gBufferPipeline))
+          renderInstance->swapchain->gbufferPass,
+          &renderInstance->gBufferPipeline))
   {
     return NULL;
   }
 
   if (!pbr_pipeline_create(shaderDirectory, renderInstance->logicalDevice,
-          renderInstance->renderPass, &renderInstance->pbrPipeline))
+          renderInstance->swapchain->lightingPass,
+          &renderInstance->pbrPipeline))
   {
     return NULL;
   }
@@ -887,13 +784,6 @@ void render_instance_destroy(RenderInstance* renderInstance)
   {
     vkDestroyCommandPool(
         renderInstance->logicalDevice, renderInstance->commandPool, NULL);
-  }
-
-  LOG_DEBUG("Destroying render pass");
-  if (renderInstance->renderPass != NULL)
-  {
-    vkDestroyRenderPass(
-        renderInstance->logicalDevice, renderInstance->renderPass, NULL);
   }
 
   LOG_DEBUG("Destroying swapchain");
@@ -965,8 +855,10 @@ void render_instance_draw(RenderInstance* renderInstance)
       &renderInstance->swapchain->renderStacks[image],
       &renderInstance->gBufferPipeline, &renderInstance->pbrPipeline,
       &renderInstance->fullscreenQuad, &renderInstance->cameraTransform,
-      renderInstance->renderPass, graphicsQueue, renderInstance->commandPool,
-      renderInstance->physicalDevice, renderInstance->logicalDevice);
+      renderInstance->swapchain->gbufferPass,
+      renderInstance->swapchain->lightingPass, graphicsQueue,
+      renderInstance->commandPool, renderInstance->physicalDevice,
+      renderInstance->logicalDevice);
 
   VkPresentInfoKHR presentInfo = {.sType = VK_STRUCTURE_TYPE_PRESENT_INFO_KHR,
       .pWaitSemaphores = &renderInstance->frames[renderInstance->currentFrame]
@@ -1004,3 +896,4 @@ void render_instance_queue_mesh_draw(Mesh* mesh, Material* material,
   command->material = material;
   memcpy(&command->transform, transform, sizeof(Mat4));
 }
+

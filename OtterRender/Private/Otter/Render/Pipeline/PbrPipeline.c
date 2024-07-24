@@ -158,7 +158,7 @@ bool pbr_pipeline_create(const char* shaderDirectory, VkDevice logicalDevice,
       .pDynamicState       = &dynamicStateCreateInfo,
       .layout              = pipeline->layout,
       .renderPass          = renderPass,
-      .subpass             = 1};
+      .subpass             = 0};
 
   if (vkCreateGraphicsPipelines(logicalDevice, NULL, 1, &pipelineCreateInfo,
           NULL, &pipeline->pipeline)
@@ -203,16 +203,16 @@ void pbr_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
 
   VkDescriptorImageInfo attachmentDescriptors[] = {
       {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-          .imageView = renderStack->bufferAttachments[RSL_POSITION],
+          .imageView = renderStack->gbufferPass.bufferAttachments[GBL_POSITION],
           .sampler   = VK_NULL_HANDLE},
       {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-          .imageView = renderStack->bufferAttachments[RSL_NORMAL],
+          .imageView = renderStack->gbufferPass.bufferAttachments[GBL_NORMAL],
           .sampler   = VK_NULL_HANDLE},
       {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-          .imageView = renderStack->bufferAttachments[RSL_COLOR],
+          .imageView = renderStack->gbufferPass.bufferAttachments[GBL_COLOR],
           .sampler   = VK_NULL_HANDLE},
       {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-          .imageView = renderStack->bufferAttachments[RSL_MATERIAL],
+          .imageView = renderStack->gbufferPass.bufferAttachments[GBL_MATERIAL],
           .sampler   = VK_NULL_HANDLE}};
 
   VkWriteDescriptorSet attachmentWrites[_countof(attachmentDescriptors) + 1] = {

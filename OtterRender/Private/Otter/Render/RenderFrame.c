@@ -66,7 +66,15 @@ bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
       .level              = VK_COMMAND_BUFFER_LEVEL_PRIMARY};
 
   if (vkAllocateCommandBuffers(
-          logicalDevice, &allocInfo, &renderFrame->commandBuffer)
+          logicalDevice, &allocInfo, &renderFrame->gBufferCommandBuffer)
+      != VK_SUCCESS)
+  {
+    LOG_ERROR("Error: Failed to allocate command buffers");
+    return false;
+  }
+
+  if (vkAllocateCommandBuffers(
+          logicalDevice, &allocInfo, &renderFrame->lightingCommandBuffer)
       != VK_SUCCESS)
   {
     LOG_ERROR("Error: Failed to allocate command buffers");
@@ -107,6 +115,9 @@ bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
   if (vkCreateSemaphore(logicalDevice, &semaphoreInfo, NULL,
           &renderFrame->imageAvailableSemaphore)
           != VK_SUCCESS
+      || vkCreateSemaphore(logicalDevice, &semaphoreInfo, NULL,
+             &renderFrame->gBufferFinishedSemaphore)
+             != VK_SUCCESS
       || vkCreateSemaphore(logicalDevice, &semaphoreInfo, NULL,
              &renderFrame->renderFinishedSemaphore)
              != VK_SUCCESS
@@ -192,13 +203,21 @@ void render_frame_destroy(
   auto_array_destroy(&renderFrame->renderQueue);
 
   vkDestroySemaphore(logicalDevice, renderFrame->imageAvailableSemaphore, NULL);
+  vkDestroySemaphore(
+      logicalDevice, renderFrame->gBufferFinishedSemaphore, NULL);
   vkDestroySemaphore(logicalDevice, renderFrame->renderFinishedSemaphore, NULL);
   vkDestroyFence(logicalDevice, renderFrame->inflightFence, NULL);
 
-  if (renderFrame->commandBuffer)
+  if (renderFrame->gBufferCommandBuffer)
   {
     vkFreeCommandBuffers(
-        logicalDevice, commandPool, 1, &renderFrame->commandBuffer);
+        logicalDevice, commandPool, 1, &renderFrame->gBufferCommandBuffer);
+  }
+
+  if (renderFrame->lightingCommandBuffer)
+  {
+    vkFreeCommandBuffers(
+        logicalDevice, commandPool, 1, &renderFrame->lightingCommandBuffer);
   }
 
   for (int i = 0; i < renderFrame->descriptorPools.size; i++)
@@ -229,78 +248,46 @@ static void render_frame_draw_mesh(RenderCommand* meshCommand,
       0);
 }
 
-static void render_frame_start_render(RenderFrame* renderFrame,
-    VkRenderPass renderPass, RenderStack* renderStack, VkDevice logicalDevice)
+static void render_frame_start_pass(VkCommandBuffer commandBuffer,
+    VkRenderPass renderPass, VkFramebuffer framebuffer, VkExtent2D extents,
+    const VkClearValue clearValues[], size_t clearValuesCount,
+    VkSubpassContents subpassContents, VkDevice logicalDevice)
 {
-  vkResetCommandBuffer(renderFrame->commandBuffer, 0);
+  vkResetCommandBuffer(commandBuffer, 0);
 
   VkCommandBufferBeginInfo beginInfo = {
       .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
       .flags            = 0,
       .pInheritanceInfo = NULL};
 
-  if (vkBeginCommandBuffer(renderFrame->commandBuffer, &beginInfo)
-      != VK_SUCCESS)
+  if (vkBeginCommandBuffer(commandBuffer, &beginInfo) != VK_SUCCESS)
   {
     LOG_ERROR("Error: Unable to begin command buffer");
     // TODO: Handle error
     return;
   }
 
-  VkClearValue clearColor[NUM_OF_RENDER_STACK_LAYERS] = {
-      {0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
-      {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
-      {0.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}};
   VkRenderPassBeginInfo renderPassInfo = {
       .sType           = VK_STRUCTURE_TYPE_RENDER_PASS_BEGIN_INFO,
       .renderPass      = renderPass,
-      .framebuffer     = renderStack->framebuffer,
-      .renderArea      = {{0, 0}, renderStack->gBufferImage.size},
-      .clearValueCount = _countof(clearColor),
-      .pClearValues    = clearColor};
+      .framebuffer     = framebuffer,
+      .renderArea      = {{0, 0}, extents},
+      .clearValueCount = clearValuesCount,
+      .pClearValues    = clearValues};
 
-  vkCmdBeginRenderPass(renderFrame->commandBuffer, &renderPassInfo,
-      VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS);
-
-  for (int i = 0; i < renderFrame->descriptorPools.size; i++)
-  {
-    VkDescriptorPool* descriptorPool =
-        auto_array_get(&renderFrame->descriptorPools, i);
-    vkResetDescriptorPool(logicalDevice, *descriptorPool, 0);
-  }
+  vkCmdBeginRenderPass(commandBuffer, &renderPassInfo, subpassContents);
 }
 
-static void render_frame_end_render(RenderFrame* renderFrame, VkQueue queue)
+static void render_frame_end_pass(VkCommandBuffer commandBuffer)
 {
-  vkCmdEndRenderPass(renderFrame->commandBuffer);
+  vkCmdEndRenderPass(commandBuffer);
 
-  if (vkEndCommandBuffer(renderFrame->commandBuffer) != VK_SUCCESS)
+  if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
   {
     LOG_ERROR("Error: Unable to end recording of command buffer");
     // Handle error
     return;
   }
-
-  VkPipelineStageFlags waitStages =
-      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
-  VkSubmitInfo submitInfo = {.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-      .waitSemaphoreCount           = 1,
-      .pWaitSemaphores              = &renderFrame->imageAvailableSemaphore,
-      .pWaitDstStageMask            = &waitStages,
-      .commandBufferCount           = 1,
-      .pCommandBuffers              = &renderFrame->commandBuffer,
-      .signalSemaphoreCount         = 1,
-      .pSignalSemaphores            = &renderFrame->renderFinishedSemaphore};
-
-  if (vkQueueSubmit(queue, 1, &submitInfo, renderFrame->inflightFence)
-      != VK_SUCCESS)
-  {
-    LOG_ERROR("Error: Unable to submit graphics work");
-    // TODO: Handle error
-    return;
-  }
-
-  auto_array_clear(&renderFrame->renderQueue);
 }
 
 static void render_frame_record_g_buffer_commands(
@@ -382,8 +369,8 @@ static void render_frame_render_g_buffer(RenderFrame* renderFrame,
   mat4_rotate(
       vp.view, -camera->rotation.x, -camera->rotation.y, -camera->rotation.z);
   projection_create_perspective(vp.projection, 90.0f,
-      (float) renderStack->gBufferImage.size.width
-          / (float) renderStack->gBufferImage.size.height,
+      (float) renderStack->gbufferPass.gBufferImage.size.width
+          / (float) renderStack->gbufferPass.gBufferImage.size.height,
       1000.0f, 0.1f);
 
   if (!gpu_buffer_write(&renderFrame->vpBuffer, (uint8_t*) &vp,
@@ -420,10 +407,10 @@ static void render_frame_render_g_buffer(RenderFrame* renderFrame,
       params->meshCommandCount = i - lastMaterialIndex + 1;
       params->renderPass       = renderPass;
       params->gBufferPipeline  = gBufferPipeline;
-      params->framebuffer      = renderStack->framebuffer;
+      params->framebuffer      = renderStack->gbufferPass.framebuffer;
       params->logicalDevice    = logicalDevice;
       params->physicalDevice   = physicalDevice;
-      params->imageSize        = renderStack->gBufferImage.size;
+      params->imageSize        = renderStack->gbufferPass.gBufferImage.size;
 
       lastMaterialIndex = i + 1;
     }
@@ -452,7 +439,7 @@ static void render_frame_render_g_buffer(RenderFrame* renderFrame,
         auto_array_get(&renderFrame->meshCommandBufferLists, i);
     if (meshCommandBuffers->size > 0)
     {
-      vkCmdExecuteCommands(renderFrame->commandBuffer,
+      vkCmdExecuteCommands(renderFrame->gBufferCommandBuffer,
           (uint32_t) meshCommandBuffers->size,
           (VkCommandBuffer*) meshCommandBuffers->buffer);
     }
@@ -467,14 +454,14 @@ static void render_frame_render_lighting(RenderFrame* renderFrame,
 {
   VkViewport viewport = {.x = 0.0f,
       .y                    = 0.0f,
-      .width                = (float) renderStack->gBufferImage.size.width,
-      .height               = (float) renderStack->gBufferImage.size.height,
-      .minDepth             = 0.0f,
-      .maxDepth             = 1.0f};
-  vkCmdSetViewport(renderFrame->commandBuffer, 0, 1, &viewport);
+      .width                = (float) renderStack->lightingPass.imageSize.width,
+      .height   = (float) renderStack->lightingPass.imageSize.height,
+      .minDepth = 0.0f,
+      .maxDepth = 1.0f};
+  vkCmdSetViewport(renderFrame->lightingCommandBuffer, 0, 1, &viewport);
 
-  VkRect2D scissor = {{0, 0}, renderStack->gBufferImage.size};
-  vkCmdSetScissor(renderFrame->commandBuffer, 0, 1, &scissor);
+  VkRect2D scissor = {{0, 0}, renderStack->lightingPass.imageSize};
+  vkCmdSetScissor(renderFrame->lightingCommandBuffer, 0, 1, &scissor);
 
   LightingData lightingData = {.cameraPositionWorldSpace = camera->position};
 
@@ -485,47 +472,86 @@ static void render_frame_render_lighting(RenderFrame* renderFrame,
     return;
   }
 
-  vkCmdBindPipeline(renderFrame->commandBuffer, VK_PIPELINE_BIND_POINT_GRAPHICS,
-      pbrPipeline->pipeline);
+  vkCmdBindPipeline(renderFrame->lightingCommandBuffer,
+      VK_PIPELINE_BIND_POINT_GRAPHICS, pbrPipeline->pipeline);
   VkDescriptorPool* descriptorPool =
       auto_array_get(&renderFrame->descriptorPools, 0);
-  pbr_pipeline_write_descriptor_set(renderFrame->commandBuffer, *descriptorPool,
-      logicalDevice, renderStack, &renderFrame->lightBuffer, pbrPipeline);
+  pbr_pipeline_write_descriptor_set(renderFrame->lightingCommandBuffer,
+      *descriptorPool, logicalDevice, renderStack, &renderFrame->lightBuffer,
+      pbrPipeline);
 
   VkDeviceSize offset = 0;
-  vkCmdBindVertexBuffers(renderFrame->commandBuffer, 0, 1,
+  vkCmdBindVertexBuffers(renderFrame->lightingCommandBuffer, 0, 1,
       &fullscreenQuad->vertices.buffer, &offset);
-  vkCmdBindIndexBuffer(renderFrame->commandBuffer,
+  vkCmdBindIndexBuffer(renderFrame->lightingCommandBuffer,
       fullscreenQuad->indices.buffer, 0, VK_INDEX_TYPE_UINT16);
-  vkCmdDrawIndexed(renderFrame->commandBuffer,
+  vkCmdDrawIndexed(renderFrame->lightingCommandBuffer,
       (uint32_t) fullscreenQuad->indices.size / sizeof(uint16_t), 1, 0, 0, 0);
 }
 
 void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     GBufferPipeline* gBufferPipeline, PbrPipeline* pbrPipeline,
-    Mesh* fullscreenQuad, Transform* camera, VkRenderPass renderPass,
-    VkQueue queue, VkCommandPool commandPool, VkPhysicalDevice physicalDevice,
-    VkDevice logicalDevice)
+    Mesh* fullscreenQuad, Transform* camera, VkRenderPass gbufferPass,
+    VkRenderPass lightingPass, VkQueue queue, VkCommandPool commandPool,
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
 {
-  profiler_clock_start("render_start");
-  render_frame_start_render(
-      renderFrame, renderPass, renderStack, logicalDevice);
-  profiler_clock_end("render_start");
-  profiler_clock_start("render_g_buffer");
-  render_frame_render_g_buffer(renderFrame, renderPass, gBufferPipeline, camera,
-      renderStack, logicalDevice, physicalDevice);
-  profiler_clock_end("render_g_buffer");
+  for (int i = 0; i < renderFrame->descriptorPools.size; i++)
+  {
+    VkDescriptorPool* descriptorPool =
+        auto_array_get(&renderFrame->descriptorPools, i);
+    vkResetDescriptorPool(logicalDevice, *descriptorPool, 0);
+  }
 
-  vkCmdNextSubpass(renderFrame->commandBuffer, VK_SUBPASS_CONTENTS_INLINE);
+  render_frame_start_pass(renderFrame->gBufferCommandBuffer, gbufferPass,
+      renderStack->gbufferPass.framebuffer,
+      renderStack->gbufferPass.gBufferImage.size,
+      (const VkClearValue[]){{0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
+          {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
+      NUM_OF_GBUFFER_PASS_LAYERS + 1,
+      VK_SUBPASS_CONTENTS_SECONDARY_COMMAND_BUFFERS, logicalDevice);
+  render_frame_render_g_buffer(renderFrame, gbufferPass, gBufferPipeline,
+      camera, renderStack, logicalDevice, physicalDevice);
+  render_frame_end_pass(renderFrame->gBufferCommandBuffer);
 
-  profiler_clock_start("render_lighting");
+  render_frame_start_pass(renderFrame->lightingCommandBuffer, lightingPass,
+      renderStack->lightingPass.framebuffer,
+      renderStack->lightingPass.imageSize,
+      (const VkClearValue[]){{}, {}, {}, {}, {0.0, 0.0, 0.0, 1.0}}, 5,
+      VK_SUBPASS_CONTENTS_INLINE, logicalDevice);
   render_frame_render_lighting(renderFrame, renderStack, pbrPipeline,
       fullscreenQuad, camera, physicalDevice, logicalDevice);
-  profiler_clock_end("render_lighting");
+  render_frame_end_pass(renderFrame->lightingCommandBuffer);
 
-  profiler_clock_start("render_end");
-  render_frame_end_render(renderFrame, queue);
-  profiler_clock_end("render_end");
+  VkPipelineStageFlags waitStages =
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  VkSubmitInfo submitInfo[] = {
+      {.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+          .waitSemaphoreCount   = 1,
+          .pWaitSemaphores      = &renderFrame->imageAvailableSemaphore,
+          .pWaitDstStageMask    = &waitStages,
+          .commandBufferCount   = 1,
+          .pCommandBuffers      = &renderFrame->gBufferCommandBuffer,
+          .signalSemaphoreCount = 1,
+          .pSignalSemaphores    = &renderFrame->gBufferFinishedSemaphore},
+      {.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+          .waitSemaphoreCount   = 1,
+          .pWaitSemaphores      = &renderFrame->gBufferFinishedSemaphore,
+          .pWaitDstStageMask    = &waitStages,
+          .commandBufferCount   = 1,
+          .pCommandBuffers      = &renderFrame->lightingCommandBuffer,
+          .signalSemaphoreCount = 1,
+          .pSignalSemaphores    = &renderFrame->renderFinishedSemaphore}};
+
+  if (vkQueueSubmit(
+          queue, _countof(submitInfo), submitInfo, renderFrame->inflightFence)
+      != VK_SUCCESS)
+  {
+    LOG_ERROR("Error: Unable to submit graphics work");
+    // TODO: Handle error
+    return;
+  }
+
+  auto_array_clear(&renderFrame->renderQueue);
 }
 
 void render_frame_clear_buffers(
@@ -557,4 +583,4 @@ void render_frame_clear_buffers(
     vkResetCommandPool(logicalDevice, *commandPool, 0);
   }
 }
-
+ 

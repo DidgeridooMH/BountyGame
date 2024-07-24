@@ -1,7 +1,5 @@
 #include "Otter/Render/Texture/Image.h"
 
-#include <vulkan/vulkan_core.h>
-
 #include "Otter/Render/Memory/MemoryType.h"
 #include "Otter/Util/Log.h"
 
@@ -72,9 +70,9 @@ bool image_create(VkExtent2D extents, uint32_t layers, VkFormat format,
   return true;
 }
 
-static void image_transition_layout(VkImageLayout oldLayout,
-    VkImageLayout newLayout, uint32_t subresourceIndex,
-    uint32_t subresourceCount, VkCommandBuffer commandBuffer, Image* image)
+void image_transition_layout(VkImageLayout oldLayout, VkImageLayout newLayout,
+    uint32_t subresourceIndex, uint32_t subresourceCount, uint32_t layerIndex,
+    uint32_t layerCount, VkCommandBuffer commandBuffer, Image* image)
 {
   VkImageMemoryBarrier barrier = {
       .sType               = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER,
@@ -86,8 +84,8 @@ static void image_transition_layout(VkImageLayout oldLayout,
       .subresourceRange    = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
              .baseMipLevel                = subresourceIndex,
              .levelCount                  = subresourceCount,
-             .baseArrayLayer              = 0,
-             .layerCount                  = 1},
+             .baseArrayLayer              = layerIndex,
+             .layerCount                  = layerCount},
       .srcAccessMask       = 0,
       .dstAccessMask       = 0};
 
@@ -144,7 +142,8 @@ static void image_generate_mipmaps(VkCommandBuffer commandBuffer, Image* image)
   for (uint32_t i = 1; i < image->mipLevels; i++)
   {
     image_transition_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, i - 1, 1, commandBuffer, image);
+        VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, i - 1, 1, 0, 1, commandBuffer,
+        image);
 
     VkImageBlit blit = {
         .srcSubresource = {.aspectMask = VK_IMAGE_ASPECT_COLOR_BIT,
@@ -166,7 +165,7 @@ static void image_generate_mipmaps(VkCommandBuffer commandBuffer, Image* image)
   }
 
   image_transition_layout(VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, image->mipLevels - 1,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, image->mipLevels - 1, 0, 1,
       commandBuffer, image);
 }
 
@@ -174,8 +173,8 @@ void image_upload(GpuBuffer* buffer, VkCommandBuffer commandBuffer,
     VkDevice logicalDevice, Image* image)
 {
   image_transition_layout(VK_IMAGE_LAYOUT_UNDEFINED,
-      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, image->mipLevels, commandBuffer,
-      image);
+      VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 0, image->mipLevels, 0, 1,
+      commandBuffer, image);
 
   VkBufferImageCopy region = {.bufferOffset = 0,
       .bufferRowLength                      = 0,
@@ -196,7 +195,7 @@ void image_upload(GpuBuffer* buffer, VkCommandBuffer commandBuffer,
   }
 
   image_transition_layout(VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image->mipLevels - 1, 1,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, image->mipLevels - 1, 1, 0, 1,
       commandBuffer, image);
 }
 
@@ -213,4 +212,4 @@ void image_destroy(Image* image, VkDevice logicalDevice)
     vkFreeMemory(logicalDevice, image->memory, NULL);
   }
 }
-
+ 

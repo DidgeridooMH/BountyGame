@@ -5,7 +5,7 @@
 #include "Otter/Math/MatDef.h"
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/Pipeline/Pipeline.h"
-#include "Otter/Render/RenderStack.h"
+#include "Otter/Render/RenderPass/GBufferPass.h"
 #include "Otter/Render/Texture/ImageSampler.h"
 #include "Otter/Render/Uniform/Material.h"
 #include "Otter/Util/Log.h"
@@ -100,12 +100,12 @@ bool g_buffer_pipeline_create(const char* shaderDirectory,
       .rasterizationSamples = VK_SAMPLE_COUNT_1_BIT,
       .minSampleShading     = 1.0f};
 
-  VkPipelineColorBlendAttachmentState colorBlendAttachment[G_BUFFER_LAYERS] = {
-      0};
+  VkPipelineColorBlendAttachmentState
+      colorBlendAttachment[NUM_OF_GBUFFER_PASS_LAYERS] = {0};
   // TODO: Fix transparency pipeline. This seems super complex.
   for (int i = 0; i < _countof(colorBlendAttachment); i++)
   {
-    colorBlendAttachment[i].blendEnable = i == RSL_COLOR ? VK_TRUE : VK_FALSE;
+    colorBlendAttachment[i].blendEnable = i == GBL_COLOR ? VK_TRUE : VK_FALSE;
     colorBlendAttachment[i].srcColorBlendFactor = VK_BLEND_FACTOR_SRC_ALPHA;
     colorBlendAttachment[i].dstColorBlendFactor =
         VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA;
@@ -277,7 +277,6 @@ void g_buffer_pipeline_write_vp(VkCommandBuffer commandBuffer,
       pipeline->layout, 0, 1, &gBufferDescriptorSet, 0, NULL);
 }
 
-// TODO: Rework this so that we aren't writing a descriptor set for each object.
 void g_buffer_pipeline_write_material(VkCommandBuffer commandBuffer,
     VkDescriptorPool descriptorPool, VkDevice logicalDevice, Material* material,
     GBufferPipeline* pipeline)

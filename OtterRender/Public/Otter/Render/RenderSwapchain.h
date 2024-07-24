@@ -9,6 +9,8 @@ typedef struct RenderSwapchain
   VkSwapchainKHR swapchain;
   VkSurfaceFormatKHR format;
   VkExtent2D extents;
+  VkRenderPass gbufferPass;
+  VkRenderPass lightingPass;
   RenderStack* renderStacks;
   uint32_t numOfSwapchainImages;
 } RenderSwapchain;
@@ -23,8 +25,7 @@ void render_swapchain_destroy(
     RenderSwapchain* renderSwapchain, VkDevice logicalDevice);
 
 bool render_swapchain_create_render_stacks(RenderSwapchain* renderSwapchain,
-    VkPhysicalDevice physicalDevice, VkDevice logicalDevice,
-    VkRenderPass renderPass);
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice);
 
 bool render_swapchain_get_next_image(RenderSwapchain* swapchain,
     VkDevice logicalDevice, VkFence previousRenderFinished,
