@@ -132,9 +132,6 @@ bool lighting_pass_create(LightingPass* lightingPass, GBufferPass* gbufferPass,
       gbufferPass->bufferAttachments[GBL_COLOR],
       gbufferPass->bufferAttachments[GBL_MATERIAL], lightingPass->finalImage};
 
-  LOG_DEBUG("GBUFFER: %p", gbufferPass->gBufferImage.image);
-  LOG_DEBUG("FINAL: %p", renderImage);
-
   VkFramebufferCreateInfo framebufferCreateInfo = {
       .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
       .renderPass      = renderPass,
@@ -160,4 +157,3 @@ void lighting_pass_destroy(LightingPass* lightingPass, VkDevice logicalDevice)
   vkDestroyImageView(logicalDevice, lightingPass->finalImage, NULL);
   vkDestroyFramebuffer(logicalDevice, lightingPass->framebuffer, NULL);
 }
-

@@ -29,3 +29,6 @@ OTTERRENDER_API void gpu_buffer_map_all(
 
 OTTERRENDER_API void gpu_buffer_unmap(
     GpuBuffer* buffer, VkDevice logicalDevice);
+
+OTTERRENDER_API VkDeviceAddress gpu_buffer_get_device_address(
+    GpuBuffer* buffer, VkDevice logicalDevice);

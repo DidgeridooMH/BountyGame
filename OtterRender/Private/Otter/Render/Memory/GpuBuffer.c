@@ -3,8 +3,8 @@
 #include "Otter/Render/Memory/MemoryType.h"
 #include "Otter/Util/Log.h"
 
-// TODO: We should really be only allocating one buffer for the MVP, then
-// binding different locations for each model.
+static size_t g_allocations = 0;
+
 bool gpu_buffer_allocate(GpuBuffer* buffer, VkDeviceSize size,
     VkBufferUsageFlags usage, VkMemoryPropertyFlags memoryProperties,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
@@ -16,10 +16,10 @@ bool gpu_buffer_allocate(GpuBuffer* buffer, VkDeviceSize size,
       .sType = VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO,
       .size  = buffer->size,
       .usage = usage};
-
   if (vkCreateBuffer(logicalDevice, &createInfo, NULL, &buffer->buffer)
       != VK_SUCCESS)
   {
+    LOG_ERROR("Failed to create buffer of size %lu", size);
     return false;
   }
 
@@ -36,8 +36,15 @@ bool gpu_buffer_allocate(GpuBuffer* buffer, VkDeviceSize size,
     return false;
   }
 
+  VkMemoryAllocateFlagsInfo allocateFlags = {
+      .sType = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_FLAGS_INFO,
+      .flags = usage & VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+                 ? VK_MEMORY_ALLOCATE_DEVICE_ADDRESS_BIT
+                 : 0,
+  };
   VkMemoryAllocateInfo allocateInfo = {
       .sType           = VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO,
+      .pNext           = &allocateFlags,
       .allocationSize  = memoryRequirements.size,
       .memoryTypeIndex = memoryIndex};
   if (vkAllocateMemory(logicalDevice, &allocateInfo, NULL, &buffer->memory)
@@ -51,10 +58,13 @@ bool gpu_buffer_allocate(GpuBuffer* buffer, VkDeviceSize size,
   if (vkBindBufferMemory(logicalDevice, buffer->buffer, buffer->memory, 0)
       != VK_SUCCESS)
   {
+    LOG_ERROR("Unable to bind buffer memory.");
     vkFreeMemory(logicalDevice, buffer->memory, NULL);
     vkDestroyBuffer(logicalDevice, buffer->buffer, NULL);
     return false;
   }
+
+  LOG_DEBUG("Allocation %lu: %lu bytes", g_allocations++, size);
 
   return true;
 }
@@ -63,6 +73,8 @@ void gpu_buffer_free(GpuBuffer* buffer, VkDevice logicalDevice)
 {
   vkFreeMemory(logicalDevice, buffer->memory, NULL);
   vkDestroyBuffer(logicalDevice, buffer->buffer, NULL);
+
+  g_allocations -= 1;
 }
 
 bool gpu_buffer_write(GpuBuffer* buffer, const uint8_t* data, VkDeviceSize size,
@@ -108,3 +120,13 @@ void gpu_buffer_unmap(GpuBuffer* buffer, VkDevice logicalDevice)
 {
   vkUnmapMemory(logicalDevice, buffer->memory);
 }
+
+VkDeviceAddress gpu_buffer_get_device_address(
+    GpuBuffer* buffer, VkDevice logicalDevice)
+{
+  return vkGetBufferDeviceAddress(
+      logicalDevice, &(VkBufferDeviceAddressInfo){
+                         .sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
+                         .buffer = buffer->buffer});
+}
+

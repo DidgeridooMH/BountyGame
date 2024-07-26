@@ -257,6 +257,8 @@ int WINAPI wWinMain(
     GlbAssetImage* assetTexture = auto_array_get(&asset.images, i);
 
     Texture* sampler = auto_array_get(&textureImages, i);
+    // TODO: This creates way too many buffers via the transfer buffer. Maybe
+    // have a scratch buffer for large loads
     if (!texture_create(sampler, assetTexture->data, assetTexture->width,
             assetTexture->height, assetTexture->channels,
             assetTexture->colorType == GICT_SRGB ? TT_COLOR : TT_NONCOLOR, true,

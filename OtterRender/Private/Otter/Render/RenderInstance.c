@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan_core.h>
 
+#include "Otter/Render/RayTracing/AccelerationStructure.h"
 #include "Otter/Render/RenderPass/GBufferPass.h"
 #include "Otter/Render/RenderPass/LightingPass.h"
 #include "Otter/Render/RenderQueue.h"
@@ -258,15 +259,21 @@ static bool render_instance_fetch_device(RenderInstance* renderInstance)
   }
 
   renderInstance->physicalDevice = availableDevices[0];
-  VkPhysicalDeviceProperties properties;
-  vkGetPhysicalDeviceProperties(availableDevices[0], &properties);
+  VkPhysicalDeviceRayTracingPipelinePropertiesKHR rayTracingProperties = {
+      .sType =
+          VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_PROPERTIES_KHR};
+  VkPhysicalDeviceProperties2 properties = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_PROPERTIES_2,
+      .pNext = &rayTracingProperties};
+  vkGetPhysicalDeviceProperties2(availableDevices[0], &properties);
+
   VkPhysicalDeviceFeatures features;
   vkGetPhysicalDeviceFeatures(availableDevices[0], &features);
   for (uint32_t i = 1; i < physicalDeviceCount; i++)
   {
-    vkGetPhysicalDeviceProperties(availableDevices[i], &properties);
+    vkGetPhysicalDeviceProperties2(availableDevices[i], &properties);
     vkGetPhysicalDeviceFeatures(availableDevices[i], &features);
-    if (properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
+    if (properties.properties.deviceType == VK_PHYSICAL_DEVICE_TYPE_DISCRETE_GPU
         && features.independentBlend == VK_TRUE
         && features.samplerAnisotropy == VK_TRUE)
     {
@@ -277,7 +284,11 @@ static bool render_instance_fetch_device(RenderInstance* renderInstance)
 
   free(availableDevices);
 
-  LOG_DEBUG("Using %s for rendering", properties.deviceName);
+  LOG_DEBUG("Using %s for rendering", properties.properties.deviceName);
+  LOG_DEBUG("Raytracing is %s", rayTracingProperties.shaderGroupHandleSize > 0
+                                    ? "available"
+                                    : "not "
+                                      "available");
 
   return true;
 }
@@ -392,9 +403,25 @@ static bool render_instance_find_queue_families(RenderInstance* renderInstance)
 static bool render_instance_create_logical_device(
     RenderInstance* renderInstance)
 {
-  const char* deviceExtensions[] = {VK_KHR_SWAPCHAIN_EXTENSION_NAME};
-  const VkPhysicalDeviceFeatures deviceFeatures = {
-      .independentBlend = VK_TRUE, .samplerAnisotropy = VK_TRUE};
+  // TODO: Make raytracing optional
+  const char* deviceExtensions[] = {
+      VK_KHR_SWAPCHAIN_EXTENSION_NAME,
+      VK_KHR_ACCELERATION_STRUCTURE_EXTENSION_NAME,
+      VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
+      VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
+  };
+  VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = {
+      .sType =
+          VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
+      .accelerationStructure = VK_TRUE};
+  VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
+      .pNext = &accelerationStructureFeatures,
+      .bufferDeviceAddress = VK_TRUE};
+  const VkPhysicalDeviceFeatures2KHR deviceFeatures = {
+      .sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR,
+      .pNext    = &bufferDeviceAddressFeatures,
+      .features = {.independentBlend = VK_TRUE, .samplerAnisotropy = VK_TRUE}};
   float queuePriority = 0.0f;
 
   VkDeviceQueueCreateInfo deviceQueueCreateInfo = {
@@ -406,11 +433,11 @@ static bool render_instance_create_logical_device(
 
   VkDeviceCreateInfo deviceCreateInfo = {
       .sType                   = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO,
+      .pNext                   = &deviceFeatures,
       .queueCreateInfoCount    = 1,
       .pQueueCreateInfos       = &deviceQueueCreateInfo,
-      .enabledExtensionCount   = 1,
-      .ppEnabledExtensionNames = deviceExtensions,
-      .pEnabledFeatures        = &deviceFeatures};
+      .enabledExtensionCount   = _countof(deviceExtensions),
+      .ppEnabledExtensionNames = deviceExtensions};
 
   if (vkCreateDevice(renderInstance->physicalDevice, &deviceCreateInfo, NULL,
           &renderInstance->logicalDevice)
@@ -655,6 +682,7 @@ RenderInstance* render_instance_create(HWND window, const char* shaderDirectory)
 
   // TODO: Implement system to set system settings and apply those changes.
   renderInstance->settings.hdr = renderInstance->capabilities.hdr;
+  LOG_DEBUG("HDR is %s", renderInstance->settings.hdr ? "enabled" : "disabled");
 
 #ifdef _DEBUG
   if (renderInstance->capabilities.debugUtils)
@@ -745,6 +773,12 @@ RenderInstance* render_instance_create(HWND window, const char* shaderDirectory)
           _countof(vertices), indices, _countof(indices),
           renderInstance->physicalDevice, renderInstance->logicalDevice,
           renderInstance->commandPool, transferQueue))
+  {
+    return NULL;
+  }
+
+  // TODO: Check if raytracing is allowed.
+  if (!acceleration_structure_load_functions(renderInstance->logicalDevice))
   {
     return NULL;
   }
@@ -896,4 +930,3 @@ void render_instance_queue_mesh_draw(Mesh* mesh, Material* material,
   command->material = material;
   memcpy(&command->transform, transform, sizeof(Mat4));
 }
-

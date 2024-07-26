@@ -6,6 +6,7 @@ set(SOURCES
   Private/Otter/Render/Pipeline/GBufferPipeline.c
   Private/Otter/Render/Pipeline/PbrPipeline.c
   Private/Otter/Render/Pipeline/Pipeline.c
+  Private/Otter/Render/RayTracing/AccelerationStructure.c
   Private/Otter/Render/Texture/Image.c
   Private/Otter/Render/Texture/ImageSampler.c
   Private/Otter/Render/Texture/Texture.c
@@ -31,6 +32,9 @@ set(PUBLIC_HEADERS
   Public/Otter/Render/Pipeline/GBufferPipeline.h
   Public/Otter/Render/Pipeline/PbrPipeline.h
   Public/Otter/Render/Pipeline/Pipeline.h
+  Public/Otter/Render/RayTracing/AccelerationStructure.h
+  Public/Otter/Render/RenderPass/GBufferPass.h
+  Public/Otter/Render/RenderPass/LightingPass.h
   Public/Otter/Render/Texture/Image.h
   Public/Otter/Render/Texture/ImageSampler.h
   Public/Otter/Render/Texture/Texture.h

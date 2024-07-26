@@ -6,6 +6,7 @@
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/Pipeline/GBufferPipeline.h"
 #include "Otter/Render/Pipeline/PbrPipeline.h"
+#include "Otter/Render/RayTracing/AccelerationStructure.h"
 #include "Otter/Render/RenderStack.h"
 #include "Otter/Util/AutoArray.h"
 
@@ -30,6 +31,10 @@ typedef struct RenderFrame
 
   AutoArray renderQueue;
   AutoArray perRenderBuffers;
+
+  // TODO: this should only be created when raytracing is enabled.
+  bool accelerationStructureInitialized;
+  AccelerationStructure accelerationStructure;
 } RenderFrame;
 
 bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,

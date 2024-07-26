@@ -26,11 +26,15 @@ bool mesh_create(Mesh* mesh, const void* vertices, uint64_t vertexSize,
     return false;
   }
 
+  VkBufferUsageFlags usage =
+      VK_BUFFER_USAGE_TRANSFER_DST_BIT
+      | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
+      | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR;
   if (!gpu_buffer_allocate(&mesh->vertices, numOfVertices * vertexSize,
-          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+          VK_BUFFER_USAGE_VERTEX_BUFFER_BIT | usage,
           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice)
       || !gpu_buffer_allocate(&mesh->indices, numOfIndices * sizeof(indices[0]),
-          VK_BUFFER_USAGE_INDEX_BUFFER_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+          VK_BUFFER_USAGE_INDEX_BUFFER_BIT | usage,
           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice))
   {
     LOG_ERROR("There was a problem allocating the mesh");

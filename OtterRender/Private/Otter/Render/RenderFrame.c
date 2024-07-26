@@ -157,6 +157,10 @@ bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
   auto_array_create(&renderFrame->renderQueue, sizeof(RenderCommand));
   auto_array_create(&renderFrame->perRenderBuffers, sizeof(GpuBuffer));
 
+  acceleration_structure_create(&renderFrame->accelerationStructure);
+
+  renderFrame->accelerationStructureInitialized = false;
+
   return true;
 }
 
@@ -201,6 +205,9 @@ void render_frame_destroy(
 
   auto_array_destroy(&renderFrame->perRenderBuffers);
   auto_array_destroy(&renderFrame->renderQueue);
+
+  acceleration_structure_destroy(
+      &renderFrame->accelerationStructure, logicalDevice);
 
   vkDestroySemaphore(logicalDevice, renderFrame->imageAvailableSemaphore, NULL);
   vkDestroySemaphore(
@@ -502,6 +509,17 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     vkResetDescriptorPool(logicalDevice, *descriptorPool, 0);
   }
 
+  if (!renderFrame->accelerationStructureInitialized)
+  {
+    if (!acceleration_structure_build(&renderFrame->accelerationStructure,
+            &renderFrame->renderQueue, commandPool, logicalDevice,
+            physicalDevice))
+    {
+      exit(-1);
+    }
+    renderFrame->accelerationStructureInitialized = true;
+  }
+
   render_frame_start_pass(renderFrame->gBufferCommandBuffer, gbufferPass,
       renderStack->gbufferPass.framebuffer,
       renderStack->gbufferPass.gBufferImage.size,
@@ -583,4 +601,4 @@ void render_frame_clear_buffers(
     vkResetCommandPool(logicalDevice, *commandPool, 0);
   }
 }
- 
+
