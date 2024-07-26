@@ -65,7 +65,6 @@ static void acceleration_structure_query_build_info(AutoArray* renderCommands,
     VkDeviceSize* totalAsSize, VkDeviceSize* maxScratchSize,
     AccelerationStructureLevel* asl, VkDevice logicalDevice)
 {
-  LOG_DEBUG("Allocating AS buffers");
   auto_array_allocate_many(&asl->accelerationStructures, renderCommands->size);
   auto_array_allocate_many(&asl->asBuffers, renderCommands->size);
   auto_array_allocate_many(&asl->geometries, renderCommands->size);
@@ -138,9 +137,6 @@ static void acceleration_structure_query_build_info(AutoArray* renderCommands,
     *totalAsSize += buildSizesInfo->accelerationStructureSize;
     *maxScratchSize = max(buildSizesInfo->buildScratchSize, *maxScratchSize);
   }
-
-  LOG_DEBUG("Total size: %llu", *totalAsSize);
-  LOG_DEBUG("Scratchbuffer %llu", *maxScratchSize);
 }
 
 static bool acceleration_structure_create_blas(VkQueryPool queryPool,
@@ -236,14 +232,16 @@ bool acceleration_structure_build(AccelerationStructure* accelerationStructure,
     AutoArray* renderCommands, VkCommandPool commandPool,
     VkDevice logicalDevice, VkPhysicalDevice physicalDevice)
 {
-  size_t totalAsSize    = 0;
-  size_t maxScratchSize = 0;
+  const size_t ScratchBufferMultiplier = 4;
+  size_t totalAsSize                   = 0;
+  size_t maxScratchSize                = 0;
 
   acceleration_structure_query_build_info(renderCommands, &totalAsSize,
       &maxScratchSize, &accelerationStructure->bottomLevel, logicalDevice);
 
   GpuBuffer scratchBuffer;
-  if (!gpu_buffer_allocate(&scratchBuffer, 16 * maxScratchSize,
+  if (!gpu_buffer_allocate(&scratchBuffer,
+          ScratchBufferMultiplier * maxScratchSize,
           VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
               | VK_BUFFER_USAGE_STORAGE_BUFFER_BIT,
           VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice))
@@ -290,20 +288,25 @@ bool acceleration_structure_build(AccelerationStructure* accelerationStructure,
 
   const VkDeviceSize BatchSizeLimit = 256 * 1024 * 1024;
   size_t batchByteSize              = 0;
-  size_t batchSize                  = 0;
+  size_t batchScratchSize           = 0;
+  size_t batchStart                 = 0;
   const size_t asSize =
       accelerationStructure->bottomLevel.accelerationStructures.size;
-  for (size_t i = 0; i < asSize; i++)
+  for (size_t i = 0; i <= asSize; i++)
   {
-    VkAccelerationStructureBuildSizesInfoKHR* buildSizesInfo =
-        auto_array_get(&accelerationStructure->bottomLevel.buildSizeInfos, i);
-
-    batchByteSize += buildSizesInfo->accelerationStructureSize;
-    batchSize += 1;
-
-    if (batchSize > 1 || batchByteSize >= BatchSizeLimit || i == asSize - 1)
+    if (i < asSize)
     {
-      LOG_DEBUG("Building batch [%llu, %llu)", i - batchSize + 1, i + 1);
+      VkAccelerationStructureBuildSizesInfoKHR* buildSizesInfo =
+          auto_array_get(&accelerationStructure->bottomLevel.buildSizeInfos, i);
+
+      batchByteSize += buildSizesInfo->accelerationStructureSize;
+      batchScratchSize += buildSizesInfo->buildScratchSize;
+    }
+
+    if (batchScratchSize >= scratchBuffer.size
+        || batchByteSize >= BatchSizeLimit || i == asSize)
+    {
+      // LOG_DEBUG("Building batch [%llu, %llu)", batchStart, i);
 
       if (vkResetCommandBuffer(blasCreateCommandBuffer, 0) != VK_SUCCESS)
       {
@@ -324,7 +327,7 @@ bool acceleration_structure_build(AccelerationStructure* accelerationStructure,
       }
 
       if (!acceleration_structure_create_blas(queryPool,
-              &accelerationStructure->bottomLevel, i - batchSize + 1, i + 1,
+              &accelerationStructure->bottomLevel, batchStart, i,
               scratchBufferAddress, blasCreateCommandBuffer, logicalDevice,
               physicalDevice))
       {
@@ -339,8 +342,6 @@ bool acceleration_structure_build(AccelerationStructure* accelerationStructure,
         gpu_buffer_free(&scratchBuffer, logicalDevice);
         return false;
       }
-
-      LOG_DEBUG("Submitting build");
 
       VkSubmitInfo submitInfo = {
           .sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO,
@@ -362,12 +363,18 @@ bool acceleration_structure_build(AccelerationStructure* accelerationStructure,
         return false;
       }
 
-      batchSize     = 0;
-      batchByteSize = 0;
+      batchStart = i;
+
+      if (i < asSize)
+      {
+        VkAccelerationStructureBuildSizesInfoKHR* buildSizesInfo =
+            auto_array_get(
+                &accelerationStructure->bottomLevel.buildSizeInfos, i);
+        batchByteSize    = buildSizesInfo->accelerationStructureSize;
+        batchScratchSize = buildSizesInfo->buildScratchSize;
+      }
     }
   }
-
-  LOG_DEBUG("cleaning up build");
 
   gpu_buffer_free(&scratchBuffer, logicalDevice);
   vkFreeCommandBuffers(logicalDevice, commandPool, 1, &blasCreateCommandBuffer);

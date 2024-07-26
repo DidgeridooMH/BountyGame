@@ -64,7 +64,7 @@ bool gpu_buffer_allocate(GpuBuffer* buffer, VkDeviceSize size,
     return false;
   }
 
-  LOG_DEBUG("Allocation %lu: %lu bytes", g_allocations++, size);
+  // LOG_DEBUG("Allocation %lu: %lu bytes", g_allocations++, size);
 
   return true;
 }
@@ -129,4 +129,3 @@ VkDeviceAddress gpu_buffer_get_device_address(
                          .sType  = VK_STRUCTURE_TYPE_BUFFER_DEVICE_ADDRESS_INFO,
                          .buffer = buffer->buffer});
 }
-
