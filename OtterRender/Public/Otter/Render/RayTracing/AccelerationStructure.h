@@ -24,6 +24,7 @@ typedef struct AccelerationStructureLevel
 typedef struct AccelerationStructure
 {
   AccelerationStructureLevel bottomLevel;
+  AccelerationStructureLevel topLevel;
 } AccelerationStructure;
 
 OTTERRENDER_API bool acceleration_structure_load_functions(
