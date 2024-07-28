@@ -13,6 +13,8 @@ static PFN_vkCreateAccelerationStructureKHR _vkCreateAccelerationStructureKHR;
 static PFN_vkDestroyAccelerationStructureKHR _vkDestroyAccelerationStructureKHR;
 static PFN_vkCmdBuildAccelerationStructuresKHR
     _vkCmdBuildAccelerationStructuresKHR;
+static PFN_vkCmdWriteAccelerationStructuresPropertiesKHR
+    _vkCmdWriteAccelerationStructuresPropertiesKHR;
 
 #define LOAD_FUNCTION_EXTENSION(device, function)                        \
   _##function = (PFN_##function) vkGetDeviceProcAddr(device, #function); \
@@ -29,6 +31,8 @@ bool acceleration_structure_load_functions(VkDevice logicalDevice)
   LOAD_FUNCTION_EXTENSION(logicalDevice, vkCmdBuildAccelerationStructuresKHR);
   LOAD_FUNCTION_EXTENSION(
       logicalDevice, vkGetAccelerationStructureBuildSizesKHR);
+  LOAD_FUNCTION_EXTENSION(
+      logicalDevice, vkCmdWriteAccelerationStructuresPropertiesKHR);
 
   return true;
 }
@@ -120,8 +124,9 @@ static void acceleration_structure_query_build_info(AutoArray* renderCommands,
         .sType =
             VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
         .type  = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
-        .flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
-        .mode  = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+        .flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR
+               | VK_BUILD_ACCELERATION_STRUCTURE_ALLOW_COMPACTION_BIT_KHR,
+        .mode = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
         .srcAccelerationStructure = VK_NULL_HANDLE,
         .dstAccelerationStructure = VK_NULL_HANDLE,
         .geometryCount            = 1,
@@ -142,12 +147,25 @@ static void acceleration_structure_query_build_info(AutoArray* renderCommands,
 static bool acceleration_structure_create_blas(VkQueryPool queryPool,
     AccelerationStructureLevel* level, size_t startBatch, size_t endBatch,
     VkDeviceAddress scratchBuffer, VkCommandBuffer commandBuffer,
-    VkDevice logicalDevice, VkPhysicalDevice physicalDevice)
+    VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkQueue queue)
 {
-#if 0
-  vkResetQueryPool(logicalDevice, queryPool, 0, numOfCommands);
-  size_t queryCount = 0;
-#endif
+  if (vkResetCommandBuffer(commandBuffer, 0) != VK_SUCCESS)
+  {
+    LOG_ERROR("Failed to create query pool for acceleration structure");
+    return false;
+  }
+  if (vkBeginCommandBuffer(commandBuffer,
+          &(VkCommandBufferBeginInfo){
+              .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+              .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+          })
+      != VK_SUCCESS)
+  {
+    LOG_ERROR("Failed to begin command buffer");
+    return false;
+  }
+
+  vkResetQueryPool(logicalDevice, queryPool, startBatch, endBatch - startBatch);
 
   AutoArray buildRangeInfoPtrs;
   auto_array_create(
@@ -215,12 +233,160 @@ static bool acceleration_structure_create_blas(VkQueryPool queryPool,
       VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, 0, 1,
       &memoryBarrier, 0, NULL, 0, NULL);
 
-#if 0
-    vkCmdWriteAccelerationStructuresPropertiesKHR(commandBuffer, 1,
-        &asUnit->accelerationStructure,
-        VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, queryPool,
-        queryCount++);
-#endif
+  _vkCmdWriteAccelerationStructuresPropertiesKHR(commandBuffer,
+      endBatch - startBatch,
+      auto_array_get(&level->accelerationStructures, startBatch),
+      VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, queryPool,
+      startBatch);
+
+  if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+  {
+    LOG_ERROR("Failed to end command buffer");
+    return false;
+  }
+
+  VkSubmitInfo submitInfo = {
+      .sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+      .commandBufferCount = 1,
+      .pCommandBuffers    = &commandBuffer,
+  };
+  if (vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+  {
+    LOG_ERROR("Failed to queue command buffer");
+    return false;
+  }
+  // TODO: Prefer schronization.
+  VkResult result = vkQueueWaitIdle(queue);
+  if (result != VK_SUCCESS)
+  {
+    LOG_ERROR("Failed to wait on queue idle: %d", result);
+    return false;
+  }
+
+  return true;
+}
+
+static bool acceleration_structure_compact_blas(VkQueryPool queryPool,
+    AccelerationStructureLevel* level, size_t startBatch, size_t endBatch,
+    VkDeviceAddress scratchBuffer, VkCommandBuffer commandBuffer,
+    VkDevice logicalDevice, VkPhysicalDevice physicalDevice, VkQueue queue)
+{
+  if (vkResetCommandBuffer(commandBuffer, 0) != VK_SUCCESS)
+  {
+    LOG_ERROR("Failed to create query pool for acceleration structure");
+    return false;
+  }
+  if (vkBeginCommandBuffer(commandBuffer,
+          &(VkCommandBufferBeginInfo){
+              .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+              .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
+          })
+      != VK_SUCCESS)
+  {
+    LOG_ERROR("Failed to begin command buffer");
+    return false;
+  }
+
+  AutoArray compactedSizes;
+  auto_array_create(&compactedSizes, sizeof(VkDeviceSize));
+  auto_array_allocate_many(&compactedSizes, endBatch - startBatch);
+
+  AutoArray oldAsBuffers;
+  auto_array_create(&oldAsBuffers, sizeof(GpuBuffer));
+  auto_array_allocate_many(&oldAsBuffers, endBatch - startBatch);
+
+  AutoArray oldAccelerationStructures;
+  auto_array_create(
+      &oldAccelerationStructures, sizeof(VkAccelerationStructureKHR));
+  auto_array_allocate_many(&oldAccelerationStructures, endBatch - startBatch);
+
+  vkGetQueryPoolResults(logicalDevice, queryPool, startBatch,
+      compactedSizes.size, compactedSizes.size * sizeof(VkDeviceSize),
+      compactedSizes.buffer, sizeof(VkDeviceSize),
+      VK_QUERY_RESULT_64_BIT | VK_QUERY_RESULT_WAIT_BIT);
+
+  for (size_t i = startBatch; i < endBatch; i++)
+  {
+    VkDeviceSize* compactedSize =
+        auto_array_get(&compactedSizes, i - startBatch);
+    if (*compactedSize == 0)
+    {
+      continue;
+    }
+
+    GpuBuffer* asBuffer = auto_array_get(&level->asBuffers, i);
+    VkAccelerationStructureKHR* accelerationStructure =
+        auto_array_get(&level->accelerationStructures, i);
+
+    GpuBuffer* oldAsBuffer = auto_array_get(&oldAsBuffers, i - startBatch);
+    *oldAsBuffer           = *asBuffer;
+    VkAccelerationStructureKHR* oldAccelerationStructure =
+        auto_array_get(&oldAccelerationStructures, i - startBatch);
+    *oldAccelerationStructure = *accelerationStructure;
+
+    if (!gpu_buffer_allocate(asBuffer, *compactedSize,
+            VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_STORAGE_BIT_KHR
+                | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
+            VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice, logicalDevice))
+    {
+      LOG_ERROR("Failed to allocate buffer for acceleration structure");
+      return false;
+    }
+
+    VkAccelerationStructureCreateInfoKHR createInfo = {
+        .sType  = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_CREATE_INFO_KHR,
+        .type   = VK_ACCELERATION_STRUCTURE_TYPE_BOTTOM_LEVEL_KHR,
+        .size   = *compactedSize,
+        .buffer = asBuffer->buffer,
+    };
+
+    if (_vkCreateAccelerationStructureKHR(
+            logicalDevice, &createInfo, NULL, accelerationStructure)
+        != VK_SUCCESS)
+    {
+      LOG_ERROR("Failed to create acceleration structure");
+      return false;
+    }
+  }
+
+  if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
+  {
+    LOG_ERROR("Failed to end command buffer");
+    return false;
+  }
+
+  VkSubmitInfo submitInfo = (VkSubmitInfo){
+      .sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+      .commandBufferCount = 1,
+      .pCommandBuffers    = &commandBuffer,
+  };
+  if (vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
+  {
+    LOG_ERROR("Failed to queue command buffer");
+    return false;
+  }
+
+  VkResult result = vkQueueWaitIdle(queue);
+  if (result != VK_SUCCESS)
+  {
+    LOG_ERROR("Failed to wait on queue idle: %d", result);
+    return false;
+  }
+
+  for (size_t i = startBatch; i < endBatch; i++)
+  {
+    GpuBuffer* oldAsBuffer = auto_array_get(&oldAsBuffers, i - startBatch);
+    gpu_buffer_free(oldAsBuffer, logicalDevice);
+
+    VkAccelerationStructureKHR* oldAccelerationStructure =
+        auto_array_get(&oldAccelerationStructures, i - startBatch);
+    _vkDestroyAccelerationStructureKHR(
+        logicalDevice, *oldAccelerationStructure, NULL);
+  }
+
+  auto_array_destroy(&compactedSizes);
+  auto_array_destroy(&oldAsBuffers);
+  auto_array_destroy(&oldAccelerationStructures);
 
   return true;
 }
@@ -306,59 +472,22 @@ bool acceleration_structure_build(AccelerationStructure* accelerationStructure,
     if (batchScratchSize >= scratchBuffer.size
         || batchByteSize >= BatchSizeLimit || i == asSize)
     {
-      // LOG_DEBUG("Building batch [%llu, %llu)", batchStart, i);
-
-      if (vkResetCommandBuffer(blasCreateCommandBuffer, 0) != VK_SUCCESS)
-      {
-        LOG_ERROR("Failed to create query pool for acceleration structure");
-        gpu_buffer_free(&scratchBuffer, logicalDevice);
-        return false;
-      }
-      if (vkBeginCommandBuffer(blasCreateCommandBuffer,
-              &(VkCommandBufferBeginInfo){
-                  .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
-                  .flags = VK_COMMAND_BUFFER_USAGE_ONE_TIME_SUBMIT_BIT,
-              })
-          != VK_SUCCESS)
-      {
-        LOG_ERROR("Failed to begin command buffer");
-        gpu_buffer_free(&scratchBuffer, logicalDevice);
-        return false;
-      }
-
       if (!acceleration_structure_create_blas(queryPool,
               &accelerationStructure->bottomLevel, batchStart, i,
               scratchBufferAddress, blasCreateCommandBuffer, logicalDevice,
-              physicalDevice))
+              physicalDevice, queue))
       {
         LOG_ERROR("Failed to create BLAS");
         gpu_buffer_free(&scratchBuffer, logicalDevice);
         return false;
       }
 
-      if (vkEndCommandBuffer(blasCreateCommandBuffer) != VK_SUCCESS)
+      if (!acceleration_structure_compact_blas(queryPool,
+              &accelerationStructure->bottomLevel, batchStart, i,
+              scratchBufferAddress, blasCreateCommandBuffer, logicalDevice,
+              physicalDevice, queue))
       {
-        LOG_ERROR("Failed to end command buffer");
-        gpu_buffer_free(&scratchBuffer, logicalDevice);
-        return false;
-      }
-
-      VkSubmitInfo submitInfo = {
-          .sType              = VK_STRUCTURE_TYPE_SUBMIT_INFO,
-          .commandBufferCount = 1,
-          .pCommandBuffers    = &blasCreateCommandBuffer,
-      };
-      if (vkQueueSubmit(queue, 1, &submitInfo, VK_NULL_HANDLE) != VK_SUCCESS)
-      {
-        LOG_ERROR("Failed to queue command buffer");
-        gpu_buffer_free(&scratchBuffer, logicalDevice);
-        return false;
-      }
-      // TODO: Prefer schronization.
-      VkResult result = vkQueueWaitIdle(queue);
-      if (result != VK_SUCCESS)
-      {
-        LOG_ERROR("Failed to wait on queue idle: %d", result);
+        LOG_ERROR("Failed to compact BLAS");
         gpu_buffer_free(&scratchBuffer, logicalDevice);
         return false;
       }

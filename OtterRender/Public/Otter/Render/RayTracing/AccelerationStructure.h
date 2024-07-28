@@ -40,3 +40,4 @@ OTTERRENDER_API bool acceleration_structure_build(AccelerationStructure* as,
 
 OTTERRENDER_API void acceleration_structure_clear(
     AccelerationStructure* as, VkDevice logicalDevice);
+

@@ -418,9 +418,13 @@ static bool render_instance_create_logical_device(
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
       .pNext = &accelerationStructureFeatures,
       .bufferDeviceAddress = VK_TRUE};
+  VkPhysicalDeviceHostQueryResetFeaturesEXT hostQueryResetFeatures = {
+      .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_HOST_QUERY_RESET_FEATURES_EXT,
+      .pNext = &bufferDeviceAddressFeatures,
+      .hostQueryReset = VK_TRUE};
   const VkPhysicalDeviceFeatures2KHR deviceFeatures = {
       .sType    = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR,
-      .pNext    = &bufferDeviceAddressFeatures,
+      .pNext    = &hostQueryResetFeatures,
       .features = {.independentBlend = VK_TRUE, .samplerAnisotropy = VK_TRUE}};
   float queuePriority = 0.0f;
 
