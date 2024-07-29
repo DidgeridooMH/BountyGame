@@ -6,6 +6,8 @@
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/Pipeline/GBufferPipeline.h"
 #include "Otter/Render/Pipeline/PbrPipeline.h"
+#include "Otter/Render/Pipeline/RayTracingPipeline.h"
+#include "Otter/Render/RayTracing/ShaderBindingTable.h"
 #include "Otter/Render/RenderFrame.h"
 #include "Otter/Render/RenderSwapchain.h"
 #include "Otter/Render/Uniform/Material.h"
@@ -56,6 +58,8 @@ typedef struct RenderInstance
 
   GBufferPipeline gBufferPipeline;
   PbrPipeline pbrPipeline;
+  RayTracingPipeline rtPipeline;
+  ShaderBindingTable sbt;
   Mesh fullscreenQuad;
 
   Transform cameraTransform;

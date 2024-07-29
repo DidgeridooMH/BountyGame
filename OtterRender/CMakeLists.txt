@@ -6,7 +6,10 @@ set(SOURCES
   Private/Otter/Render/Pipeline/GBufferPipeline.c
   Private/Otter/Render/Pipeline/PbrPipeline.c
   Private/Otter/Render/Pipeline/Pipeline.c
+  Private/Otter/Render/Pipeline/RayTracingPipeline.c
   Private/Otter/Render/RayTracing/AccelerationStructure.c
+  Private/Otter/Render/RayTracing/RayTracingFunctions.c
+  Private/Otter/Render/RayTracing/ShaderBindingTable.c
   Private/Otter/Render/Texture/Image.c
   Private/Otter/Render/Texture/ImageSampler.c
   Private/Otter/Render/Texture/Texture.c
@@ -32,7 +35,10 @@ set(PUBLIC_HEADERS
   Public/Otter/Render/Pipeline/GBufferPipeline.h
   Public/Otter/Render/Pipeline/PbrPipeline.h
   Public/Otter/Render/Pipeline/Pipeline.h
+  Public/Otter/Render/Pipeline/RayTracingPipeline.h
   Public/Otter/Render/RayTracing/AccelerationStructure.h
+  Public/Otter/Render/RayTracing/RayTracingFunctions.h
+  Public/Otter/Render/RayTracing/ShaderBindingTable.h
   Public/Otter/Render/RenderPass/GBufferPass.h
   Public/Otter/Render/RenderPass/LightingPass.h
   Public/Otter/Render/Texture/Image.h
@@ -67,6 +73,9 @@ set(SHADERS
   Shaders/gbuffer.frag.glsl
   Shaders/pbr.vert.glsl
   Shaders/pbr.frag.glsl
+  Shaders/rt.rchit.glsl
+  Shaders/rt.rmiss.glsl
+  Shaders/rt.rgen.glsl
 )
 
 foreach(SHADER ${SHADERS})
@@ -74,7 +83,7 @@ foreach(SHADER ${SHADERS})
   set(SPIRV "${CMAKE_BINARY_DIR}/Shaders/${FILE_NAME}.spv")
   add_custom_command(
     OUTPUT ${SPIRV}
-    COMMAND ${GLSL_VALIDATOR} -V ${CMAKE_CURRENT_SOURCE_DIR}/${SHADER} -o ${SPIRV}
+    COMMAND ${GLSL_VALIDATOR} -V --target-env vulkan1.3 ${CMAKE_CURRENT_SOURCE_DIR}/${SHADER} -o ${SPIRV}
     DEPENDS ${SHADER}
   )
   list(APPEND SPIRV_BINARY_FILES ${SPIRV})

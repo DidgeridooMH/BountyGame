@@ -19,8 +19,8 @@ typedef struct PbrPipeline
 } PbrPipeline;
 
 bool pbr_pipeline_create(const char* shaderDirectory, VkDevice logicalDevice,
-    VkRenderPass renderPass, PbrPipeline* material);
-void pbr_pipeline_destroy(PbrPipeline* material, VkDevice logicalDevice);
+    VkRenderPass renderPass, PbrPipeline* pipeline);
+void pbr_pipeline_destroy(PbrPipeline* pipeline, VkDevice logicalDevice);
 
 void pbr_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
     VkDescriptorPool descriptorPool, VkDevice logicalDevice,

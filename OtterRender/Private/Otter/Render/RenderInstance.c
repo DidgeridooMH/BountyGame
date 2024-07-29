@@ -2,7 +2,7 @@
 
 #include <vulkan/vulkan_core.h>
 
-#include "Otter/Render/RayTracing/AccelerationStructure.h"
+#include "Otter/Render/RayTracing/RayTracingFunctions.h"
 #include "Otter/Render/RenderPass/GBufferPass.h"
 #include "Otter/Render/RenderPass/LightingPass.h"
 #include "Otter/Render/RenderQueue.h"
@@ -410,9 +410,15 @@ static bool render_instance_create_logical_device(
       VK_KHR_RAY_TRACING_PIPELINE_EXTENSION_NAME,
       VK_KHR_DEFERRED_HOST_OPERATIONS_EXTENSION_NAME,
   };
+  VkPhysicalDeviceRayTracingPipelineFeaturesKHR rayTracingPipelineFeatures = {
+      .sType =
+          VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_RAY_TRACING_PIPELINE_FEATURES_KHR,
+      .rayTracingPipeline = VK_TRUE,
+  };
   VkPhysicalDeviceAccelerationStructureFeaturesKHR accelerationStructureFeatures = {
       .sType =
           VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_ACCELERATION_STRUCTURE_FEATURES_KHR,
+      .pNext                 = &rayTracingPipelineFeatures,
       .accelerationStructure = VK_TRUE};
   VkPhysicalDeviceBufferDeviceAddressFeatures bufferDeviceAddressFeatures = {
       .sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_BUFFER_DEVICE_ADDRESS_FEATURES,
@@ -782,7 +788,20 @@ RenderInstance* render_instance_create(HWND window, const char* shaderDirectory)
   }
 
   // TODO: Check if raytracing is allowed.
-  if (!acceleration_structure_load_functions(renderInstance->logicalDevice))
+  if (!ray_tracing_load_functions(renderInstance->logicalDevice))
+  {
+    return NULL;
+  }
+
+  if (!ray_tracing_pipeline_create(shaderDirectory,
+          renderInstance->logicalDevice, &renderInstance->rtPipeline))
+  {
+    return NULL;
+  }
+
+  if (!shader_binding_table_create(&renderInstance->sbt,
+          renderInstance->physicalDevice, renderInstance->logicalDevice,
+          renderInstance->rtPipeline.pipeline))
   {
     return NULL;
   }
@@ -816,6 +835,11 @@ void render_instance_destroy(RenderInstance* renderInstance)
       &renderInstance->pbrPipeline, renderInstance->logicalDevice);
   g_buffer_pipeline_destroy(
       &renderInstance->gBufferPipeline, renderInstance->logicalDevice);
+  ray_tracing_pipeline_destroy(
+      &renderInstance->rtPipeline, renderInstance->logicalDevice);
+
+  shader_binding_table_destroy(
+      &renderInstance->sbt, renderInstance->logicalDevice);
 
   LOG_DEBUG("Destroying command pool");
   if (renderInstance->commandPool != NULL)
@@ -934,3 +958,4 @@ void render_instance_queue_mesh_draw(Mesh* mesh, Material* material,
   command->material = material;
   memcpy(&command->transform, transform, sizeof(Mat4));
 }
+

@@ -1,41 +1,11 @@
 #include "Otter/Render/RayTracing/AccelerationStructure.h"
 
 #include <stdlib.h>
-#include <vulkan/vulkan_core.h>
 
 #include "Otter/Render/Memory/GpuBuffer.h"
+#include "Otter/Render/RayTracing/RayTracingFunctions.h"
 #include "Otter/Render/RenderQueue.h"
 #include "Otter/Util/Log.h"
-
-static PFN_vkGetAccelerationStructureBuildSizesKHR
-    _vkGetAccelerationStructureBuildSizesKHR;
-static PFN_vkCreateAccelerationStructureKHR _vkCreateAccelerationStructureKHR;
-static PFN_vkDestroyAccelerationStructureKHR _vkDestroyAccelerationStructureKHR;
-static PFN_vkCmdBuildAccelerationStructuresKHR
-    _vkCmdBuildAccelerationStructuresKHR;
-static PFN_vkCmdWriteAccelerationStructuresPropertiesKHR
-    _vkCmdWriteAccelerationStructuresPropertiesKHR;
-
-#define LOAD_FUNCTION_EXTENSION(device, function)                        \
-  _##function = (PFN_##function) vkGetDeviceProcAddr(device, #function); \
-  if (function == NULL)                                                  \
-  {                                                                      \
-    LOG_ERROR("Failed to load " #function);                              \
-    return false;                                                        \
-  }
-
-bool acceleration_structure_load_functions(VkDevice logicalDevice)
-{
-  LOAD_FUNCTION_EXTENSION(logicalDevice, vkCreateAccelerationStructureKHR);
-  LOAD_FUNCTION_EXTENSION(logicalDevice, vkDestroyAccelerationStructureKHR);
-  LOAD_FUNCTION_EXTENSION(logicalDevice, vkCmdBuildAccelerationStructuresKHR);
-  LOAD_FUNCTION_EXTENSION(
-      logicalDevice, vkGetAccelerationStructureBuildSizesKHR);
-  LOAD_FUNCTION_EXTENSION(
-      logicalDevice, vkCmdWriteAccelerationStructuresPropertiesKHR);
-
-  return true;
-}
 
 void acceleration_structure_create(AccelerationStructure* as)
 {

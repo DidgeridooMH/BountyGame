@@ -1,0 +1,5 @@
+struct HitPayload
+{
+  bool hit;
+};
+
