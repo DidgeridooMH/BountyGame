@@ -20,6 +20,9 @@ int main()
   wWinMain(GetModuleHandle(NULL), NULL, L"", 1);
 }
 
+static Vec3 g_cubeMovement  = {16.0f, -16.0f, 16.0f};
+static bool g_cubeDirection = false;
+
 static void pseudoOnUpdate(
     InputMap* map, RenderInstance* renderInstance, float deltaTime)
 {
@@ -117,6 +120,16 @@ static void pseudoOnUpdate(
       break;
     }
     timer = 0.0f;
+  }
+
+  g_cubeMovement.x += deltaTime * 10.0f * (g_cubeDirection ? -1.0f : 1.0f);
+  if (g_cubeMovement.x > 16.0f)
+  {
+    g_cubeDirection = true;
+  }
+  else if (g_cubeMovement.x < -16.0f)
+  {
+    g_cubeDirection = false;
   }
 }
 
@@ -407,7 +420,8 @@ int WINAPI wWinMain(
     // Draw light source
     Mat4 lightTransform;
     mat4_identity(lightTransform);
-    mat4_translate(lightTransform, 16.0f, -16.0f, 16.0f);
+    mat4_translate(
+        lightTransform, g_cubeMovement.x, g_cubeMovement.y, g_cubeMovement.z);
     render_instance_queue_mesh_draw(
         &cube, &defaultMaterial, lightTransform, renderInstance);
 
