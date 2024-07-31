@@ -398,8 +398,8 @@ static void render_frame_render_g_buffer(RenderFrame* renderFrame,
   mat4_rotate(
       vp.view, -camera->rotation.x, -camera->rotation.y, -camera->rotation.z);
   projection_create_perspective(vp.projection, 90.0f,
-      (float) renderStack->gbufferPass.gBufferImage.size.width
-          / (float) renderStack->gbufferPass.gBufferImage.size.height,
+      (float) renderStack->lightingPass.imageSize.width
+          / (float) renderStack->lightingPass.imageSize.height,
       1000.0f, 0.1f);
 
   if (!gpu_buffer_write(&renderFrame->vpBuffer, (uint8_t*) &vp,
@@ -439,7 +439,7 @@ static void render_frame_render_g_buffer(RenderFrame* renderFrame,
       params->framebuffer      = renderStack->gbufferPass.framebuffer;
       params->logicalDevice    = logicalDevice;
       params->physicalDevice   = physicalDevice;
-      params->imageSize        = renderStack->gbufferPass.gBufferImage.size;
+      params->imageSize        = renderStack->gbufferPass.bufferImages[0].size;
 
       lastMaterialIndex = i + 1;
     }
@@ -546,7 +546,7 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
 
   render_frame_start_pass(renderFrame->gBufferCommandBuffer, gbufferPass,
       renderStack->gbufferPass.framebuffer,
-      renderStack->gbufferPass.gBufferImage.size,
+      renderStack->gbufferPass.bufferImages[0].size,
       (const VkClearValue[]){{0.0f, 0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f, 1.0f},
           {0.0f, 0.0f, 0.0f, 1.0f}, {0.0f, 0.0f, 0.0f, 1.0f}, {1.0f, 1.0f}},
       NUM_OF_GBUFFER_PASS_LAYERS + 1,
@@ -578,8 +578,11 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
       &renderStack->lightingPass.shadowMap);
   renderFrame->shadowMapInitialized = true;
   image_transition_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
-      VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 2, renderFrame->shadowCommandBuffer,
-      &renderStack->gbufferPass.gBufferImage);
+      VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1, renderFrame->shadowCommandBuffer,
+      &renderStack->gbufferPass.bufferImages[GBL_POSITION]);
+  image_transition_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1, renderFrame->shadowCommandBuffer,
+      &renderStack->gbufferPass.bufferImages[GBL_NORMAL]);
 
   vkCmdBindPipeline(renderFrame->shadowCommandBuffer,
       VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rtPipeline->pipeline);
@@ -596,8 +599,13 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
       VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1,
       renderFrame->shadowCommandBuffer, &renderStack->lightingPass.shadowMap);
   image_transition_layout(VK_IMAGE_LAYOUT_GENERAL,
-      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 2,
-      renderFrame->shadowCommandBuffer, &renderStack->gbufferPass.gBufferImage);
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1,
+      renderFrame->shadowCommandBuffer,
+      &renderStack->gbufferPass.bufferImages[GBL_POSITION]);
+  image_transition_layout(VK_IMAGE_LAYOUT_GENERAL,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1,
+      renderFrame->shadowCommandBuffer,
+      &renderStack->gbufferPass.bufferImages[GBL_NORMAL]);
 
   if (vkEndCommandBuffer(renderFrame->shadowCommandBuffer) != VK_SUCCESS)
   {
@@ -689,3 +697,4 @@ void render_frame_clear_buffers(
     vkResetCommandPool(logicalDevice, *commandPool, 0);
   }
 }
+

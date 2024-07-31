@@ -15,7 +15,8 @@ typedef enum GBufferPassLayers
 
 typedef struct GBufferPass
 {
-  Image gBufferImage;
+  // TODO: Get rid of position and do depth reconstruction.
+  Image bufferImages[NUM_OF_GBUFFER_PASS_LAYERS];
   Image depthBuffer;
   VkImageView bufferAttachments[NUM_OF_GBUFFER_PASS_LAYERS + 1];
   VkFramebuffer framebuffer;

@@ -22,4 +22,6 @@ typedef struct Material
   ImageSampler* metallicRoughnessTexture;
   ImageSampler* occlusionTexture;
   ImageSampler* normalTexture;
+  uint32_t alphaMode;
+  float alphaCutoff;
 } Material;

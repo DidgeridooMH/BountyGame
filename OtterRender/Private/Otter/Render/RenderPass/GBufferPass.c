@@ -9,7 +9,7 @@ bool gbuffer_pass_create_render_pass(
 {
   VkAttachmentDescription attachments[] = {
       {
-          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
+          .format        = VK_FORMAT_R32G32B32A32_SFLOAT,
           .samples       = VK_SAMPLE_COUNT_1_BIT,
           .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
           .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -25,7 +25,7 @@ bool gbuffer_pass_create_render_pass(
           .finalLayout   = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
       },
       {
-          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
+          .format        = VK_FORMAT_R8G8B8A8_UNORM,
           .samples       = VK_SAMPLE_COUNT_1_BIT,
           .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
           .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -112,38 +112,47 @@ bool gbuffer_pass_create_render_pass(
   return true;
 }
 
-bool gbuffer_pass_create(GBufferPass* gbufferPass, VkRenderPass renderPass,
-    VkExtent2D extents, VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
+static bool gbuffer_pass_create_image(VkExtent2D extents, VkFormat format,
+    Image* image, VkImageView* imageView, VkPhysicalDevice physicalDevice,
+    VkDevice logicalDevice)
 {
-  if (!image_create(extents, NUM_OF_GBUFFER_PASS_LAYERS,
-          VK_FORMAT_R16G16B16A16_SFLOAT,
+  if (!image_create(extents, 1, format,
           VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
               | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
               | VK_IMAGE_USAGE_STORAGE_BIT,
           false, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice,
-          logicalDevice, &gbufferPass->gBufferImage))
+          logicalDevice, image))
   {
     return false;
   }
 
   VkImageViewCreateInfo gBufferImageViewCreateInfo = {
       .sType                         = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
-      .image                         = gbufferPass->gBufferImage.image,
+      .image                         = image->image,
       .viewType                      = VK_IMAGE_VIEW_TYPE_2D,
-      .format                        = VK_FORMAT_R16G16B16A16_SFLOAT,
+      .format                        = format,
       .subresourceRange.aspectMask   = VK_IMAGE_ASPECT_COLOR_BIT,
       .subresourceRange.baseMipLevel = 0,
       .subresourceRange.levelCount   = 1,
       .subresourceRange.baseArrayLayer = 0,
       .subresourceRange.layerCount     = 1,
   };
+  return vkCreateImageView(
+             logicalDevice, &gBufferImageViewCreateInfo, NULL, imageView)
+      == VK_SUCCESS;
+}
 
-  for (int layer = 0; layer < NUM_OF_GBUFFER_PASS_LAYERS; layer++)
+bool gbuffer_pass_create(GBufferPass* gbufferPass, VkRenderPass renderPass,
+    VkExtent2D extents, VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
+{
+  VkFormat gbufferFormats[] = {VK_FORMAT_R32G32B32A32_SFLOAT,
+      VK_FORMAT_R16G16B16A16_SFLOAT, VK_FORMAT_R8G8B8A8_UNORM,
+      VK_FORMAT_R16G16B16A16_SFLOAT};
+  for (int i = 0; i < NUM_OF_GBUFFER_PASS_LAYERS; i++)
   {
-    gBufferImageViewCreateInfo.subresourceRange.baseArrayLayer = layer;
-    if (vkCreateImageView(logicalDevice, &gBufferImageViewCreateInfo, NULL,
-            &gbufferPass->bufferAttachments[layer])
-        != VK_SUCCESS)
+    if (!gbuffer_pass_create_image(extents, gbufferFormats[i],
+            &gbufferPass->bufferImages[i], &gbufferPass->bufferAttachments[i],
+            physicalDevice, logicalDevice))
     {
       return false;
     }
@@ -204,6 +213,7 @@ void gbuffer_pass_destroy(GBufferPass* gbufferPass, VkDevice logicalDevice)
   {
     vkDestroyImageView(
         logicalDevice, gbufferPass->bufferAttachments[layer], NULL);
+    image_destroy(&gbufferPass->bufferImages[layer], logicalDevice);
   }
-  image_destroy(&gbufferPass->gBufferImage, logicalDevice);
 }
+

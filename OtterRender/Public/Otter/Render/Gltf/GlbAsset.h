@@ -36,6 +36,8 @@ typedef struct GlbAssetMaterial
   float roughnessFactor;
   float occlusionStrength;
   Vec3 emissive;
+  GlbMaterialAlphaMode alphaMode;
+  float alphaCutoff;
 } GlbAssetMaterial;
 
 typedef struct GlbAsset

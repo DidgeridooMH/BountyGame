@@ -296,6 +296,8 @@ int WINAPI wWinMain(
     material->normalTexture                        = &defaultTexture.sampler;
     material->metallicRoughnessTexture             = &defaultTexture.sampler;
     material->occlusionTexture                     = &defaultTexture.sampler;
+    material->alphaMode                            = assetMaterial->alphaMode;
+    material->alphaCutoff                          = assetMaterial->alphaCutoff;
 
     if (assetMaterial->baseColorTexture < asset.textures.size)
     {
@@ -422,8 +424,11 @@ int WINAPI wWinMain(
       Material* material =
           stable_auto_array_get(&materials, glbAsset->materialIndex);
 
-      render_instance_queue_mesh_draw(
-          assetMesh, material, glbAsset->transform, renderInstance);
+      if (material->alphaMode == 0)
+      {
+        render_instance_queue_mesh_draw(
+            assetMesh, material, glbAsset->transform, renderInstance);
+      }
     }
     profiler_clock_end("preframe");
 

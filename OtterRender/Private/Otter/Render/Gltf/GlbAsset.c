@@ -236,6 +236,8 @@ OTTERRENDER_API bool glb_load_asset(
     assetMaterial->roughnessFactor   = material->roughnessFactor;
     assetMaterial->occlusionStrength = material->occlusionStrength;
     memcpy(&assetMaterial->emissive, &material->emissiveFactor, sizeof(Vec3));
+    assetMaterial->alphaMode   = material->alphaMode;
+    assetMaterial->alphaCutoff = material->alphaCutoff;
   }
 
   auto_array_create(&asset->textures, sizeof(uint32_t));
@@ -306,3 +308,4 @@ OTTERRENDER_API bool glb_load_asset(
 
   return true;
 }
+ 

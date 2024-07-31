@@ -290,6 +290,8 @@ static void glb_json_chunk_parse_materials(
     material->emissiveFactor.y         = 0.0f;
     material->emissiveFactor.z         = 0.0f;
     material->emissiveTexture          = -1;
+    material->alphaMode                = GLB_MATERIAL_ALPHA_MODE_OPAQUE;
+    material->alphaCutoff              = 0.5f;
 
     JsonValue* materialElement =
         *(JsonValue**) auto_array_get(&materials->array, i);
@@ -455,6 +457,35 @@ static void glb_json_chunk_parse_materials(
       {
         LOG_WARNING("Emissive texture source was not an integer.");
       }
+    }
+
+    JsonValue* alphaMode = hash_map_get_value(
+        &materialElement->object, "alphaMode", strlen("alphaMode"));
+    if (alphaMode != NULL && alphaMode->type == JT_STRING)
+    {
+      if (strcmp(alphaMode->string, "OPAQUE") == 0)
+      {
+        material->alphaMode = GLB_MATERIAL_ALPHA_MODE_OPAQUE;
+      }
+      else if (strcmp(alphaMode->string, "MASK") == 0)
+      {
+        material->alphaMode = GLB_MATERIAL_ALPHA_MODE_MASK;
+      }
+      else if (strcmp(alphaMode->string, "BLEND") == 0)
+      {
+        material->alphaMode = GLB_MATERIAL_ALPHA_MODE_BLEND;
+      }
+      else
+      {
+        LOG_ERROR("Alpha mode was not recognized.");
+      }
+    }
+
+    JsonValue* alphaCutoff = hash_map_get_value(
+        &materialElement->object, "alphaCutoff", strlen("alphaCutoff"));
+    if (alphaCutoff != NULL && alphaCutoff->type == JT_FLOAT)
+    {
+      material->alphaCutoff = alphaCutoff->floatingPoint;
     }
   }
 }

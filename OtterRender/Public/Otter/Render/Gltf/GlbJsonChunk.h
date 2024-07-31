@@ -29,6 +29,13 @@ typedef struct GlbMeshPrimitive
   uint32_t material;
 } GlbMeshPrimitive;
 
+typedef enum GlbMaterialAlphaMode
+{
+  GLB_MATERIAL_ALPHA_MODE_OPAQUE,
+  GLB_MATERIAL_ALPHA_MODE_MASK,
+  GLB_MATERIAL_ALPHA_MODE_BLEND
+} GlbMaterialAlphaMode;
+
 typedef struct GlbMaterial
 {
   Vec4 baseColorFactor;
@@ -41,6 +48,8 @@ typedef struct GlbMaterial
   float occlusionStrength;
   Vec3 emissiveFactor;
   uint32_t emissiveTexture;
+  GlbMaterialAlphaMode alphaMode;
+  float alphaCutoff;
 } GlbMaterial;
 
 typedef struct GlbTexture
@@ -134,4 +143,3 @@ typedef struct GlbJsonChunk
 bool glb_json_chunk_parse(JsonValue* json, GlbJsonChunk* jsonChunk);
 
 void glb_json_chunk_destroy(GlbJsonChunk* jsonChunk);
-

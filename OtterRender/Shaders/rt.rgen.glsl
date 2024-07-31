@@ -41,8 +41,8 @@ void main()
     0,
     0,
     0,
-    position.xyz,
-    0.05f,
+    position.xyz + normal.xyz * 0.001f,
+    0.001f,
     normalize(vec3(1.0f, -1.0f, 1.0f)),
     10000.0f,
     0

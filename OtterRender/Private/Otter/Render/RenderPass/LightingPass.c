@@ -7,7 +7,7 @@ bool lighting_pass_create_render_pass(
 {
   VkAttachmentDescription attachments[] = {
       {
-          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
+          .format        = VK_FORMAT_R32G32B32A32_SFLOAT,
           .samples       = VK_SAMPLE_COUNT_1_BIT,
           .loadOp        = VK_ATTACHMENT_LOAD_OP_LOAD,
           .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -23,7 +23,7 @@ bool lighting_pass_create_render_pass(
           .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
       {
-          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
+          .format        = VK_FORMAT_R8G8B8A8_UNORM,
           .samples       = VK_SAMPLE_COUNT_1_BIT,
           .loadOp        = VK_ATTACHMENT_LOAD_OP_LOAD,
           .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
@@ -201,3 +201,4 @@ void lighting_pass_destroy(LightingPass* lightingPass, VkDevice logicalDevice)
   image_destroy(&lightingPass->shadowMap, logicalDevice);
   vkDestroyImageView(logicalDevice, lightingPass->shadowMapView, NULL);
 }
+
