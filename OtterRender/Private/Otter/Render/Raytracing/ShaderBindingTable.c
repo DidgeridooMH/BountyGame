@@ -22,30 +22,34 @@ bool shader_binding_table_create(ShaderBindingTable* sbt,
   };
   vkGetPhysicalDeviceProperties2(physicalDevice, &properties);
 
-  uint32_t missCount   = 1;
-  uint32_t hitCount    = 1;
-  uint32_t handleCount = 1 + missCount + hitCount;
-  uint32_t handleSize  = shader_binding_table_round_aligned_size(
-      rtProperties.shaderGroupHandleSize,
-      rtProperties.shaderGroupHandleAlignment);
+  const uint32_t raygenCount       = 1;
+  const uint32_t missCount         = 1;
+  const uint32_t hitCount          = 1;
+  const uint32_t handleCount       = raygenCount + missCount + hitCount;
+  const uint32_t handleSize        = rtProperties.shaderGroupHandleSize;
+  const uint32_t alignedHandleSize = shader_binding_table_round_aligned_size(
+      handleSize, rtProperties.shaderGroupHandleAlignment);
 
-  sbt->rgenRegion = (VkStridedDeviceAddressRegionKHR){
-      .stride = shader_binding_table_round_aligned_size(
-          handleSize, rtProperties.shaderGroupBaseAlignment),
-      .size = sbt->rgenRegion.stride,
-  };
+  const uint32_t alignedBaseSize = shader_binding_table_round_aligned_size(
+      alignedHandleSize, rtProperties.shaderGroupBaseAlignment);
+  sbt->rgenRegion.stride = alignedBaseSize;
+  sbt->rgenRegion.size   = sbt->rgenRegion.stride;
+
   sbt->missRegion = (VkStridedDeviceAddressRegionKHR){
-      .stride = handleSize,
+      .stride = alignedHandleSize,
       .size   = shader_binding_table_round_aligned_size(
-          missCount * handleSize, rtProperties.shaderGroupBaseAlignment),
-  };
-  sbt->hitRegion = (VkStridedDeviceAddressRegionKHR){
-      .stride = handleSize,
-      .size   = shader_binding_table_round_aligned_size(
-          hitCount * handleSize, rtProperties.shaderGroupBaseAlignment),
+          missCount * alignedHandleSize, rtProperties.shaderGroupBaseAlignment),
   };
 
-  uint32_t handlesSize = handleCount * rtProperties.shaderGroupHandleSize;
+  sbt->hitRegion = (VkStridedDeviceAddressRegionKHR){
+      .stride = alignedHandleSize,
+      .size   = shader_binding_table_round_aligned_size(
+          hitCount * alignedHandleSize, rtProperties.shaderGroupBaseAlignment),
+  };
+
+  memset(&sbt->callRegion, 0, sizeof(VkStridedDeviceAddressRegionKHR));
+
+  uint32_t handlesSize = handleCount * handleSize;
   uint8_t* handles     = malloc(handlesSize);
   if (handles == NULL)
   {
@@ -62,7 +66,7 @@ bool shader_binding_table_create(ShaderBindingTable* sbt,
 
   VkDeviceSize sbtSize =
       sbt->rgenRegion.size + sbt->missRegion.size + sbt->hitRegion.size;
-  if (!gpu_buffer_allocate(&sbt->sbt, handlesSize,
+  if (!gpu_buffer_allocate(&sbt->sbt, sbtSize,
           VK_BUFFER_USAGE_SHADER_BINDING_TABLE_BIT_KHR
               | VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT,
           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT
@@ -82,21 +86,21 @@ bool shader_binding_table_create(ShaderBindingTable* sbt,
 
   gpu_buffer_map_all(&sbt->sbt, logicalDevice);
   uint8_t* handleMapped = sbt->sbt.mapped;
-  memcpy(handleMapped, handles, rtProperties.shaderGroupHandleSize);
+  memcpy(handleMapped, handles, handleSize);
   handleMapped += sbt->rgenRegion.size;
+
+  uint32_t handleIndex = 1;
 
   for (uint32_t i = 0; i < missCount; ++i)
   {
-    memcpy(handleMapped, handles + (1 + i) * rtProperties.shaderGroupHandleSize,
-        rtProperties.shaderGroupHandleSize);
+    memcpy(handleMapped, handles + (handleIndex++ * handleSize), handleSize);
     handleMapped += sbt->missRegion.stride;
   }
+  handleMapped = sbt->sbt.mapped + sbt->rgenRegion.size + sbt->missRegion.size;
 
   for (uint32_t i = 0; i < hitCount; ++i)
   {
-    memcpy(handleMapped,
-        handles + (1 + missCount + i) * rtProperties.shaderGroupHandleSize,
-        rtProperties.shaderGroupHandleSize);
+    memcpy(handleMapped, handles + (handleIndex++ * handleSize), handleSize);
     handleMapped += sbt->hitRegion.stride;
   }
 

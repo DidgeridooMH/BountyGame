@@ -9,5 +9,5 @@ layout(location = 0) rayPayloadInEXT HitPayload payload;
 
 void main()
 {
-  payload.hit = false;
+  payload.distance = -1;
 }

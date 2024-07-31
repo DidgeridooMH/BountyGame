@@ -7,32 +7,60 @@
 #include "Otter/Render/RenderQueue.h"
 #include "Otter/Util/Log.h"
 
+static void acceleration_structure_create_level(
+    AccelerationStructureLevel* asLevel)
+{
+  auto_array_create(
+      &asLevel->accelerationStructures, sizeof(VkAccelerationStructureKHR));
+  auto_array_create(&asLevel->asBuffers, sizeof(GpuBuffer));
+  auto_array_create(
+      &asLevel->geometries, sizeof(VkAccelerationStructureGeometryKHR));
+  auto_array_create(&asLevel->geometryInfos,
+      sizeof(VkAccelerationStructureBuildGeometryInfoKHR));
+  auto_array_create(&asLevel->buildSizeInfos,
+      sizeof(VkAccelerationStructureBuildSizesInfoKHR));
+  auto_array_create(&asLevel->buildRangeInfos,
+      sizeof(VkAccelerationStructureBuildRangeInfoKHR));
+}
+
 void acceleration_structure_create(AccelerationStructure* as)
 {
-  auto_array_create(&as->bottomLevel.accelerationStructures,
-      sizeof(VkAccelerationStructureKHR));
-  auto_array_create(&as->bottomLevel.asBuffers, sizeof(GpuBuffer));
-  auto_array_create(
-      &as->bottomLevel.geometries, sizeof(VkAccelerationStructureGeometryKHR));
-  auto_array_create(&as->bottomLevel.geometryInfos,
-      sizeof(VkAccelerationStructureBuildGeometryInfoKHR));
-  auto_array_create(&as->bottomLevel.buildSizeInfos,
-      sizeof(VkAccelerationStructureBuildSizesInfoKHR));
-  auto_array_create(&as->bottomLevel.buildRangeInfos,
-      sizeof(VkAccelerationStructureBuildRangeInfoKHR));
+  acceleration_structure_create_level(&as->bottomLevel);
+  acceleration_structure_create_level(&as->topLevel);
+}
+
+static void acceleration_structure_destroy_level(
+    AccelerationStructureLevel* as, VkDevice logicalDevice)
+{
+  for (size_t i = 0; i < as->accelerationStructures.size; i++)
+  {
+    VkAccelerationStructureKHR* accelerationStructure =
+        auto_array_get(&as->accelerationStructures, i);
+    _vkDestroyAccelerationStructureKHR(
+        logicalDevice, *accelerationStructure, NULL);
+  }
+
+  for (size_t i = 0; i < as->asBuffers.size; i++)
+  {
+    GpuBuffer* asBuffer = auto_array_get(&as->asBuffers, i);
+    gpu_buffer_free(asBuffer, logicalDevice);
+  }
+
+  auto_array_destroy(&as->accelerationStructures);
+  auto_array_destroy(&as->asBuffers);
+  auto_array_destroy(&as->geometries);
+  auto_array_destroy(&as->geometryInfos);
+  auto_array_destroy(&as->buildSizeInfos);
+  auto_array_destroy(&as->buildRangeInfos);
 }
 
 void acceleration_structure_destroy(
     AccelerationStructure* as, VkDevice logicalDevice)
 {
-  acceleration_structure_clear(as, logicalDevice);
+  acceleration_structure_destroy_level(&as->bottomLevel, logicalDevice);
+  acceleration_structure_destroy_level(&as->topLevel, logicalDevice);
 
-  auto_array_destroy(&as->bottomLevel.accelerationStructures);
-  auto_array_destroy(&as->bottomLevel.asBuffers);
-  auto_array_destroy(&as->bottomLevel.geometries);
-  auto_array_destroy(&as->bottomLevel.geometryInfos);
-  auto_array_destroy(&as->bottomLevel.buildSizeInfos);
-  auto_array_destroy(&as->bottomLevel.buildRangeInfos);
+  gpu_buffer_free(&as->bottomLevelInstances, logicalDevice);
 }
 
 static void acceleration_structure_query_build_info(VkDeviceSize* totalAsSize,
@@ -168,11 +196,11 @@ static bool acceleration_structure_create_blas(VkQueryPool queryPool,
       VK_PIPELINE_STAGE_ACCELERATION_STRUCTURE_BUILD_BIT_KHR, 0, 1,
       &memoryBarrier, 0, NULL, 0, NULL);
 
-  _vkCmdWriteAccelerationStructuresPropertiesKHR(commandBuffer,
+  /*_vkCmdWriteAccelerationStructuresPropertiesKHR(commandBuffer,
       endBatch - startBatch,
       auto_array_get(&level->accelerationStructures, startBatch),
       VK_QUERY_TYPE_ACCELERATION_STRUCTURE_COMPACTED_SIZE_KHR, queryPool,
-      startBatch);
+      startBatch);*/
 
   if (vkEndCommandBuffer(commandBuffer) != VK_SUCCESS)
   {
@@ -446,14 +474,14 @@ static bool acceleration_structure_build_blas(AccelerationStructure* as,
         return false;
       }
 
-      if (!acceleration_structure_compact_blas(queryPool, &as->bottomLevel,
+      /*if (!acceleration_structure_compact_blas(queryPool, &as->bottomLevel,
               batchStart, i, scratchBufferAddress, commandBuffer, logicalDevice,
               physicalDevice, queue))
       {
         LOG_ERROR("Failed to compact BLAS");
         gpu_buffer_free(&scratchBuffer, logicalDevice);
         return false;
-      }
+      }*/
 
       batchStart = i;
 
@@ -474,8 +502,8 @@ static bool acceleration_structure_build_blas(AccelerationStructure* as,
 }
 
 static bool acceleration_structure_build_tlas(AccelerationStructure* as,
-    VkCommandBuffer commandBuffer, VkPhysicalDevice physicalDevice,
-    VkDevice logicalDevice)
+    RenderCommand* renderCommands, VkCommandBuffer commandBuffer,
+    VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
 {
   if (vkResetCommandBuffer(commandBuffer, 0) != VK_SUCCESS)
   {
@@ -502,25 +530,34 @@ static bool acceleration_structure_build_tlas(AccelerationStructure* as,
   {
     VkAccelerationStructureInstanceKHR* instance =
         auto_array_get(&asInstances, i);
+    VkAccelerationStructureDeviceAddressInfoKHR asDeviceAddress = {
+        .sType =
+            VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_DEVICE_ADDRESS_INFO_KHR,
+        .accelerationStructure = *(VkAccelerationStructureKHR*) auto_array_get(
+            &as->bottomLevel.accelerationStructures, i),
+    };
     *instance = (VkAccelerationStructureInstanceKHR){
         .transform =
             {
                 .matrix =
                     {
                         {
-                            1.0f,
-                            0.0f,
-                            0.0f,
+                            renderCommands[i].transform[0][0],
+                            renderCommands[i].transform[1][0],
+                            renderCommands[i].transform[2][0],
+                            renderCommands[i].transform[3][0],
                         },
                         {
-                            0.0f,
-                            1.0f,
-                            0.0f,
+                            renderCommands[i].transform[0][1],
+                            renderCommands[i].transform[1][1],
+                            renderCommands[i].transform[2][1],
+                            renderCommands[i].transform[3][1],
                         },
                         {
-                            0.0f,
-                            0.0f,
-                            1.0f,
+                            renderCommands[i].transform[0][2],
+                            renderCommands[i].transform[1][2],
+                            renderCommands[i].transform[2][2],
+                            renderCommands[i].transform[3][2],
                         },
                     },
             },
@@ -528,8 +565,9 @@ static bool acceleration_structure_build_tlas(AccelerationStructure* as,
         .mask                                   = 0xFF,
         .instanceShaderBindingTableRecordOffset = 0,
         .flags = VK_GEOMETRY_INSTANCE_TRIANGLE_FACING_CULL_DISABLE_BIT_KHR,
-        .accelerationStructureReference = gpu_buffer_get_device_address(
-            auto_array_get(&as->bottomLevel.asBuffers, i), logicalDevice),
+        .accelerationStructureReference =
+            _vkGetAccelerationStructureDeviceAddressKHR(
+                logicalDevice, &asDeviceAddress),
     };
   }
 
@@ -555,9 +593,8 @@ static bool acceleration_structure_build_tlas(AccelerationStructure* as,
     return false;
   }
 
-  GpuBuffer instancesBuffer;
-  if (!gpu_buffer_allocate(&instancesBuffer,
-          asInstances.size * sizeof(VkAccelerationStructureInstanceKHR),
+  if (!gpu_buffer_allocate(&as->bottomLevelInstances,
+          instancesStagingBuffer.size,
           VK_BUFFER_USAGE_SHADER_DEVICE_ADDRESS_BIT
               | VK_BUFFER_USAGE_ACCELERATION_STRUCTURE_BUILD_INPUT_READ_ONLY_BIT_KHR
               | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -567,7 +604,8 @@ static bool acceleration_structure_build_tlas(AccelerationStructure* as,
     return false;
   }
 
-  gpu_buffer_transfer(&instancesBuffer, &instancesStagingBuffer, commandBuffer);
+  gpu_buffer_transfer(
+      &instancesStagingBuffer, &as->bottomLevelInstances, commandBuffer);
 
   VkMemoryBarrier memoryBarrier = {
       .sType         = VK_STRUCTURE_TYPE_MEMORY_BARRIER,
@@ -589,7 +627,7 @@ static bool acceleration_structure_build_tlas(AccelerationStructure* as,
                   VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_GEOMETRY_INSTANCES_DATA_KHR,
               .arrayOfPointers    = VK_FALSE,
               .data.deviceAddress = gpu_buffer_get_device_address(
-                  &instancesBuffer, logicalDevice),
+                  &as->bottomLevelInstances, logicalDevice),
           },
   };
 
@@ -607,14 +645,26 @@ static bool acceleration_structure_build_tlas(AccelerationStructure* as,
   GpuBuffer* asBuffer = auto_array_allocate(&as->topLevel.asBuffers);
   VkAccelerationStructureBuildGeometryInfoKHR* geometryInfo =
       auto_array_allocate(&as->topLevel.geometryInfos);
-  VkAccelerationStructureBuildSizesInfoKHR* buildSizesInfo =
+  VkAccelerationStructureBuildSizesInfoKHR* buildSizeInfo =
       auto_array_allocate(&as->topLevel.buildSizeInfos);
 
-  VkDeviceSize totalAsSize    = 0;
-  VkDeviceSize maxScratchSize = 0;
-  acceleration_structure_query_build_info(&totalAsSize, &maxScratchSize,
-      &as->topLevel, VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
-      logicalDevice);
+  *geometryInfo = (VkAccelerationStructureBuildGeometryInfoKHR){
+      .sType = VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_GEOMETRY_INFO_KHR,
+      .type  = VK_ACCELERATION_STRUCTURE_TYPE_TOP_LEVEL_KHR,
+      .flags = VK_BUILD_ACCELERATION_STRUCTURE_PREFER_FAST_TRACE_BIT_KHR,
+      .mode  = VK_BUILD_ACCELERATION_STRUCTURE_MODE_BUILD_KHR,
+      .geometryCount = as->topLevel.geometries.size,
+      .pGeometries   = geometry,
+  };
+
+  buildSizeInfo->sType =
+      VK_STRUCTURE_TYPE_ACCELERATION_STRUCTURE_BUILD_SIZES_INFO_KHR;
+  _vkGetAccelerationStructureBuildSizesKHR(logicalDevice,
+      VK_ACCELERATION_STRUCTURE_BUILD_TYPE_DEVICE_KHR, geometryInfo,
+      &buildRangeInfo->primitiveCount, buildSizeInfo);
+
+  VkDeviceSize totalAsSize    = buildSizeInfo->accelerationStructureSize;
+  VkDeviceSize maxScratchSize = buildSizeInfo->buildScratchSize;
 
   GpuBuffer scratchBuffer;
   if (!gpu_buffer_allocate(&scratchBuffer, maxScratchSize,
@@ -723,30 +773,43 @@ bool acceleration_structure_build(AccelerationStructure* as,
     return false;
   }
 
+  if (!acceleration_structure_build_tlas(as, renderCommands->buffer,
+          blasCreateCommandBuffer, physicalDevice, logicalDevice))
+  {
+    LOG_ERROR("Failed to build TLAS");
+    return false;
+  }
+
   vkFreeCommandBuffers(logicalDevice, commandPool, 1, &blasCreateCommandBuffer);
 
   return true;
 }
 
-void acceleration_structure_clear(
-    AccelerationStructure* as, VkDevice logicalDevice)
+static void acceleration_structure_clear_level(
+    AccelerationStructureLevel* as, VkDevice logicalDevice)
 {
-  for (size_t i = 0; i < as->bottomLevel.accelerationStructures.size; i++)
+  for (size_t i = 0; i < as->accelerationStructures.size; i++)
   {
     VkAccelerationStructureKHR* accelerationStructure =
-        auto_array_get(&as->bottomLevel.accelerationStructures, i);
+        auto_array_get(&as->accelerationStructures, i);
     _vkDestroyAccelerationStructureKHR(
         logicalDevice, *accelerationStructure, NULL);
 
-    GpuBuffer* asBuffer = auto_array_get(&as->bottomLevel.asBuffers, i);
+    GpuBuffer* asBuffer = auto_array_get(&as->asBuffers, i);
     gpu_buffer_free(asBuffer, logicalDevice);
   }
 
-  auto_array_clear(&as->bottomLevel.accelerationStructures);
-  auto_array_clear(&as->bottomLevel.asBuffers);
-  auto_array_clear(&as->bottomLevel.geometries);
-  auto_array_clear(&as->bottomLevel.geometryInfos);
-  auto_array_clear(&as->bottomLevel.buildSizeInfos);
-  auto_array_clear(&as->bottomLevel.buildRangeInfos);
+  auto_array_clear(&as->accelerationStructures);
+  auto_array_clear(&as->asBuffers);
+  auto_array_clear(&as->geometries);
+  auto_array_clear(&as->geometryInfos);
+  auto_array_clear(&as->buildSizeInfos);
+  auto_array_clear(&as->buildRangeInfos);
 }
 
+void acceleration_structure_clear(
+    AccelerationStructure* as, VkDevice logicalDevice)
+{
+  acceleration_structure_clear_level(&as->bottomLevel, logicalDevice);
+  acceleration_structure_clear_level(&as->topLevel, logicalDevice);
+}

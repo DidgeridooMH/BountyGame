@@ -39,6 +39,14 @@ bool lighting_pass_create_render_pass(
           .finalLayout   = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
       },
       {
+          .format        = VK_FORMAT_R16G16B16A16_SFLOAT,
+          .samples       = VK_SAMPLE_COUNT_1_BIT,
+          .loadOp        = VK_ATTACHMENT_LOAD_OP_LOAD,
+          .storeOp       = VK_ATTACHMENT_STORE_OP_STORE,
+          .initialLayout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+          .finalLayout   = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      },
+      {
           .format        = format,
           .samples       = VK_SAMPLE_COUNT_1_BIT,
           .loadOp        = VK_ATTACHMENT_LOAD_OP_CLEAR,
@@ -49,7 +57,7 @@ bool lighting_pass_create_render_pass(
   };
 
   VkAttachmentReference colorAttachmentRef[] = {{
-      .attachment = 4,
+      .attachment = 5,
       .layout     = VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL,
   }};
 
@@ -61,7 +69,9 @@ bool lighting_pass_create_render_pass(
       {.attachment = GBL_COLOR,
           .layout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
       {.attachment = GBL_MATERIAL,
-          .layout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL}};
+          .layout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+      {.attachment = 4, .layout = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL},
+  };
 
   VkSubpassDescription subpasses[] = {{
       .pipelineBindPoint    = VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -125,12 +135,43 @@ bool lighting_pass_create(LightingPass* lightingPass, GBufferPass* gbufferPass,
     return false;
   }
 
+  if (!image_create(extents, 1, VK_FORMAT_R16G16B16A16_SFLOAT,
+          VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
+              | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+              | VK_IMAGE_USAGE_STORAGE_BIT,
+          false, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice,
+          logicalDevice, &lightingPass->shadowMap))
+  {
+    LOG_ERROR("Unable to create shadow map");
+    return false;
+  }
+
+  VkImageViewCreateInfo shadowMapViewCreateInfo = {
+      .sType                         = VK_STRUCTURE_TYPE_IMAGE_VIEW_CREATE_INFO,
+      .image                         = lightingPass->shadowMap.image,
+      .viewType                      = VK_IMAGE_VIEW_TYPE_2D,
+      .format                        = VK_FORMAT_R16G16B16A16_SFLOAT,
+      .subresourceRange.aspectMask   = VK_IMAGE_ASPECT_COLOR_BIT,
+      .subresourceRange.baseMipLevel = 0,
+      .subresourceRange.levelCount   = 1,
+      .subresourceRange.baseArrayLayer = 0,
+      .subresourceRange.layerCount     = 1,
+  };
+  if (vkCreateImageView(logicalDevice, &shadowMapViewCreateInfo, NULL,
+          &lightingPass->shadowMapView)
+      != VK_SUCCESS)
+  {
+    LOG_ERROR("Unable to create shadow map view");
+    return false;
+  }
+
   lightingPass->imageSize = extents;
 
   VkImageView attachments[] = {gbufferPass->bufferAttachments[GBL_POSITION],
       gbufferPass->bufferAttachments[GBL_NORMAL],
       gbufferPass->bufferAttachments[GBL_COLOR],
-      gbufferPass->bufferAttachments[GBL_MATERIAL], lightingPass->finalImage};
+      gbufferPass->bufferAttachments[GBL_MATERIAL], lightingPass->shadowMapView,
+      lightingPass->finalImage};
 
   VkFramebufferCreateInfo framebufferCreateInfo = {
       .sType           = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO,
@@ -156,4 +197,7 @@ void lighting_pass_destroy(LightingPass* lightingPass, VkDevice logicalDevice)
 {
   vkDestroyImageView(logicalDevice, lightingPass->finalImage, NULL);
   vkDestroyFramebuffer(logicalDevice, lightingPass->framebuffer, NULL);
+
+  image_destroy(&lightingPass->shadowMap, logicalDevice);
+  vkDestroyImageView(logicalDevice, lightingPass->shadowMapView, NULL);
 }

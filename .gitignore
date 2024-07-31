@@ -69,5 +69,5 @@ build/
 *.glb
 
 
-build-release
+build-*
 parsed.json

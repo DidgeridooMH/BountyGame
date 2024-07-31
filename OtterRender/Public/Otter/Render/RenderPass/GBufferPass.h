@@ -29,4 +29,3 @@ bool gbuffer_pass_create(GBufferPass* gbufferPass, VkRenderPass renderPass,
     VkDevice logicalDevice);
 
 void gbuffer_pass_destroy(GBufferPass* gbufferPass, VkDevice logicalDevice);
-

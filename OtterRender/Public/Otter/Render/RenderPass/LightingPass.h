@@ -3,12 +3,17 @@
 #include <vulkan/vulkan.h>
 
 #include "Otter/Render/RenderPass/GBufferPass.h"
+#include "Otter/Render/Texture/Image.h"
 
 typedef struct LightingPass
 {
   VkImageView finalImage;
   VkFramebuffer framebuffer;
   VkExtent2D imageSize;
+
+  // TODO: Might move this to a shadow pass.
+  Image shadowMap;
+  VkImageView shadowMapView;
 } LightingPass;
 
 bool lighting_pass_create_render_pass(

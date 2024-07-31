@@ -1,7 +1,10 @@
 #include "Otter/Render/RenderFrame.h"
 
+#include <vulkan/vulkan_core.h>
+
 #include "Otter/Async/Scheduler.h"
 #include "Otter/Math/Projection.h"
+#include "Otter/Render/RayTracing/RayTracingFunctions.h"
 #include "Otter/Render/RenderQueue.h"
 #include "Otter/Render/Uniform/ViewProjection.h"
 #include "Otter/Util/AutoArray.h"
@@ -81,6 +84,14 @@ bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
     return false;
   }
 
+  if (vkAllocateCommandBuffers(
+          logicalDevice, &allocInfo, &renderFrame->shadowCommandBuffer)
+      != VK_SUCCESS)
+  {
+    LOG_ERROR("Error: Failed to allocate command buffers");
+    return false;
+  }
+
   VkDescriptorPoolSize poolSizes[] = {
       {.type               = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
           .descriptorCount = DESCRIPTOR_POOL_SIZE}};
@@ -117,6 +128,9 @@ bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
           != VK_SUCCESS
       || vkCreateSemaphore(logicalDevice, &semaphoreInfo, NULL,
              &renderFrame->gBufferFinishedSemaphore)
+             != VK_SUCCESS
+      || vkCreateSemaphore(logicalDevice, &semaphoreInfo, NULL,
+             &renderFrame->shadowFinishedSemaphore)
              != VK_SUCCESS
       || vkCreateSemaphore(logicalDevice, &semaphoreInfo, NULL,
              &renderFrame->renderFinishedSemaphore)
@@ -160,6 +174,7 @@ bool render_frame_create(RenderFrame* renderFrame, uint32_t graphicsQueueFamily,
   acceleration_structure_create(&renderFrame->accelerationStructure);
 
   renderFrame->accelerationStructureInitialized = false;
+  renderFrame->shadowMapInitialized             = false;
 
   return true;
 }
@@ -212,6 +227,7 @@ void render_frame_destroy(
   vkDestroySemaphore(logicalDevice, renderFrame->imageAvailableSemaphore, NULL);
   vkDestroySemaphore(
       logicalDevice, renderFrame->gBufferFinishedSemaphore, NULL);
+  vkDestroySemaphore(logicalDevice, renderFrame->shadowFinishedSemaphore, NULL);
   vkDestroySemaphore(logicalDevice, renderFrame->renderFinishedSemaphore, NULL);
   vkDestroyFence(logicalDevice, renderFrame->inflightFence, NULL);
 
@@ -225,6 +241,12 @@ void render_frame_destroy(
   {
     vkFreeCommandBuffers(
         logicalDevice, commandPool, 1, &renderFrame->lightingCommandBuffer);
+  }
+
+  if (renderFrame->shadowCommandBuffer)
+  {
+    vkFreeCommandBuffers(
+        logicalDevice, commandPool, 1, &renderFrame->shadowCommandBuffer);
   }
 
   for (int i = 0; i < renderFrame->descriptorPools.size; i++)
@@ -498,6 +520,7 @@ static void render_frame_render_lighting(RenderFrame* renderFrame,
 
 void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
     GBufferPipeline* gBufferPipeline, PbrPipeline* pbrPipeline,
+    RayTracingPipeline* rtPipeline, ShaderBindingTable* sbt,
     Mesh* fullscreenQuad, Transform* camera, VkRenderPass gbufferPass,
     VkRenderPass lightingPass, VkQueue queue, VkCommandPool commandPool,
     VkPhysicalDevice physicalDevice, VkDevice logicalDevice)
@@ -515,6 +538,7 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
             &renderFrame->renderQueue, commandPool, logicalDevice,
             physicalDevice))
     {
+      // TODO: Handle error
       exit(-1);
     }
     renderFrame->accelerationStructureInitialized = true;
@@ -531,10 +555,62 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
       camera, renderStack, logicalDevice, physicalDevice);
   render_frame_end_pass(renderFrame->gBufferCommandBuffer);
 
+  // ******* SHADOWS
+  vkResetCommandBuffer(renderFrame->shadowCommandBuffer, 0);
+
+  VkCommandBufferBeginInfo beginInfo = {
+      .sType            = VK_STRUCTURE_TYPE_COMMAND_BUFFER_BEGIN_INFO,
+      .flags            = 0,
+      .pInheritanceInfo = NULL};
+
+  if (vkBeginCommandBuffer(renderFrame->shadowCommandBuffer, &beginInfo)
+      != VK_SUCCESS)
+  {
+    LOG_ERROR("Error: Unable to begin command buffer");
+    // TODO: Handle error
+    return;
+  }
+
+  image_transition_layout(renderFrame->shadowMapInitialized
+                              ? VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL
+                              : VK_IMAGE_LAYOUT_UNDEFINED,
+      VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 1, renderFrame->shadowCommandBuffer,
+      &renderStack->lightingPass.shadowMap);
+  renderFrame->shadowMapInitialized = true;
+  image_transition_layout(VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+      VK_IMAGE_LAYOUT_GENERAL, 0, 1, 0, 2, renderFrame->shadowCommandBuffer,
+      &renderStack->gbufferPass.gBufferImage);
+
+  vkCmdBindPipeline(renderFrame->shadowCommandBuffer,
+      VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR, rtPipeline->pipeline);
+  ray_tracing_pipeline_write_descriptor_set(renderFrame->shadowCommandBuffer,
+      *(VkDescriptorPool*) auto_array_get(&renderFrame->descriptorPools, 0),
+      logicalDevice, renderStack, &renderFrame->accelerationStructure,
+      rtPipeline);
+  _vkCmdTraceRaysKHR(renderFrame->shadowCommandBuffer, &sbt->rgenRegion,
+      &sbt->missRegion, &sbt->hitRegion, &sbt->callRegion,
+      renderStack->lightingPass.imageSize.width,
+      renderStack->lightingPass.imageSize.height, 1);
+
+  image_transition_layout(VK_IMAGE_LAYOUT_GENERAL,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 1,
+      renderFrame->shadowCommandBuffer, &renderStack->lightingPass.shadowMap);
+  image_transition_layout(VK_IMAGE_LAYOUT_GENERAL,
+      VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL, 0, 1, 0, 2,
+      renderFrame->shadowCommandBuffer, &renderStack->gbufferPass.gBufferImage);
+
+  if (vkEndCommandBuffer(renderFrame->shadowCommandBuffer) != VK_SUCCESS)
+  {
+    LOG_ERROR("Error: Unable to end recording of command buffer");
+    // Handle error
+    return;
+  }
+  // ******* SHADOWS
+
   render_frame_start_pass(renderFrame->lightingCommandBuffer, lightingPass,
       renderStack->lightingPass.framebuffer,
       renderStack->lightingPass.imageSize,
-      (const VkClearValue[]){{}, {}, {}, {}, {0.0, 0.0, 0.0, 1.0}}, 5,
+      (const VkClearValue[]){{}, {}, {}, {}, {}, {0.0, 0.0, 0.0, 1.0}}, 6,
       VK_SUBPASS_CONTENTS_INLINE, logicalDevice);
   render_frame_render_lighting(renderFrame, renderStack, pbrPipeline,
       fullscreenQuad, camera, physicalDevice, logicalDevice);
@@ -542,6 +618,8 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
 
   VkPipelineStageFlags waitStages =
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT;
+  VkPipelineStageFlags rtStages = VK_PIPELINE_STAGE_RAY_TRACING_SHADER_BIT_KHR;
+
   VkSubmitInfo submitInfo[] = {
       {.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO,
           .waitSemaphoreCount   = 1,
@@ -551,10 +629,20 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
           .pCommandBuffers      = &renderFrame->gBufferCommandBuffer,
           .signalSemaphoreCount = 1,
           .pSignalSemaphores    = &renderFrame->gBufferFinishedSemaphore},
-      {.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+      {
+          .sType                = VK_STRUCTURE_TYPE_SUBMIT_INFO,
           .waitSemaphoreCount   = 1,
           .pWaitSemaphores      = &renderFrame->gBufferFinishedSemaphore,
           .pWaitDstStageMask    = &waitStages,
+          .commandBufferCount   = 1,
+          .pCommandBuffers      = &renderFrame->shadowCommandBuffer,
+          .signalSemaphoreCount = 1,
+          .pSignalSemaphores    = &renderFrame->shadowFinishedSemaphore,
+      },
+      {.sType                   = VK_STRUCTURE_TYPE_SUBMIT_INFO,
+          .waitSemaphoreCount   = 1,
+          .pWaitSemaphores      = &renderFrame->shadowFinishedSemaphore,
+          .pWaitDstStageMask    = &rtStages,
           .commandBufferCount   = 1,
           .pCommandBuffers      = &renderFrame->lightingCommandBuffer,
           .signalSemaphoreCount = 1,
@@ -601,4 +689,3 @@ void render_frame_clear_buffers(
     vkResetCommandPool(logicalDevice, *commandPool, 0);
   }
 }
-

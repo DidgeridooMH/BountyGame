@@ -6,6 +6,7 @@ layout (input_attachment_index = 0, set = 0, binding = 0) uniform subpassInput a
 layout (input_attachment_index = 1, set = 0, binding = 1) uniform subpassInput ainNormal;
 layout (input_attachment_index = 2, set = 0, binding = 2) uniform subpassInput ainColor;
 layout (input_attachment_index = 3, set = 0, binding = 3) uniform subpassInput ainMaterial;
+layout (input_attachment_index = 4, set = 0, binding = 4) uniform subpassInput ainShadowMap;
 
 layout (set = 0, binding = 5) uniform CameraBuffer {
   vec3 cameraPositionWorldSpace;
@@ -142,6 +143,8 @@ void main()
   float metallic = subpassLoad(ainMaterial).g;
   float ao = subpassLoad(ainMaterial).b;
 
+  float occlusion = 1.0 - subpassLoad(ainShadowMap).r;
+
   DirectionalLight sunlight;
   sunlight.position = vec3(1.0, -1.0, 1.0);
   sunlight.color = vec3(1);
@@ -149,7 +152,7 @@ void main()
 
   vec3 lighting = brdf(normalize(sunlight.position), position, normal, albedo, roughness, metallic);
   vec3 radiance = sunlight.intensity * sunlight.color * max(dot(normal, sunlight.position), 0.0);
-  lighting *= radiance;
+  lighting *= radiance * occlusion;
   lighting += vec3(0.01) * albedo * (1.0 - ao);
 
   // Convert RGB to Rec.2020

@@ -213,7 +213,11 @@ void pbr_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
           .sampler   = VK_NULL_HANDLE},
       {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
           .imageView = renderStack->gbufferPass.bufferAttachments[GBL_MATERIAL],
-          .sampler   = VK_NULL_HANDLE}};
+          .sampler   = VK_NULL_HANDLE},
+      {.imageLayout  = VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL,
+          .imageView = renderStack->lightingPass.shadowMapView,
+          .sampler   = VK_NULL_HANDLE},
+  };
 
   VkWriteDescriptorSet attachmentWrites[_countof(attachmentDescriptors) + 1] = {
       0};
@@ -229,12 +233,12 @@ void pbr_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
 
   VkDescriptorBufferInfo pbrBufferInfo = {
       .buffer = pbrData->buffer, .offset = 0, .range = pbrData->size};
-  attachmentWrites[4].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-  attachmentWrites[4].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-  attachmentWrites[4].descriptorCount = 1;
-  attachmentWrites[4].dstBinding      = 5;
-  attachmentWrites[4].dstSet          = attachmentDescriptorSet;
-  attachmentWrites[4].pBufferInfo     = &pbrBufferInfo;
+  attachmentWrites[5].sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+  attachmentWrites[5].descriptorType  = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+  attachmentWrites[5].descriptorCount = 1;
+  attachmentWrites[5].dstBinding      = 5;
+  attachmentWrites[5].dstSet          = attachmentDescriptorSet;
+  attachmentWrites[5].pBufferInfo     = &pbrBufferInfo;
 
   vkUpdateDescriptorSets(
       logicalDevice, _countof(attachmentWrites), attachmentWrites, 0, NULL);

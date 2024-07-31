@@ -2,6 +2,7 @@
 
 #include <vulkan/vulkan.h>
 
+#include "Otter/Render/Memory/GpuBuffer.h"
 #include "Otter/Render/export.h"
 #include "Otter/Util/AutoArray.h"
 
@@ -25,6 +26,7 @@ typedef struct AccelerationStructure
 {
   AccelerationStructureLevel bottomLevel;
   AccelerationStructureLevel topLevel;
+  GpuBuffer bottomLevelInstances;
 } AccelerationStructure;
 
 OTTERRENDER_API bool acceleration_structure_load_functions(
@@ -41,4 +43,3 @@ OTTERRENDER_API bool acceleration_structure_build(AccelerationStructure* as,
 
 OTTERRENDER_API void acceleration_structure_clear(
     AccelerationStructure* as, VkDevice logicalDevice);
-

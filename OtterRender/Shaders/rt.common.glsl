@@ -1,5 +1,5 @@
 struct HitPayload
 {
-  bool hit;
+  float distance;
 };
 

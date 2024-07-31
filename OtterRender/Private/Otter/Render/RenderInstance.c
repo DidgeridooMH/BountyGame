@@ -1,7 +1,5 @@
 #include "Otter/Render/RenderInstance.h"
 
-#include <vulkan/vulkan_core.h>
-
 #include "Otter/Render/RayTracing/RayTracingFunctions.h"
 #include "Otter/Render/RenderPass/GBufferPass.h"
 #include "Otter/Render/RenderPass/LightingPass.h"
@@ -306,6 +304,7 @@ static VKAPI_ATTR VkBool32 VKAPI_CALL render_instance_debug_callback(
   {
     LOG_ERROR(" [Vulkan] %s", callbackData->pMessage);
   }
+  exit(-1);
   return VK_FALSE;
 }
 
@@ -916,6 +915,7 @@ void render_instance_draw(RenderInstance* renderInstance)
   render_frame_draw(&renderInstance->frames[renderInstance->currentFrame],
       &renderInstance->swapchain->renderStacks[image],
       &renderInstance->gBufferPipeline, &renderInstance->pbrPipeline,
+      &renderInstance->rtPipeline, &renderInstance->sbt,
       &renderInstance->fullscreenQuad, &renderInstance->cameraTransform,
       renderInstance->swapchain->gbufferPass,
       renderInstance->swapchain->lightingPass, graphicsQueue,
@@ -958,4 +958,3 @@ void render_instance_queue_mesh_draw(Mesh* mesh, Material* material,
   command->material = material;
   memcpy(&command->transform, transform, sizeof(Mat4));
 }
-

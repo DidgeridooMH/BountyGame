@@ -1,6 +1,9 @@
 #include "Otter/Render/Pipeline/RayTracingPipeline.h"
 
+#include <vulkan/vulkan_core.h>
+
 #include "Otter/Render/Pipeline/Pipeline.h"
+#include "Otter/Render/RayTracing/AccelerationStructure.h"
 #include "Otter/Render/RayTracing/RayTracingFunctions.h"
 #include "Otter/Util/Log.h"
 
@@ -28,7 +31,7 @@ bool ray_tracing_pipeline_create(const char* shaderDirectory,
   snprintf(shaderPath, MAX_PATH, "%s/rt.rchit.spv", shaderDirectory);
   VkShaderModule rchitShader =
       pipeline_load_shader_module(shaderPath, logicalDevice);
-  if (rmissShader == VK_NULL_HANDLE)
+  if (rchitShader == VK_NULL_HANDLE)
   {
     vkDestroyShaderModule(logicalDevice, raygenShader, NULL);
     vkDestroyShaderModule(logicalDevice, rmissShader, NULL);
@@ -83,6 +86,10 @@ bool ray_tracing_pipeline_create(const char* shaderDirectory,
           .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
           .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR},
       {.binding            = 2,
+          .descriptorCount = 1,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR},
+      {.binding            = 3,
           .descriptorCount = 1,
           .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
           .stageFlags      = VK_SHADER_STAGE_RAYGEN_BIT_KHR},
@@ -149,5 +156,84 @@ void ray_tracing_pipeline_destroy(
   vkDestroyPipelineLayout(logicalDevice, pipeline->layout, NULL);
   vkDestroyDescriptorSetLayout(
       logicalDevice, pipeline->descriptorSetLayouts, NULL);
+}
+
+void ray_tracing_pipeline_write_descriptor_set(VkCommandBuffer commandBuffer,
+    VkDescriptorPool descriptorPool, VkDevice logicalDevice,
+    RenderStack* renderStack, AccelerationStructure* accelerationStructure,
+    RayTracingPipeline* pipeline)
+{
+  VkDescriptorSetAllocateInfo attachmentDescriptorSetAllocInfo = {
+      .sType              = VK_STRUCTURE_TYPE_DESCRIPTOR_SET_ALLOCATE_INFO,
+      .descriptorPool     = descriptorPool,
+      .pSetLayouts        = &pipeline->descriptorSetLayouts,
+      .descriptorSetCount = 1};
+  VkDescriptorSet attachmentDescriptorSet;
+  if (vkAllocateDescriptorSets(logicalDevice, &attachmentDescriptorSetAllocInfo,
+          &attachmentDescriptorSet)
+      != VK_SUCCESS)
+  {
+    LOG_ERROR("WARN: Unable to allocate descriptors");
+  }
+
+  VkDescriptorImageInfo attachmentDescriptors[] = {
+      {.imageLayout  = VK_IMAGE_LAYOUT_GENERAL,
+          .imageView = renderStack->lightingPass.shadowMapView},
+      {.imageLayout = VK_IMAGE_LAYOUT_GENERAL,
+          .imageView =
+              renderStack->gbufferPass.bufferAttachments[GBL_POSITION]},
+      {.imageLayout  = VK_IMAGE_LAYOUT_GENERAL,
+          .imageView = renderStack->gbufferPass.bufferAttachments[GBL_NORMAL]},
+  };
+
+  const VkAccelerationStructureKHR as =
+      *(VkAccelerationStructureKHR*) auto_array_get(
+          &accelerationStructure->topLevel.accelerationStructures, 0);
+  VkWriteDescriptorSetAccelerationStructureKHR accelerationStructureInfo = {
+      .sType =
+          VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET_ACCELERATION_STRUCTURE_KHR,
+      .pAccelerationStructures    = &as,
+      .accelerationStructureCount = 1,
+  };
+
+  VkWriteDescriptorSet attachmentWrites[_countof(attachmentDescriptors) + 1] = {
+      {
+          .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_ACCELERATION_STRUCTURE_KHR,
+          .dstBinding      = 0,
+          .dstSet          = attachmentDescriptorSet,
+          .descriptorCount = 1,
+          .pNext           = &accelerationStructureInfo,
+      },
+      {
+          .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .dstBinding      = 1,
+          .dstSet          = attachmentDescriptorSet,
+          .descriptorCount = 1,
+          .pImageInfo      = &attachmentDescriptors[0],
+      },
+      {
+          .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .dstBinding      = 2,
+          .dstSet          = attachmentDescriptorSet,
+          .descriptorCount = 1,
+          .pImageInfo      = &attachmentDescriptors[1],
+      },
+      {
+          .sType           = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET,
+          .descriptorType  = VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+          .dstBinding      = 3,
+          .dstSet          = attachmentDescriptorSet,
+          .descriptorCount = 1,
+          .pImageInfo      = &attachmentDescriptors[2],
+      }};
+
+  vkUpdateDescriptorSets(
+      logicalDevice, _countof(attachmentWrites), attachmentWrites, 0, NULL);
+
+  vkCmdBindDescriptorSets(commandBuffer, VK_PIPELINE_BIND_POINT_RAY_TRACING_KHR,
+      pipeline->layout, 0, 1, &attachmentDescriptorSet, 0, NULL);
 }
 

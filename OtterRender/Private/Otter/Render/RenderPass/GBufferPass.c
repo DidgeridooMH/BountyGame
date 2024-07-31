@@ -118,7 +118,8 @@ bool gbuffer_pass_create(GBufferPass* gbufferPass, VkRenderPass renderPass,
   if (!image_create(extents, NUM_OF_GBUFFER_PASS_LAYERS,
           VK_FORMAT_R16G16B16A16_SFLOAT,
           VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
-              | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT,
+              | VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT
+              | VK_IMAGE_USAGE_STORAGE_BIT,
           false, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, physicalDevice,
           logicalDevice, &gbufferPass->gBufferImage))
   {
@@ -206,4 +207,3 @@ void gbuffer_pass_destroy(GBufferPass* gbufferPass, VkDevice logicalDevice)
   }
   image_destroy(&gbufferPass->gBufferImage, logicalDevice);
 }
-

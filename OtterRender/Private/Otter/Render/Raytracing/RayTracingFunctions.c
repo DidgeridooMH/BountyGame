@@ -9,6 +9,9 @@ PFN_vkCmdWriteAccelerationStructuresPropertiesKHR
     _vkCmdWriteAccelerationStructuresPropertiesKHR;
 PFN_vkGetRayTracingShaderGroupHandlesKHR _vkGetRayTracingShaderGroupHandlesKHR;
 PFN_vkCreateRayTracingPipelinesKHR _vkCreateRayTracingPipelinesKHR;
+PFN_vkCmdTraceRaysKHR _vkCmdTraceRaysKHR;
+PFN_vkGetAccelerationStructureDeviceAddressKHR
+    _vkGetAccelerationStructureDeviceAddressKHR;
 
 bool ray_tracing_load_functions(VkDevice logicalDevice)
 {
@@ -21,6 +24,9 @@ bool ray_tracing_load_functions(VkDevice logicalDevice)
       logicalDevice, vkCmdWriteAccelerationStructuresPropertiesKHR);
   LOAD_FUNCTION_EXTENSION(logicalDevice, vkGetRayTracingShaderGroupHandlesKHR);
   LOAD_FUNCTION_EXTENSION(logicalDevice, vkCreateRayTracingPipelinesKHR);
+  LOAD_FUNCTION_EXTENSION(logicalDevice, vkCmdTraceRaysKHR);
+  LOAD_FUNCTION_EXTENSION(
+      logicalDevice, vkGetAccelerationStructureDeviceAddressKHR);
 
   return true;
 }

@@ -9,6 +9,7 @@ typedef struct ShaderBindingTable
   VkStridedDeviceAddressRegionKHR rgenRegion;
   VkStridedDeviceAddressRegionKHR missRegion;
   VkStridedDeviceAddressRegionKHR hitRegion;
+  VkStridedDeviceAddressRegionKHR callRegion;
   GpuBuffer sbt;
 } ShaderBindingTable;
 
@@ -18,4 +19,3 @@ bool shader_binding_table_create(ShaderBindingTable* sbt,
 
 void shader_binding_table_destroy(
     ShaderBindingTable* sbt, VkDevice logicalDevice);
-

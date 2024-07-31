@@ -22,7 +22,7 @@ if (BUILD_TESTS)
 endif()
 
 if (MSVC)
-  add_compile_options(/D_UNICODE /DUNICODE)
+  add_compile_options(/D_UNICODE /DUNICODE /Zc:preprocessor)
 elseif (WIN32)
   add_compile_options(-D_UNICODE -DUNICODE -Werror)
   add_compile_options(-ffile-prefix-map=${CMAKE_SOURCE_DIR}/=/)

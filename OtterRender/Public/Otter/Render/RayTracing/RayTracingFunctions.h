@@ -6,7 +6,7 @@
 
 #define LOAD_FUNCTION_EXTENSION(device, function)                        \
   _##function = (PFN_##function) vkGetDeviceProcAddr(device, #function); \
-  if (function == NULL)                                                  \
+  if (_##function == NULL)                                               \
   {                                                                      \
     LOG_ERROR("Failed to load " #function);                              \
     return false;                                                        \
@@ -25,4 +25,6 @@ extern PFN_vkCmdWriteAccelerationStructuresPropertiesKHR
 extern PFN_vkGetRayTracingShaderGroupHandlesKHR
     _vkGetRayTracingShaderGroupHandlesKHR;
 extern PFN_vkCreateRayTracingPipelinesKHR _vkCreateRayTracingPipelinesKHR;
-
+extern PFN_vkCmdTraceRaysKHR _vkCmdTraceRaysKHR;
+extern PFN_vkGetAccelerationStructureDeviceAddressKHR
+    _vkGetAccelerationStructureDeviceAddressKHR;
