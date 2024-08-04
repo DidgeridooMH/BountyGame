@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdlib.h>
+
 #include "Otter/Util/Log.h"
 #include "Otter/Util/export.h"
 
@@ -36,3 +38,5 @@ OTTERUTIL_API inline void* auto_array_get(AutoArray* array, size_t index)
 }
 
 OTTERUTIL_API void auto_array_pop(AutoArray* array);
+
+OTTERUTIL_API void auto_array_pop_many(AutoArray* array, size_t elementCount);

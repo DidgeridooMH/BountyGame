@@ -30,6 +30,7 @@ endif()
 
 add_subdirectory(OtterAsync)
 add_subdirectory(OtterConfig)
+add_subdirectory(OtterECS)
 add_subdirectory(OtterMath)
 add_subdirectory(OtterRender)
 add_subdirectory(OtterUtil)

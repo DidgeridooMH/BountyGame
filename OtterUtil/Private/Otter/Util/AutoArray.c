@@ -17,7 +17,7 @@ void auto_array_destroy(AutoArray* array)
   free(array->buffer);
 }
 
-static bool auto_array_expand(AutoArray* array, size_t requestedSize)
+static bool auto_array_resize(AutoArray* array, size_t requestedSize)
 {
   size_t capacityOverrun = requestedSize % ARRAY_INCREMENT_SIZE;
   if (capacityOverrun > 0)
@@ -40,7 +40,7 @@ static bool auto_array_expand(AutoArray* array, size_t requestedSize)
 void* auto_array_allocate(AutoArray* array)
 {
   if (array->size == array->capacity
-      && !auto_array_expand(array, array->size + 1))
+      && !auto_array_resize(array, array->size + 1))
   {
   }
   array->size += 1;
@@ -50,7 +50,7 @@ void* auto_array_allocate(AutoArray* array)
 void* auto_array_allocate_many(AutoArray* array, size_t elementCount)
 {
   size_t newSize = array->size + elementCount;
-  if (newSize > array->capacity && !auto_array_expand(array, newSize))
+  if (newSize > array->capacity && !auto_array_resize(array, newSize))
   {
     return NULL;
   }
@@ -72,7 +72,21 @@ void auto_array_pop(AutoArray* array)
     if (array->capacity > ARRAY_INCREMENT_SIZE * 2
         && array->size < (array->capacity - ARRAY_INCREMENT_SIZE * 2))
     {
-      auto_array_expand(array, array->capacity - ARRAY_INCREMENT_SIZE);
+      auto_array_resize(array, array->capacity - ARRAY_INCREMENT_SIZE);
+    }
+  }
+}
+
+void auto_array_pop_many(AutoArray* array, size_t elementCount)
+{
+  if (array->size >= elementCount)
+  {
+    array->size -= elementCount;
+
+    while (array->capacity > ARRAY_INCREMENT_SIZE * 2
+           && array->size < (array->capacity - ARRAY_INCREMENT_SIZE * 2))
+    {
+      auto_array_resize(array, array->capacity - ARRAY_INCREMENT_SIZE);
     }
   }
 }
