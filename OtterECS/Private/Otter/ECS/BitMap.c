@@ -67,7 +67,7 @@ bool bit_map_find_first_unset(BitMap* map, uint64_t* index)
 uint64_t bit_map_expand(BitMap* map)
 {
   BitMapSlot* newMask = auto_array_allocate(map);
-  *newMask            = ~((BitMapSlot) 0);
+  *newMask            = (BitMapSlot) 0;
   return BIT_MAP_MASK_ENTRY_SIZE;
 }
 
@@ -83,4 +83,4 @@ uint64_t bit_map_compact(BitMap* map)
 
   return compacted;
 }
- 
+

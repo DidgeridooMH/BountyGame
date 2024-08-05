@@ -1,6 +1,8 @@
 set(SOURCES
   Private/Otter/ECS/BitMap.c
   Private/Otter/ECS/ComponentList.c
+  Private/Otter/ECS/ComponentPool.c
+  Private/Otter/ECS/EntityComponentMap.c
 )
 
 set(PRIVATE_HEADERS
@@ -8,8 +10,11 @@ set(PRIVATE_HEADERS
 )
 
 set(PUBLIC_HEADERS
+  Public/Otter/ECS/export.h
   Public/Otter/ECS/BitMap.h
   Public/Otter/ECS/ComponentList.h
+  Public/Otter/ECS/ComponentPool.h
+  Public/Otter/ECS/EntityComponentMap.h
 )
 
 add_library(OtterECS SHARED ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
@@ -20,7 +25,7 @@ target_link_libraries(OtterECS OtterUtil)
 
 if (BUILD_TESTS)
   add_library(OtterECS_static STATIC ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
-  target_compile_definitions(OtterECS_static PRIVATE OTTERECS_EXPORTS)
+  target_compile_definitions(OtterECS_static PRIVATE OTTERECS_STATIC)
   target_precompile_headers(OtterECS_static PRIVATE Private/pch.h)
   target_include_directories(OtterECS_static PUBLIC Public PRIVATE Private)
   target_link_libraries(OtterECS_static OtterUtil_static)

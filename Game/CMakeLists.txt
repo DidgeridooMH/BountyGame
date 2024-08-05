@@ -19,6 +19,7 @@ target_include_directories(${PROJECT_NAME} PRIVATE Source)
 target_link_libraries(${PROJECT_NAME} PRIVATE
   OtterRender
   OtterAsync
+  OtterECS
   OtterMath
   OtterConfig
   OtterUtil

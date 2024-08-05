@@ -1,5 +1,7 @@
 #pragma once
 
+#include <stdint.h>
+
 #include "Otter/Util/AutoArray.h"
 
 typedef AutoArray BitMap;

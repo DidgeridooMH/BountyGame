@@ -1,6 +1,9 @@
+#include "Components/ComponentType.h"
 #include "Config/GameConfig.h"
 #include "Input/InputMap.h"
 #include "Otter/Async/Scheduler.h"
+#include "Otter/ECS/ComponentPool.h"
+#include "Otter/ECS/EntityComponentMap.h"
 #include "Otter/Math/Mat.h"
 #include "Otter/Math/Transform.h"
 #include "Otter/Math/Vec.h"
@@ -379,9 +382,21 @@ int WINAPI wWinMain(
   QueryPerformanceCounter(&lastFrameTime);
   LARGE_INTEGER lastStatTime = lastFrameTime;
 
+  ComponentPool componentPool;
+  component_pool_create(&componentPool);
+  component_pool_register_component(&componentPool, CT_POSITION, sizeof(Vec3));
+  EntityComponentMap entityComponentMap;
+  entity_component_map_create(&entityComponentMap);
+
+  uint64_t camera   = entity_component_map_create_entity(&entityComponentMap);
+  uint64_t position = entity_component_map_add_component(
+      &entityComponentMap, &componentPool, camera, CT_POSITION);
+
   InputMap inputMap;
   if (!input_map_create(&inputMap))
   {
+    component_pool_destroy(&componentPool);
+    entity_component_map_destroy(&entityComponentMap);
     game_config_destroy(&config);
     render_instance_destroy(renderInstance);
     game_window_destroy(window);
@@ -484,6 +499,8 @@ int WINAPI wWinMain(
   }
   auto_array_destroy(&textureImages);
 
+  component_pool_destroy(&componentPool);
+  entity_component_map_destroy(&entityComponentMap);
   stable_auto_array_destroy(&materials);
   texture_destroy(&defaultTexture, renderInstance->logicalDevice);
   game_config_destroy(&config);

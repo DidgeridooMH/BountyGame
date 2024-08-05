@@ -22,7 +22,9 @@ enum ComponentType {
     COMPONENT_COUNT
 };
 
-#assert COMPONENT_COUNT < 64
+#if COMPONENT_COUNT < 64
+#error "No more than 64 components are supported"
+#endif
 
 void register_components() {
     component_pool_register(COMPONENT_POSITION, sizeof(Position));
