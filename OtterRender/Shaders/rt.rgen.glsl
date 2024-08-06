@@ -23,11 +23,13 @@ void main()
   const vec2 pixelCenter = vec2(gl_LaunchIDEXT.xy) + vec2(0.5f);
   const vec2 inUV = pixelCenter / vec2(gl_LaunchSizeEXT.xy);
 
+  float tmin = 0.001f;
+  float tmax = 10000.0f;
   const vec4 position = imageLoad(ainPosition, ivec2(gl_LaunchIDEXT.xy));
   if (position.a < 1.0)
   {
-    imageStore(outputImage, ivec2(gl_LaunchIDEXT.xy), vec4(0.0f, 0.0f, 0.0f, 1.0f));
-    return;
+    tmin = 0;
+    tmax = 0;
   }
 
   const vec4 normal = imageLoad(ainNormal, ivec2(gl_LaunchIDEXT.xy));
@@ -36,15 +38,15 @@ void main()
   // We should instead use a proper epsilon value to avoid self-intersection.
   // This will also include calculating a proper normal to use for offsetting.
   traceRayEXT(topLevelAS,
-    gl_RayFlagsOpaqueEXT,
+    gl_RayFlagsOpaqueEXT | gl_RayFlagsTerminateOnFirstHitEXT,
     0xFF,
     0,
     0,
     0,
     position.xyz + normal.xyz * 0.001f,
-    0.001f,
+    tmin,
     normalize(vec3(1.0f, -1.0f, 1.0f)),
-    10000.0f,
+    tmax,
     0
   );
 
