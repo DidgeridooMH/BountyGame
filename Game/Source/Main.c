@@ -382,20 +382,18 @@ int WINAPI wWinMain(
   QueryPerformanceCounter(&lastFrameTime);
   LARGE_INTEGER lastStatTime = lastFrameTime;
 
-  ComponentPool componentPool;
-  component_pool_create(&componentPool);
-  component_pool_register_component(&componentPool, CT_POSITION, sizeof(Vec3));
   EntityComponentMap entityComponentMap;
   entity_component_map_create(&entityComponentMap);
+  component_pool_register_component(
+      &entityComponentMap.componentPool, CT_POSITION, sizeof(Vec3));
 
   uint64_t camera   = entity_component_map_create_entity(&entityComponentMap);
   uint64_t position = entity_component_map_add_component(
-      &entityComponentMap, &componentPool, camera, CT_POSITION);
+      &entityComponentMap, camera, CT_POSITION);
 
   InputMap inputMap;
   if (!input_map_create(&inputMap))
   {
-    component_pool_destroy(&componentPool);
     entity_component_map_destroy(&entityComponentMap);
     game_config_destroy(&config);
     render_instance_destroy(renderInstance);
@@ -499,7 +497,6 @@ int WINAPI wWinMain(
   }
   auto_array_destroy(&textureImages);
 
-  component_pool_destroy(&componentPool);
   entity_component_map_destroy(&entityComponentMap);
   stable_auto_array_destroy(&materials);
   texture_destroy(&defaultTexture, renderInstance->logicalDevice);
@@ -513,4 +510,3 @@ int WINAPI wWinMain(
 
   return 0;
 }
-

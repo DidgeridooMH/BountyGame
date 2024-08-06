@@ -7,10 +7,34 @@ void entity_component_map_create(EntityComponentMap* map)
   bit_map_create(&map->entityUsed);
   bit_map_create(&map->components);
   auto_array_create(&map->entityComponents, sizeof(HashMap));
+  component_pool_create(&map->componentPool);
+}
+
+static void entity_component_map_destroy_all_components(
+    EntityComponentMap* map, ComponentPool* componentPool)
+{
+  for (uint64_t i = 0; i < map->entityComponents.size; i++)
+  {
+    HashMap* componentMap =
+        (HashMap*) auto_array_get(&map->entityComponents, i);
+    for (uint64_t componentIndex = 0; componentIndex < BIT_MAP_MASK_ENTRY_SIZE;
+         componentIndex++)
+    {
+      if (bit_map_get_bit(&map->components, i, componentIndex))
+      {
+        uint64_t componentId = (uint64_t) hash_map_get_value(
+            componentMap, &componentIndex, sizeof(uint64_t));
+        component_pool_deallocate_component(
+            componentPool, componentIndex, componentId);
+      }
+    }
+  }
 }
 
 void entity_component_map_destroy(EntityComponentMap* map)
 {
+  entity_component_map_destroy_all_components(map, &map->componentPool);
+
   bit_map_destroy(&map->entityUsed);
   bit_map_destroy(&map->components);
   for (uint64_t i = 0; i < map->entityComponents.size; i++)
@@ -51,7 +75,7 @@ uint64_t entity_component_map_create_entity(EntityComponentMap* map)
 }
 
 void entity_component_map_destroy_entity(
-    EntityComponentMap* map, ComponentPool* componentPool, uint64_t entity)
+    EntityComponentMap* map, uint64_t entity)
 {
   bit_map_set(&map->entityUsed, entity, false);
 
@@ -71,7 +95,7 @@ void entity_component_map_destroy_entity(
           uint64_t componentId = (uint64_t) hash_map_get_value(
               componentMap, &componentIndex, sizeof(uint64_t));
           component_pool_deallocate_component(
-              componentPool, componentIndex, componentId);
+              &map->componentPool, componentIndex, componentId);
         }
       }
 
@@ -82,11 +106,11 @@ void entity_component_map_destroy_entity(
   }
 }
 
-uint64_t entity_component_map_add_component(EntityComponentMap* map,
-    ComponentPool* componentPool, uint64_t entity, uint64_t component)
+uint64_t entity_component_map_add_component(
+    EntityComponentMap* map, uint64_t entity, uint64_t component)
 {
   uint64_t componentId =
-      component_pool_allocate_component(componentPool, component);
+      component_pool_allocate_component(&map->componentPool, component);
   if (componentId == COMPONENT_ID_INVALID)
   {
     LOG_WARNING(
@@ -104,8 +128,8 @@ uint64_t entity_component_map_add_component(EntityComponentMap* map,
   return componentId;
 }
 
-void entity_component_map_delete_component(EntityComponentMap* map,
-    ComponentPool* componentPool, uint64_t entity, uint64_t component)
+void entity_component_map_delete_component(
+    EntityComponentMap* map, uint64_t entity, uint64_t component)
 {
   bit_map_set_bit(&map->components, entity, component, false);
 
@@ -113,6 +137,7 @@ void entity_component_map_delete_component(EntityComponentMap* map,
       (HashMap*) auto_array_get(&map->entityComponents, entity);
   uint64_t componentId =
       (uint64_t) hash_map_get_value(componentMap, &component, sizeof(uint64_t));
-  component_pool_deallocate_component(componentPool, component, componentId);
+  component_pool_deallocate_component(
+      &map->componentPool, component, componentId);
 }
 

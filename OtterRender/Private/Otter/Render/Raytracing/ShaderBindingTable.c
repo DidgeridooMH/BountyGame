@@ -96,7 +96,8 @@ bool shader_binding_table_create(ShaderBindingTable* sbt,
     memcpy(handleMapped, handles + (handleIndex++ * handleSize), handleSize);
     handleMapped += sbt->missRegion.stride;
   }
-  handleMapped = sbt->sbt.mapped + sbt->rgenRegion.size + sbt->missRegion.size;
+  handleMapped =
+      (uint8_t*) sbt->sbt.mapped + sbt->rgenRegion.size + sbt->missRegion.size;
 
   for (uint32_t i = 0; i < hitCount; ++i)
   {
@@ -116,4 +117,3 @@ void shader_binding_table_destroy(
 {
   gpu_buffer_free(&sbt->sbt, logicalDevice);
 }
-

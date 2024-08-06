@@ -38,6 +38,7 @@ add_subdirectory(Game)
 
 set_target_properties(OtterAsync
   OtterConfig
+  OtterECS
   OtterMath
   OtterRender
   OtterUtil

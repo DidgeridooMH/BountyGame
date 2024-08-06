@@ -25,7 +25,7 @@ target_link_libraries(OtterECS OtterUtil)
 
 if (BUILD_TESTS)
   add_library(OtterECS_static STATIC ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
-  target_compile_definitions(OtterECS_static PRIVATE OTTERECS_STATIC)
+  target_compile_definitions(OtterECS_static PUBLIC OTTERECS_STATIC)
   target_precompile_headers(OtterECS_static PRIVATE Private/pch.h)
   target_include_directories(OtterECS_static PUBLIC Public PRIVATE Private)
   target_link_libraries(OtterECS_static OtterUtil_static)
