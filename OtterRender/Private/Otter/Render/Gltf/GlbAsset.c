@@ -1,6 +1,6 @@
 #include "Otter/Render/Gltf/GlbAsset.h"
 
-#include "Otter/Util/AutoArray.h"
+#include "Otter/Util/Array/AutoArray.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "Extern/stb_image.h"
@@ -308,4 +308,3 @@ OTTERRENDER_API bool glb_load_asset(
 
   return true;
 }
- 

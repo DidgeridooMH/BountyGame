@@ -1,18 +1,18 @@
-#include "Otter/ECS/ComponentList.h"
+#include "Otter/Util/Array/SparseAutoArray.h"
 
-void component_list_create(ComponentList* list, uint64_t componentSize)
+void sparse_auto_array_create(SparseAutoArray* list, uint64_t componentSize)
 {
   bit_map_create(&list->usedMask);
   auto_array_create(&list->components, componentSize);
 }
 
-void component_list_destroy(ComponentList* list)
+void sparse_auto_array_destroy(SparseAutoArray* list)
 {
   bit_map_destroy(&list->usedMask);
   auto_array_destroy(&list->components);
 }
 
-uint64_t component_list_allocate(ComponentList* list)
+uint64_t sparse_auto_array_allocate(SparseAutoArray* list)
 {
   uint64_t index;
   if (!bit_map_find_first_unset(&list->usedMask, &index))
@@ -27,7 +27,7 @@ uint64_t component_list_allocate(ComponentList* list)
   return index;
 }
 
-void component_list_deallocate(ComponentList* list, uint64_t index)
+uint64_t sparse_auto_array_deallocate(SparseAutoArray* list, uint64_t index)
 {
   bit_map_set(&list->usedMask, index, false);
 
@@ -37,9 +37,11 @@ void component_list_deallocate(ComponentList* list, uint64_t index)
   {
     auto_array_pop_many(&list->components, compactedEntries);
   }
+
+  return compactedEntries;
 }
 
-void* component_list_get(ComponentList* list, uint64_t index)
+void* sparse_auto_array_get(SparseAutoArray* list, uint64_t index)
 {
   if (index >= list->components.size || !bit_map_get(&list->usedMask, index))
   {

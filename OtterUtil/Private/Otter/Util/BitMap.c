@@ -1,4 +1,4 @@
-#include "Otter/ECS/BitMap.h"
+#include "Otter/Util/BitMap.h"
 
 void bit_map_create(BitMap* map)
 {
@@ -43,6 +43,11 @@ bool bit_map_get(BitMap* map, uint64_t index)
   return bit_map_get_bit(map, maskIndex, maskBit);
 }
 
+BitMapSlot bit_map_get_slot(BitMap* map, uint64_t index)
+{
+  return *(BitMapSlot*) auto_array_get(map, index);
+}
+
 bool bit_map_find_first_unset(BitMap* map, uint64_t* index)
 {
   for (uint64_t i = 0; i < map->size; i++)
@@ -83,4 +88,3 @@ uint64_t bit_map_compact(BitMap* map)
 
   return compacted;
 }
-

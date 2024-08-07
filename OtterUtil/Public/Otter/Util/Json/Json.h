@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Otter/Util/AutoArray.h"
+#include "Otter/Util/Array/AutoArray.h"
 #include "Otter/Util/HashMap.h"
 #include "Otter/Util/export.h"
 

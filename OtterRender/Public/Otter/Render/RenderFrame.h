@@ -10,7 +10,7 @@
 #include "Otter/Render/RayTracing/AccelerationStructure.h"
 #include "Otter/Render/RayTracing/ShaderBindingTable.h"
 #include "Otter/Render/RenderStack.h"
-#include "Otter/Util/AutoArray.h"
+#include "Otter/Util/Array/AutoArray.h"
 
 typedef struct RenderFrame
 {
@@ -60,3 +60,4 @@ void render_frame_draw(RenderFrame* renderFrame, RenderStack* renderStack,
 
 void render_frame_clear_buffers(
     RenderFrame* renderFrame, VkDevice logicalDevice);
+

@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <xinput.h>
 
-#include "Otter/Util/AutoArray.h"
+#include "Otter/Util/Array/AutoArray.h"
 #include "Otter/Util/HashMap.h"
 #include "Otter/Util/Heap.h"
 

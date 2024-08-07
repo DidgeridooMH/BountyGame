@@ -4,7 +4,7 @@
 
 #include "Otter/Render/Memory/GpuBuffer.h"
 #include "Otter/Render/export.h"
-#include "Otter/Util/AutoArray.h"
+#include "Otter/Util/Array/AutoArray.h"
 
 typedef struct AccelerationStructureLevel
 {
@@ -43,3 +43,4 @@ OTTERRENDER_API bool acceleration_structure_build(AccelerationStructure* as,
 
 OTTERRENDER_API void acceleration_structure_clear(
     AccelerationStructure* as, VkDevice logicalDevice);
+

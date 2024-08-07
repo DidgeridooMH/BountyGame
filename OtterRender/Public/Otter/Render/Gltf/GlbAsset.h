@@ -3,7 +3,7 @@
 #include "Otter/Render/Gltf/GlbJsonChunk.h"
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/export.h"
-#include "Otter/Util/AutoArray.h"
+#include "Otter/Util/Array/AutoArray.h"
 
 typedef struct GlbAssetMesh
 {
@@ -54,4 +54,3 @@ typedef struct GlbAsset
 
 OTTERRENDER_API bool glb_load_asset(
     char* content, size_t contentSize, GlbAsset* asset);
-

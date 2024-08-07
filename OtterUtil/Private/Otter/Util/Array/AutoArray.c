@@ -1,4 +1,4 @@
-#include "Otter/Util/AutoArray.h"
+#include "Otter/Util/Array/AutoArray.h"
 
 #include "Otter/Util/Log.h"
 

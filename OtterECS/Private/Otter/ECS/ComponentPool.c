@@ -13,7 +13,7 @@ void component_pool_destroy(ComponentPool* pool)
   {
     if (pool->registeredComponents & (1 << i))
     {
-      component_list_destroy(&pool->componentLists[i]);
+      sparse_auto_array_destroy(&pool->componentLists[i]);
     }
   }
 }
@@ -28,7 +28,8 @@ void component_pool_register_component(
   }
 
   pool->registeredComponents |= (1 << componentIndex);
-  component_list_create(&pool->componentLists[componentIndex], componentSize);
+  sparse_auto_array_create(
+      &pool->componentLists[componentIndex], componentSize);
 }
 
 uint64_t component_pool_allocate_component(
@@ -40,7 +41,7 @@ uint64_t component_pool_allocate_component(
     return COMPONENT_ID_INVALID;
   }
 
-  return component_list_allocate(&pool->componentLists[componentIndex]);
+  return sparse_auto_array_allocate(&pool->componentLists[componentIndex]);
 }
 
 void component_pool_deallocate_component(
@@ -52,7 +53,8 @@ void component_pool_deallocate_component(
     return;
   }
 
-  component_list_deallocate(&pool->componentLists[componentIndex], component);
+  sparse_auto_array_deallocate(
+      &pool->componentLists[componentIndex], component);
 }
 
 void* component_pool_get_component(
@@ -64,5 +66,6 @@ void* component_pool_get_component(
     return NULL;
   }
 
-  return component_list_get(&pool->componentLists[componentIndex], component);
+  return sparse_auto_array_get(
+      &pool->componentLists[componentIndex], component);
 }

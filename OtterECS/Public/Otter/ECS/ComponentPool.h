@@ -1,11 +1,11 @@
 #pragma once
 
-#include "Otter/ECS/ComponentList.h"
 #include "Otter/ECS/export.h"
+#include "Otter/Util/Array/SparseAutoArray.h"
 
 typedef struct ComponentPool
 {
-  ComponentList componentLists[64];
+  SparseAutoArray componentLists[64];
   uint64_t registeredComponents;
 } ComponentPool;
 

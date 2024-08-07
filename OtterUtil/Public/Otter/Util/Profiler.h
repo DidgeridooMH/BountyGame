@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Otter/Util/StableAutoArray.h"
+#include "Otter/Util/Array/StableAutoArray.h"
 #include "Otter/Util/export.h"
 
 OTTERUTIL_API void profiler_init(LARGE_INTEGER frequency);

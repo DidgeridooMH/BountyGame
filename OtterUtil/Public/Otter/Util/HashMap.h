@@ -1,7 +1,7 @@
 #pragma once
 
+#include "Otter/Util/Array/StableAutoArray.h"
 #include "Otter/Util/Hash.h"
-#include "Otter/Util/StableAutoArray.h"
 #include "Otter/Util/export.h"
 
 #define HASH_MAP_DEFAULT_BUCKETS 512

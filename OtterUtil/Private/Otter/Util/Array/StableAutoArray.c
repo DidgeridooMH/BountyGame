@@ -1,4 +1,4 @@
-#include "Otter/Util/StableAutoArray.h"
+#include "Otter/Util/Array/StableAutoArray.h"
 
 void stable_auto_array_create(
     StableAutoArray* array, uint32_t elementSize, uint32_t chunkSize)

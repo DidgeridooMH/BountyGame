@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Otter/Util/AutoArray.h"
+#include "Otter/Util/Array/AutoArray.h"
 #include "Otter/Util/export.h"
 
 /** @brief A 32 bit int to float key-pair. */
@@ -30,3 +30,4 @@ OTTERUTIL_API void heap_top(Heap* heap, uint32_t* key, float* value);
 
 /** @brief Destroy the heap. */
 OTTERUTIL_API void heap_destroy(Heap* heap);
+

@@ -2,7 +2,7 @@
 
 #include "Otter/Math/MatDef.h"
 #include "Otter/Math/Vec.h"
-#include "Otter/Util/AutoArray.h"
+#include "Otter/Util/Array/AutoArray.h"
 #include "Otter/Util/Json/Json.h"
 
 typedef enum NodeType

@@ -5,7 +5,7 @@
 #include <xinput.h>
 
 #include "Input/InputMap.h"
-#include "Otter/Util/AutoArray.h"
+#include "Otter/Util/Array/AutoArray.h"
 
 #define PLAYER_RECT_SIZE 50
 
@@ -206,4 +206,3 @@ bool game_window_process_message(HWND window)
 
   return msg.message == WM_QUIT;
 }
- 

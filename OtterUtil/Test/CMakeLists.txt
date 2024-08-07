@@ -1,13 +1,15 @@
 set(SOURCE
+  BitMapTest.cpp
   HashMapTest.cpp
+  SparseAutoArrayTest.cpp
 )
 
-add_executable(HashMapTest ${SOURCE})
-target_link_libraries(HashMapTest OtterUtil_static gtest_main)
-add_test(NAME HashMapTest COMMAND HashMapTest)
+add_executable(UtilTest ${SOURCE})
+target_link_libraries(UtilTest OtterUtil_static gtest_main)
+add_test(NAME UtilTest COMMAND UtilTest)
 
 set_target_properties(
-  HashMapTest
+  UtilTest
   PROPERTIES
   RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/test
 )

@@ -1,6 +1,6 @@
 #include "Otter/Util/Heap.h"
 
-#include "Otter/Util/AutoArray.h"
+#include "Otter/Util/Array/AutoArray.h"
 
 void heap_create(Heap* heap)
 {
@@ -98,4 +98,3 @@ void heap_destroy(Heap* heap)
 {
   auto_array_destroy(&heap->contents);
 }
- 

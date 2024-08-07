@@ -160,3 +160,22 @@ TEST(EntityComponentMap, AddComponent)
   entity_component_map_destroy(&map);
 }
 
+TEST(EntityComponentMap, GetComponent)
+{
+  EntityComponentMap map;
+  entity_component_map_create(&map);
+
+  component_pool_register_component(
+      &map.componentPool, COMPONENT_ID, sizeof(Component));
+
+  uint64_t entity = entity_component_map_create_entity(&map);
+
+  uint64_t componentId =
+      entity_component_map_add_component(&map, entity, COMPONENT_ID);
+
+  Component* componentPtr = (Component*) entity_component_map_get_component(
+      &map, entity, COMPONENT_ID);
+  EXPECT_NE(componentPtr, nullptr);
+
+  entity_component_map_destroy(&map);
+}

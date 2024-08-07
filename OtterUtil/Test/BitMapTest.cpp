@@ -1,6 +1,6 @@
 extern "C"
 {
-#include "Otter/ECS/BitMap.h"
+#include "Otter/Util/BitMap.h"
 }
 
 #include <gtest/gtest.h>
@@ -186,4 +186,3 @@ TEST(BitMapTest, Compact)
 
   bit_map_destroy(&map);
 }
-

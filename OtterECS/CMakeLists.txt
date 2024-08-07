@@ -1,8 +1,7 @@
 set(SOURCES
-  Private/Otter/ECS/BitMap.c
-  Private/Otter/ECS/ComponentList.c
   Private/Otter/ECS/ComponentPool.c
   Private/Otter/ECS/EntityComponentMap.c
+  Private/Otter/ECS/SystemRegistry.c
 )
 
 set(PRIVATE_HEADERS
@@ -11,10 +10,9 @@ set(PRIVATE_HEADERS
 
 set(PUBLIC_HEADERS
   Public/Otter/ECS/export.h
-  Public/Otter/ECS/BitMap.h
-  Public/Otter/ECS/ComponentList.h
   Public/Otter/ECS/ComponentPool.h
   Public/Otter/ECS/EntityComponentMap.h
+  Public/Otter/ECS/SystemRegistry.h
 )
 
 add_library(OtterECS SHARED ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})

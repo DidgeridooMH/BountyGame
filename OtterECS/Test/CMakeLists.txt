@@ -1,7 +1,6 @@
 set(SOURCE
-  ComponentListTest.cpp
-  BitMapTest.cpp
   EntityComponentMapTest.cpp
+  SystemRegistryTest.cpp
 )
 
 add_executable(ECSTest ${SOURCE})

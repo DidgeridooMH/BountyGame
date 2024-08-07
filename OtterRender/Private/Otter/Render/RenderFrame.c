@@ -7,7 +7,7 @@
 #include "Otter/Render/RayTracing/RayTracingFunctions.h"
 #include "Otter/Render/RenderQueue.h"
 #include "Otter/Render/Uniform/ViewProjection.h"
-#include "Otter/Util/AutoArray.h"
+#include "Otter/Util/Array/AutoArray.h"
 #include "Otter/Util/Profiler.h"
 
 #define DESCRIPTOR_POOL_SIZE 64
@@ -697,4 +697,3 @@ void render_frame_clear_buffers(
     vkResetCommandPool(logicalDevice, *commandPool, 0);
   }
 }
-

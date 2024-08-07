@@ -1,15 +1,17 @@
 set(SOURCES
+  Private/Otter/Util/Array/AutoArray.c
+  Private/Otter/Util/Array/SparseAutoArray.c
+  Private/Otter/Util/Array/StableAutoArray.c
   Private/Otter/Util/Json/Json.c
   Private/Otter/Util/Json/JsonArray.c
   Private/Otter/Util/Json/JsonObject.c
-  Private/Otter/Util/AutoArray.c
+  Private/Otter/Util/BitMap.c
   Private/Otter/Util/File.c
   Private/Otter/Util/Hash.c
   Private/Otter/Util/HashMap.c
   Private/Otter/Util/Heap.c
   Private/Otter/Util/Log.c
   Private/Otter/Util/Profiler.c
-  Private/Otter/Util/StableAutoArray.c
 )
 
 set(PRIVATE_HEADERS
@@ -19,15 +21,17 @@ set(PRIVATE_HEADERS
 )
 
 set(PUBLIC_HEADERS
+  Public/Otter/Util/Array/AutoArray.h
+  Public/Otter/Util/Array/SparseAutoArray.h
+  Public/Otter/Util/Array/StableAutoArray.h
   Public/Otter/Util/Json/Json.h
-  Public/Otter/Util/AutoArray.h
+  Public/Otter/Util/BitMap.h
   Public/Otter/Util/File.h
   Public/Otter/Util/Hash.h
   Public/Otter/Util/HashMap.h
   Public/Otter/Util/Heap.h
   Public/Otter/Util/Log.h
   Public/Otter/Util/Profiler.h
-  Public/Otter/Util/StableAutoArray.h
 )
 
 add_library(OtterUtil SHARED ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
