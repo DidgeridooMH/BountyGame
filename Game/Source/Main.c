@@ -2,8 +2,8 @@
 #include "Config/GameConfig.h"
 #include "Input/InputMap.h"
 #include "Otter/Async/Scheduler.h"
-#include "Otter/ECS/ComponentPool.h"
 #include "Otter/ECS/EntityComponentMap.h"
+#include "Otter/ECS/SystemRegistry.h"
 #include "Otter/Math/Mat.h"
 #include "Otter/Math/Transform.h"
 #include "Otter/Math/Vec.h"
@@ -16,6 +16,13 @@
 #include "Otter/Util/Profiler.h"
 #include "Window/GameWindow.h"
 
+typedef struct Context
+{
+  InputMap* inputMap;
+  RenderInstance* renderInstance;
+  float deltaTime;
+} Context;
+
 static LARGE_INTEGER g_timerFrequency;
 
 int main()
@@ -23,16 +30,10 @@ int main()
   wWinMain(GetModuleHandle(NULL), NULL, L"", 1);
 }
 
-static Vec3 g_cubeMovement  = {16.0f, -16.0f, 16.0f};
-static bool g_cubeDirection = false;
-
-static void pseudoOnUpdate(
+static void update_camera_position(
     InputMap* map, RenderInstance* renderInstance, float deltaTime)
 {
-  static float timer             = 0.0f;
-  static uint16_t rumbleStrength = 0;
-  static bool pressed            = false;
-  const float SPEED              = 50.0f;
+  const float SPEED = 50.0f;
 
   float moveForward  = input_map_get_action_value(map, "move_forward");
   float moveBackward = input_map_get_action_value(map, "move_back");
@@ -84,56 +85,37 @@ static void pseudoOnUpdate(
     renderInstance->cameraTransform.position.y -=
         (moveUp - moveDown) * deltaTime * 3.f;
   }
+}
 
-  float switchSpeed = input_map_get_action_value(map, "set_speed");
-  if (!isnan(switchSpeed))
+static void update_position(
+    Context* context, uint64_t entity, void** components)
+{
+  Mat4* position = (Mat4*) components[0];
+  Vec3* velocity = (Vec3*) components[1];
+
+  if ((*position)[3][0] > 16.0f)
   {
-    if (switchSpeed > 0.0f && !pressed)
-    {
-      rumbleStrength += 1;
-      rumbleStrength %= 4;
-      pressed = true;
-      LOG_DEBUG("Rumble strength: %d", rumbleStrength);
-    }
-    else if (switchSpeed <= 0.0f)
-    {
-      pressed = false;
-    }
+    velocity->x = -1.0f;
   }
-
-  timer += deltaTime;
-  if (timer > 5.0f)
+  else if ((*position)[3][0] < -16.0f)
   {
-    switch (rumbleStrength)
-    {
-    case 1:
-      input_map_queue_rumble_effect(map, 0, RP_HIGH_FREQUENCY, 1000, 3.0f);
-      input_map_queue_rumble_effect(map, 0, RP_HIGH_FREQUENCY, 63000, 1.0f);
-      break;
-    case 2:
-      input_map_queue_rumble_effect(map, 0, RP_LOW_FREQUENCY, 1000, 3.0f);
-      input_map_queue_rumble_effect(map, 0, RP_LOW_FREQUENCY, 63000, 1.0f);
-      break;
-    case 3:
-      input_map_queue_rumble_effect(map, 0, RP_HIGH_FREQUENCY, 1000, 3.0f);
-      input_map_queue_rumble_effect(map, 0, RP_HIGH_FREQUENCY, 63000, 1.0f);
-      input_map_queue_rumble_effect(map, 0, RP_LOW_FREQUENCY, 1000, 3.0f);
-      input_map_queue_rumble_effect(map, 0, RP_LOW_FREQUENCY, 63000, 1.0f);
-    default:
-      break;
-    }
-    timer = 0.0f;
+    velocity->x = 1.0f;
   }
 
-  g_cubeMovement.x += deltaTime * 10.0f * (g_cubeDirection ? -1.0f : 1.0f);
-  if (g_cubeMovement.x > 16.0f)
-  {
-    g_cubeDirection = true;
-  }
-  else if (g_cubeMovement.x < -16.0f)
-  {
-    g_cubeDirection = false;
-  }
+  Vec3 v = *velocity;
+  vec3_multiply(&v, context->deltaTime * 10.0f);
+  mat4_translate(*position, v.x, v.y, v.z);
+}
+
+static void render_mesh_system(
+    Context* context, uint64_t entity, void** components)
+{
+  Mat4* transform     = (Mat4*) components[0];
+  Mesh** mesh         = (Mesh**) components[1];
+  Material** material = (Material**) components[2];
+
+  render_instance_queue_mesh_draw(
+      *mesh, *material, *transform, context->renderInstance);
 }
 
 int WINAPI wWinMain(
@@ -220,8 +202,8 @@ int WINAPI wWinMain(
       renderInstance->graphicsQueueFamily, 0, &graphicsQueue);
 
   // TODO: Move copy command to outside of mesh create to allow for batching.
-  Mesh cube;
-  if (!mesh_create(&cube, vertices, sizeof(MeshVertex), _countof(vertices),
+  Mesh cubeMesh;
+  if (!mesh_create(&cubeMesh, vertices, sizeof(MeshVertex), _countof(vertices),
           indices, _countof(indices), renderInstance->physicalDevice,
           renderInstance->logicalDevice, renderInstance->commandPool,
           graphicsQueue))
@@ -244,7 +226,7 @@ int WINAPI wWinMain(
     LOG_ERROR("Failed to create default texture.");
     game_config_destroy(&config);
     task_scheduler_destroy();
-    mesh_destroy(&cube, renderInstance->logicalDevice);
+    mesh_destroy(&cubeMesh, renderInstance->logicalDevice);
     render_instance_destroy(renderInstance);
     game_window_destroy(window);
     profiler_destroy();
@@ -284,7 +266,7 @@ int WINAPI wWinMain(
       LOG_ERROR("Failed to create texture.");
       game_config_destroy(&config);
       task_scheduler_destroy();
-      mesh_destroy(&cube, renderInstance->logicalDevice);
+      mesh_destroy(&cubeMesh, renderInstance->logicalDevice);
       render_instance_destroy(renderInstance);
       game_window_destroy(window);
       profiler_destroy();
@@ -369,7 +351,7 @@ int WINAPI wWinMain(
       LOG_ERROR("Failed to create mesh.");
       game_config_destroy(&config);
       task_scheduler_destroy();
-      mesh_destroy(&cube, renderInstance->logicalDevice);
+      mesh_destroy(&cubeMesh, renderInstance->logicalDevice);
       render_instance_destroy(renderInstance);
       game_window_destroy(window);
       profiler_destroy();
@@ -385,15 +367,52 @@ int WINAPI wWinMain(
   EntityComponentMap entityComponentMap;
   entity_component_map_create(&entityComponentMap);
   component_pool_register_component(
-      &entityComponentMap.componentPool, CT_POSITION, sizeof(Vec3));
+      &entityComponentMap.componentPool, CT_TRANSFORM, sizeof(Mat4));
+  component_pool_register_component(
+      &entityComponentMap.componentPool, CT_MESH, sizeof(Mesh*));
+  component_pool_register_component(
+      &entityComponentMap.componentPool, CT_MATERIAL, sizeof(Material*));
+  component_pool_register_component(
+      &entityComponentMap.componentPool, CT_VELOCITY, sizeof(Vec3));
 
-  uint64_t camera   = entity_component_map_create_entity(&entityComponentMap);
-  uint64_t position = entity_component_map_add_component(
-      &entityComponentMap, camera, CT_POSITION);
+  SystemRegistry systemRegistry;
+  system_registry_create(&systemRegistry);
+  system_registry_register_system(&systemRegistry,
+      (SystemCallback) render_mesh_system, 3, CT_TRANSFORM, CT_MESH,
+      CT_MATERIAL);
+  system_registry_register_system(&systemRegistry,
+      (SystemCallback) update_position, 2, CT_TRANSFORM, CT_VELOCITY);
+
+  // Create the light.
+  // TODO: We probably want to make a parenting system for entities.
+  uint64_t light = entity_component_map_create_entity(&entityComponentMap);
+
+  entity_component_map_add_component(&entityComponentMap, light, CT_TRANSFORM);
+  Mat4* transform = (Mat4*) entity_component_map_get_component(
+      &entityComponentMap, light, CT_TRANSFORM);
+  mat4_identity(*transform);
+  mat4_translate(*transform, 16.0f, -16.0f, 16.0f);
+
+  entity_component_map_add_component(&entityComponentMap, light, CT_VELOCITY);
+  Vec3* velocity = (Vec3*) entity_component_map_get_component(
+      &entityComponentMap, light, CT_VELOCITY);
+  *velocity = (Vec3){1.0f, 0.0f, 0.0f};
+
+  entity_component_map_add_component(&entityComponentMap, light, CT_MESH);
+  Mesh** mesh = (Mesh**) entity_component_map_get_component(
+      &entityComponentMap, light, CT_MESH);
+  *mesh = &cubeMesh;
+
+  entity_component_map_add_component(&entityComponentMap, light, CT_MATERIAL);
+  Material** material = (Material**) entity_component_map_get_component(
+      &entityComponentMap, light, CT_MATERIAL);
+  *material = &defaultMaterial;
 
   InputMap inputMap;
   if (!input_map_create(&inputMap))
   {
+    LOG_ERROR("Failed to create input map.");
+    system_registry_destroy(&systemRegistry);
     entity_component_map_destroy(&entityComponentMap);
     game_config_destroy(&config);
     render_instance_destroy(renderInstance);
@@ -409,18 +428,22 @@ int WINAPI wWinMain(
   renderInstance->cameraTransform.position.y = -4.0f;
   renderInstance->cameraTransform.position.z = 100.0f;
 
+  Context context = {
+      .inputMap = &inputMap, .renderInstance = renderInstance, .deltaTime = 0};
   while (!game_window_process_message(window))
   {
     profiler_clock_start("preframe");
     LARGE_INTEGER currentTime;
     QueryPerformanceCounter(&currentTime);
-    float deltaTime = ((float) (currentTime.QuadPart - lastFrameTime.QuadPart)
-                       / g_timerFrequency.QuadPart);
+    context.deltaTime = ((float) (currentTime.QuadPart - lastFrameTime.QuadPart)
+                         / g_timerFrequency.QuadPart);
 
     AutoArray* inputs = (AutoArray*) GetWindowLongPtr(window, GWLP_USERDATA);
-    input_map_update(&inputMap, inputs, deltaTime);
+    input_map_update(&inputMap, inputs, context.deltaTime);
 
-    pseudoOnUpdate(&inputMap, renderInstance, deltaTime);
+    update_camera_position(&inputMap, renderInstance, context.deltaTime);
+
+    system_registry_run_systems(&systemRegistry, &entityComponentMap, &context);
 
     // Draw scene
     Mat4 floorTransform;
@@ -428,15 +451,7 @@ int WINAPI wWinMain(
     mat4_translate(floorTransform, 0.0f, 10.0f, 0.0f);
     mat4_scale(floorTransform, 100.0f, 1.0f, 100.0f);
     render_instance_queue_mesh_draw(
-        &cube, &defaultMaterial, floorTransform, renderInstance);
-
-    // Draw light source
-    Mat4 lightTransform;
-    mat4_identity(lightTransform);
-    mat4_translate(
-        lightTransform, g_cubeMovement.x, g_cubeMovement.y, g_cubeMovement.z);
-    render_instance_queue_mesh_draw(
-        &cube, &defaultMaterial, lightTransform, renderInstance);
+        &cubeMesh, &defaultMaterial, floorTransform, renderInstance);
 
     for (uint32_t i = 0; i < buildingMesh.size; i++)
     {
@@ -497,16 +512,18 @@ int WINAPI wWinMain(
   }
   auto_array_destroy(&textureImages);
 
+  system_registry_destroy(&systemRegistry);
   entity_component_map_destroy(&entityComponentMap);
   stable_auto_array_destroy(&materials);
   texture_destroy(&defaultTexture, renderInstance->logicalDevice);
   game_config_destroy(&config);
   input_map_destroy(&inputMap);
   task_scheduler_destroy();
-  mesh_destroy(&cube, renderInstance->logicalDevice);
+  mesh_destroy(&cubeMesh, renderInstance->logicalDevice);
   render_instance_destroy(renderInstance);
   game_window_destroy(window);
   profiler_destroy();
 
   return 0;
 }
+

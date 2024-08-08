@@ -2,7 +2,10 @@
 
 typedef enum ComponentType
 {
-  CT_POSITION,
+  CT_TRANSFORM,
+  CT_MESH,
+  CT_MATERIAL,
+  CT_VELOCITY,
   CT_COUNT
 } ComponentType;
 

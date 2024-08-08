@@ -64,7 +64,7 @@ void system_registry_deregister_system(
 }
 
 static void system_registry_run_system(
-    System* system, EntityComponentMap* entityComponentMap)
+    System* system, EntityComponentMap* entityComponentMap, void* context)
 {
   void* components[sizeof(BitMapSlot) * 8] = {0};
   uint64_t componentCount                  = 0;
@@ -84,30 +84,29 @@ static void system_registry_run_system(
         for (uint64_t componentId = 0; componentId < BIT_MAP_MASK_ENTRY_SIZE;
              ++componentId)
         {
-          if (bit_map_get_bit(
-                  &entityComponentMap->components, entityId, componentId))
+          if ((system->componentMask & (1ULL << componentId)) > 0)
           {
             components[componentCount++] = entity_component_map_get_component(
                 entityComponentMap, entityId, componentId);
           }
         }
 
-        system->system(entityId, components);
+        system->system(context, entityId, components);
         componentCount = 0;
       }
     }
   }
 }
 
-void system_registry_run_systems(
-    SystemRegistry* registry, EntityComponentMap* entityComponentMap)
+void system_registry_run_systems(SystemRegistry* registry,
+    EntityComponentMap* entityComponentMap, void* context)
 {
   for (uint64_t i = 0; i < registry->components.size; ++i)
   {
     System* system = (System*) sparse_auto_array_get(registry, i);
     if (system != NULL)
     {
-      system_registry_run_system(system, entityComponentMap);
+      system_registry_run_system(system, entityComponentMap, context);
     }
   }
 }

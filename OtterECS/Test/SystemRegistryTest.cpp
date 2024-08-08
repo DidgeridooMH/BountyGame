@@ -13,8 +13,9 @@ enum Component
   SPIN
 };
 
-void test_system(uint64_t entity, void** components)
+void test_system(void* context, uint64_t entity, void** components)
 {
+  (void) context;
   (void) entity;
 
   uint64_t* position = (uint64_t*) components[0];
@@ -107,7 +108,7 @@ TEST(SystemRegistry, RunSystems)
       &entityComponentMap, entity, VELOCITY);
   *velocity = 5;
 
-  system_registry_run_systems(&registry, &entityComponentMap);
+  system_registry_run_systems(&registry, &entityComponentMap, nullptr);
 
   EXPECT_EQ(*position, 15);
   EXPECT_EQ(*velocity, 5);
@@ -147,7 +148,7 @@ TEST(SystemRegistry, RunSystemsMultiple)
     *velocity = 5;
   }
 
-  system_registry_run_systems(&registry, &entityComponentMap);
+  system_registry_run_systems(&registry, &entityComponentMap, nullptr);
 
   for (int i = 0; i < 10; i++)
   {
@@ -200,10 +201,48 @@ TEST(SystemRegistry, RunSystemsInexactMatch)
       &entityComponentMap, entity, SPIN);
   *spin = 15;
 
-  system_registry_run_systems(&registry, &entityComponentMap);
+  system_registry_run_systems(&registry, &entityComponentMap, nullptr);
 
   EXPECT_EQ(*position, 15);
   EXPECT_EQ(*velocity, 5);
+
+  entity_component_map_destroy(&entityComponentMap);
+  system_registry_destroy(&registry);
+}
+
+TEST(SystemRegistry, RunSystemsSparse)
+{
+  SystemRegistry registry;
+  system_registry_create(&registry);
+
+  uint64_t system = system_registry_register_system(
+      &registry, test_system, 2, POSITION, SPIN);
+
+  EntityComponentMap entityComponentMap;
+  entity_component_map_create(&entityComponentMap);
+  component_pool_register_component(
+      &entityComponentMap.componentPool, POSITION, sizeof(uint64_t));
+  component_pool_register_component(
+      &entityComponentMap.componentPool, VELOCITY, sizeof(uint64_t));
+  component_pool_register_component(
+      &entityComponentMap.componentPool, SPIN, sizeof(uint64_t));
+
+  uint64_t entity = entity_component_map_create_entity(&entityComponentMap);
+
+  entity_component_map_add_component(&entityComponentMap, entity, POSITION);
+  uint64_t* position = (uint64_t*) entity_component_map_get_component(
+      &entityComponentMap, entity, POSITION);
+  *position = 10;
+
+  entity_component_map_add_component(&entityComponentMap, entity, SPIN);
+  uint64_t* spin = (uint64_t*) entity_component_map_get_component(
+      &entityComponentMap, entity, SPIN);
+  *spin = 15;
+
+  system_registry_run_systems(&registry, &entityComponentMap, nullptr);
+
+  EXPECT_EQ(*position, 25);
+  EXPECT_EQ(*spin, 15);
 
   entity_component_map_destroy(&entityComponentMap);
   system_registry_destroy(&registry);

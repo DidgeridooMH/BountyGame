@@ -4,7 +4,7 @@
 #include "Otter/Util/Array/SparseAutoArray.h"
 
 /** @brief The system callback function signature. */
-typedef void (*SystemCallback)(uint64_t entity, void**);
+typedef void (*SystemCallback)(void* context, uint64_t entity, void**);
 
 /** @brief The system registry. */
 typedef SparseAutoArray SystemRegistry;
@@ -53,6 +53,7 @@ OTTERECS_API void system_registry_deregister_system(
  *
  * @param registry The system registry to run the systems from.
  * @param entityComponentMap The component map to run the systems against.
+ * @param context The context to pass to the systems.
  */
-OTTERECS_API void system_registry_run_systems(
-    SystemRegistry* registry, struct EntityComponentMap* entityComponentMap);
+OTTERECS_API void system_registry_run_systems(SystemRegistry* registry,
+    struct EntityComponentMap* entityComponentMap, void* context);
