@@ -11,19 +11,12 @@
 #include "Otter/Render/Mesh.h"
 #include "Otter/Render/RenderInstance.h"
 #include "Otter/Render/Texture/Texture.h"
+#include "Otter/Script/ScriptEngine.h"
 #include "Otter/Util/File.h"
 #include "Otter/Util/Log.h"
 #include "Otter/Util/Profiler.h"
+#include "Render/RenderSystem.h"
 #include "Window/GameWindow.h"
-
-typedef struct Context
-{
-  InputMap* inputMap;
-  RenderInstance* renderInstance;
-  float deltaTime;
-} Context;
-
-static LARGE_INTEGER g_timerFrequency;
 
 int main()
 {
@@ -107,17 +100,6 @@ static void update_position(
   mat4_translate(*position, v.x, v.y, v.z);
 }
 
-static void render_mesh_system(
-    Context* context, uint64_t entity, void** components)
-{
-  Mat4* transform     = (Mat4*) components[0];
-  Mesh** mesh         = (Mesh**) components[1];
-  Material** material = (Material**) components[2];
-
-  render_instance_queue_mesh_draw(
-      *mesh, *material, *transform, context->renderInstance);
-}
-
 int WINAPI wWinMain(
     HINSTANCE instance, HINSTANCE prevInstance, LPWSTR cmdLine, int cmdShow)
 {
@@ -126,7 +108,6 @@ int WINAPI wWinMain(
   (void) cmdLine;
   (void) cmdShow;
 
-  QueryPerformanceFrequency(&g_timerFrequency);
   task_scheduler_init();
 
   GameConfig config;
@@ -154,6 +135,8 @@ int WINAPI wWinMain(
   }
   free(glbTest);
 
+  LARGE_INTEGER g_timerFrequency;
+  QueryPerformanceFrequency(&g_timerFrequency);
   profiler_init(g_timerFrequency);
   HWND window = game_window_create(config.width, config.height, WM_WINDOWED);
   RenderInstance* renderInstance =
@@ -364,6 +347,9 @@ int WINAPI wWinMain(
   QueryPerformanceCounter(&lastFrameTime);
   LARGE_INTEGER lastStatTime = lastFrameTime;
 
+  ScriptEngine scriptEngine;
+  script_engine_init(&scriptEngine, "GameScript.dll");
+
   EntityComponentMap entityComponentMap;
   entity_component_map_create(&entityComponentMap);
   component_pool_register_component(
@@ -408,12 +394,22 @@ int WINAPI wWinMain(
       &entityComponentMap, light, CT_MATERIAL);
   *material = &defaultMaterial;
 
+  Entity* lightEntity =
+      (Entity*) sparse_auto_array_get(&entityComponentMap.entities, light);
+  uint64_t scriptId;
+  if (!entity_add_script(
+          lightEntity, "AdderComponent", &scriptEngine, &scriptId))
+  {
+    LOG_WARNING("Failed to add script to entity.");
+  }
+
   InputMap inputMap;
   if (!input_map_create(&inputMap))
   {
     LOG_ERROR("Failed to create input map.");
+    entity_component_map_destroy(&entityComponentMap, &scriptEngine);
     system_registry_destroy(&systemRegistry);
-    entity_component_map_destroy(&entityComponentMap);
+    script_engine_shutdown(&scriptEngine);
     game_config_destroy(&config);
     render_instance_destroy(renderInstance);
     game_window_destroy(window);
@@ -444,6 +440,8 @@ int WINAPI wWinMain(
     update_camera_position(&inputMap, renderInstance, context.deltaTime);
 
     system_registry_run_systems(&systemRegistry, &entityComponentMap, &context);
+    entity_component_map_run_scripts(
+        &entityComponentMap, &scriptEngine, &context);
 
     // Draw scene
     Mat4 floorTransform;
@@ -512,8 +510,9 @@ int WINAPI wWinMain(
   }
   auto_array_destroy(&textureImages);
 
+  script_engine_shutdown(&scriptEngine);
   system_registry_destroy(&systemRegistry);
-  entity_component_map_destroy(&entityComponentMap);
+  entity_component_map_destroy(&entityComponentMap, &scriptEngine);
   stable_auto_array_destroy(&materials);
   texture_destroy(&defaultTexture, renderInstance->logicalDevice);
   game_config_destroy(&config);

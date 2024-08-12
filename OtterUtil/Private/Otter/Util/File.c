@@ -58,3 +58,12 @@ void file_write(const char* path, const char* data, uint64_t length)
   fclose(file);
 }
 
+void file_get_executable_path(char* buffer, uint64_t bufferSize)
+{
+  GetModuleFileNameA(NULL, buffer, bufferSize);
+  char* lastSlash = strrchr(buffer, '\\');
+  if (lastSlash != NULL)
+  {
+    *(lastSlash + 1) = '\0';
+  }
+}

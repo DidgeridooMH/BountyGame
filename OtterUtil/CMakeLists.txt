@@ -40,10 +40,13 @@ target_precompile_headers(OtterUtil PRIVATE Private/pch.h)
 target_include_directories(OtterUtil PUBLIC Public PRIVATE Private)
 
 if (BUILD_TESTS)
-  add_library(OtterUtil_static STATIC ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
-  target_compile_definitions(OtterUtil_static PUBLIC OTTERUTIL_STATIC)
-  target_precompile_headers(OtterUtil_static PRIVATE Private/pch.h)
-  target_include_directories(OtterUtil_static PUBLIC Public PRIVATE Private)
+  add_custom_command(
+    TARGET OtterUtil
+    POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy
+    $<TARGET_FILE:OtterUtil>
+    ${CMAKE_SOURCE_DIR}/bin/test/${CMAKE_BUILD_TYPE}/OtterUtil.dll
+  )
 
   add_subdirectory(Test)
 endif()

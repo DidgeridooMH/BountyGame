@@ -113,7 +113,7 @@ TEST(SystemRegistry, RunSystems)
   EXPECT_EQ(*position, 15);
   EXPECT_EQ(*velocity, 5);
 
-  entity_component_map_destroy(&entityComponentMap);
+  entity_component_map_destroy(&entityComponentMap, NULL);
   system_registry_destroy(&registry);
 }
 
@@ -163,7 +163,7 @@ TEST(SystemRegistry, RunSystemsMultiple)
     EXPECT_EQ(*velocity, 5);
   }
 
-  entity_component_map_destroy(&entityComponentMap);
+  entity_component_map_destroy(&entityComponentMap, NULL);
   system_registry_destroy(&registry);
 }
 
@@ -206,7 +206,7 @@ TEST(SystemRegistry, RunSystemsInexactMatch)
   EXPECT_EQ(*position, 15);
   EXPECT_EQ(*velocity, 5);
 
-  entity_component_map_destroy(&entityComponentMap);
+  entity_component_map_destroy(&entityComponentMap, NULL);
   system_registry_destroy(&registry);
 }
 
@@ -244,7 +244,6 @@ TEST(SystemRegistry, RunSystemsSparse)
   EXPECT_EQ(*position, 25);
   EXPECT_EQ(*spin, 15);
 
-  entity_component_map_destroy(&entityComponentMap);
+  entity_component_map_destroy(&entityComponentMap, NULL);
   system_registry_destroy(&registry);
 }
-

@@ -11,7 +11,7 @@ TEST(EntityComponentMap, Create)
 {
   EntityComponentMap map;
   entity_component_map_create(&map);
-  entity_component_map_destroy(&map);
+  entity_component_map_destroy(&map, NULL);
 }
 
 TEST(EntityComponentMap, CreateEntity)
@@ -22,7 +22,7 @@ TEST(EntityComponentMap, CreateEntity)
   uint64_t entity = entity_component_map_create_entity(&map);
   EXPECT_EQ(entity, 0);
 
-  entity_component_map_destroy(&map);
+  entity_component_map_destroy(&map, NULL);
 }
 
 TEST(EntityComponentMap, DestroyEntity)
@@ -31,9 +31,9 @@ TEST(EntityComponentMap, DestroyEntity)
   entity_component_map_create(&map);
 
   uint64_t entity = entity_component_map_create_entity(&map);
-  entity_component_map_destroy_entity(&map, entity);
+  entity_component_map_destroy_entity(&map, entity, NULL);
 
-  entity_component_map_destroy(&map);
+  entity_component_map_destroy(&map, NULL);
 }
 
 TEST(EntityComponentMap, CreateEntityMultiple)
@@ -49,7 +49,7 @@ TEST(EntityComponentMap, CreateEntityMultiple)
   EXPECT_EQ(entity2, 1);
   EXPECT_EQ(entity3, 2);
 
-  entity_component_map_destroy(&map);
+  entity_component_map_destroy(&map, NULL);
 }
 
 TEST(EntityComponentMap, CreateEntitySparse)
@@ -61,7 +61,7 @@ TEST(EntityComponentMap, CreateEntitySparse)
   uint64_t entity2 = entity_component_map_create_entity(&map);
   uint64_t entity3 = entity_component_map_create_entity(&map);
 
-  entity_component_map_destroy_entity(&map, entity2);
+  entity_component_map_destroy_entity(&map, entity2, NULL);
 
   uint64_t entity4 = entity_component_map_create_entity(&map);
 
@@ -70,7 +70,7 @@ TEST(EntityComponentMap, CreateEntitySparse)
   EXPECT_EQ(entity3, 2);
   EXPECT_EQ(entity4, 1);
 
-  entity_component_map_destroy(&map);
+  entity_component_map_destroy(&map, NULL);
 }
 
 TEST(EntityComponentMap, CreateEntitySparseMultiple)
@@ -82,7 +82,7 @@ TEST(EntityComponentMap, CreateEntitySparseMultiple)
   uint64_t entity2 = entity_component_map_create_entity(&map);
   uint64_t entity3 = entity_component_map_create_entity(&map);
 
-  entity_component_map_destroy_entity(&map, entity2);
+  entity_component_map_destroy_entity(&map, entity2, NULL);
 
   uint64_t entity4 = entity_component_map_create_entity(&map);
   uint64_t entity5 = entity_component_map_create_entity(&map);
@@ -93,7 +93,7 @@ TEST(EntityComponentMap, CreateEntitySparseMultiple)
   EXPECT_EQ(entity4, 1);
   EXPECT_EQ(entity5, 3);
 
-  entity_component_map_destroy(&map);
+  entity_component_map_destroy(&map, NULL);
 }
 
 TEST(EntityComponentMap, DestroyEntityMultiple)
@@ -105,11 +105,11 @@ TEST(EntityComponentMap, DestroyEntityMultiple)
   uint64_t entity2 = entity_component_map_create_entity(&map);
   uint64_t entity3 = entity_component_map_create_entity(&map);
 
-  entity_component_map_destroy_entity(&map, entity1);
-  entity_component_map_destroy_entity(&map, entity2);
-  entity_component_map_destroy_entity(&map, entity3);
+  entity_component_map_destroy_entity(&map, entity1, NULL);
+  entity_component_map_destroy_entity(&map, entity2, NULL);
+  entity_component_map_destroy_entity(&map, entity3, NULL);
 
-  entity_component_map_destroy(&map);
+  entity_component_map_destroy(&map, NULL);
 }
 
 TEST(EntityComponentMap, DestroyEntitySparse)
@@ -121,15 +121,15 @@ TEST(EntityComponentMap, DestroyEntitySparse)
   uint64_t entity2 = entity_component_map_create_entity(&map);
   uint64_t entity3 = entity_component_map_create_entity(&map);
 
-  entity_component_map_destroy_entity(&map, entity2);
+  entity_component_map_destroy_entity(&map, entity2, NULL);
 
   uint64_t entity4 = entity_component_map_create_entity(&map);
 
-  entity_component_map_destroy_entity(&map, entity1);
-  entity_component_map_destroy_entity(&map, entity3);
-  entity_component_map_destroy_entity(&map, entity4);
+  entity_component_map_destroy_entity(&map, entity1, NULL);
+  entity_component_map_destroy_entity(&map, entity3, NULL);
+  entity_component_map_destroy_entity(&map, entity4, NULL);
 
-  entity_component_map_destroy(&map);
+  entity_component_map_destroy(&map, NULL);
 }
 
 #define COMPONENT_ID 0
@@ -157,7 +157,7 @@ TEST(EntityComponentMap, AddComponent)
       &map.componentPool, COMPONENT_ID, componentId);
   EXPECT_NE(componentPtr, nullptr);
 
-  entity_component_map_destroy(&map);
+  entity_component_map_destroy(&map, NULL);
 }
 
 TEST(EntityComponentMap, GetComponent)
@@ -177,5 +177,5 @@ TEST(EntityComponentMap, GetComponent)
       &map, entity, COMPONENT_ID);
   EXPECT_NE(componentPtr, nullptr);
 
-  entity_component_map_destroy(&map);
+  entity_component_map_destroy(&map, NULL);
 }

@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.12)
-project(BountyGame)
+project(BountyGame LANGUAGES C CXX)
 
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -24,7 +24,7 @@ endif()
 if (MSVC)
   add_compile_options(/D_UNICODE /DUNICODE /Zc:preprocessor)
 elseif (WIN32)
-  add_compile_options(-D_UNICODE -DUNICODE -Werror)
+  add_compile_options(-D_UNICODE -DUNICODE -Werror )
   add_compile_options(-ffile-prefix-map=${CMAKE_SOURCE_DIR}/=/)
 endif()
 
@@ -33,6 +33,7 @@ add_subdirectory(OtterConfig)
 add_subdirectory(OtterECS)
 add_subdirectory(OtterMath)
 add_subdirectory(OtterRender)
+add_subdirectory(OtterScript)
 add_subdirectory(OtterUtil)
 add_subdirectory(Game)
 
@@ -40,11 +41,10 @@ set_target_properties(OtterAsync
   OtterConfig
   OtterECS
   OtterMath
+  OtterScript
   OtterRender
   OtterUtil
   ${PROJECT_NAME}
   PROPERTIES
-  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin
-)
-
+  RUNTIME_OUTPUT_DIRECTORY ${CMAKE_SOURCE_DIR}/bin/${CMAKE_BUILD_TYPE})
 

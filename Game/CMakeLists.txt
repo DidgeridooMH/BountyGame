@@ -1,14 +1,18 @@
 set(SOURCE
   Source/Config/GameConfig.c
   Source/Input/InputMap.c
+  Source/Render/RenderSystem.c
   Source/Window/GameWindow.c
   Source/Main.c
 )
 
 set(HEADERS
+  Source/Components/ComponentType.h
   Source/Config/GameConfig.h
   Source/Input/InputMap.h
+  Source/Render/RenderSystem.h
   Source/Window/GameWindow.h
+  Source/Context.h
   Source/pch.h
 )
 
@@ -22,6 +26,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE
   OtterECS
   OtterMath
   OtterConfig
+  OtterScript
   OtterUtil
   Vulkan::Vulkan)
 target_precompile_headers(${PROJECT_NAME} PRIVATE Source/pch.h)

@@ -20,13 +20,19 @@ set(PUBLIC_HEADERS
   Public/Otter/Math/Vec.h
 )
 
-if (BUILD_STATIC)
-  add_library(OtterMath STATIC ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
-else()
-  add_library(OtterMath SHARED ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
-endif()
-
+add_library(OtterMath SHARED ${SOURCES} ${PUBLIC_HEADERS} ${PRIVATE_HEADERS})
 target_compile_definitions(OtterMath PRIVATE OTTERMATH_EXPORTS)
 target_precompile_headers(OtterMath PRIVATE Private/pch.h)
 target_include_directories(OtterMath PUBLIC Public PRIVATE Private)
+
+if (BUILD_TESTS)
+  add_custom_command(
+    TARGET OtterMath
+    POST_BUILD
+    COMMAND
+      ${CMAKE_COMMAND} -E copy
+      $<TARGET_FILE:OtterMath>
+      ${CMAKE_SOURCE_DIR}/bin/test/${CMAKE_BUILD_TYPE}/OtterMath.dll
+  )
+endif()
 
