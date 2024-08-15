@@ -230,7 +230,7 @@ int WINAPI wWinMain(
       .occlusionTexture         = &defaultTexture.sampler};
 
   AutoArray textureImages;
-  LOG_DEBUG("Loading textures to GPU");
+  LOG_DEBUG("Loading %zd textures to GPU", asset.images.size);
   auto_array_create(&textureImages, sizeof(Texture));
   auto_array_allocate_many(&textureImages, asset.images.size);
   for (uint32_t i = 0; i < asset.images.size; i++)
@@ -525,4 +525,3 @@ int WINAPI wWinMain(
 
   return 0;
 }
-

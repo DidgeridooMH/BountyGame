@@ -49,6 +49,11 @@ void* auto_array_allocate(AutoArray* array)
 
 void* auto_array_allocate_many(AutoArray* array, size_t elementCount)
 {
+  if (elementCount == 0)
+  {
+    return NULL;
+  }
+
   size_t newSize = array->size + elementCount;
   if (newSize > array->capacity && !auto_array_resize(array, newSize))
   {

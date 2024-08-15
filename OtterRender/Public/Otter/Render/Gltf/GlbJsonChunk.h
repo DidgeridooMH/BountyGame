@@ -21,12 +21,12 @@ typedef struct GlbNode
 
 typedef struct GlbMeshPrimitive
 {
-  uint32_t position;
-  uint32_t normal;
-  uint32_t uv;
-  uint32_t tangent;
-  uint32_t indices;
-  uint32_t material;
+  int32_t position;
+  int32_t normal;
+  int32_t uv;
+  int32_t tangent;
+  int32_t indices;
+  int32_t material;
 } GlbMeshPrimitive;
 
 typedef enum GlbMaterialAlphaMode

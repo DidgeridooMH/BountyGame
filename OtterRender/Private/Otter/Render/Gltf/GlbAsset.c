@@ -71,53 +71,88 @@ static void glb_json_chunk_load_mesh(MeshLoadParams* params, int threadId)
 {
   (void) threadId;
 
+  if (params->primitive->position < 0 || params->primitive->indices < 0)
+  {
+    LOG_WARNING(
+        "Mesh primitive must at least have a position and index buffer.");
+
+    GlbAssetMesh* assetMesh =
+        auto_array_get(params->assetMeshes, params->assetMeshIndex);
+    assetMesh->numOfVertices = 0;
+    assetMesh->numOfIndices  = 0;
+    return;
+  }
+
   GlbAccessor* positionAccessor =
       auto_array_get(params->accessors, params->primitive->position);
-  GlbAccessor* normalAccessor =
-      auto_array_get(params->accessors, params->primitive->normal);
-  GlbAccessor* tangentAccessor =
-      auto_array_get(params->accessors, params->primitive->tangent);
-  GlbAccessor* uvAccessor =
-      auto_array_get(params->accessors, params->primitive->uv);
-  GlbAccessor* indexAccessor =
-      auto_array_get(params->accessors, params->primitive->indices);
-
   GlbBufferView* positionBuffer =
       auto_array_get(params->bufferViews, positionAccessor->bufferView);
-  GlbBufferView* normalBuffer =
-      auto_array_get(params->bufferViews, normalAccessor->bufferView);
-  GlbBufferView* tangentBuffer =
-      auto_array_get(params->bufferViews, tangentAccessor->bufferView);
-  GlbBufferView* uvBuffer =
-      auto_array_get(params->bufferViews, uvAccessor->bufferView);
+  Vec3* positions = (Vec3*) &params->binaryData[positionBuffer->offset];
+
+  GlbAccessor* indexAccessor =
+      auto_array_get(params->accessors, params->primitive->indices);
   GlbBufferView* indicesBuffer =
       auto_array_get(params->bufferViews, indexAccessor->bufferView);
-
-  // TODO: Figure out how multiple buffers would work.
-  Vec3* positions   = (Vec3*) &params->binaryData[positionBuffer->offset];
-  Vec3* normals     = (Vec3*) &params->binaryData[normalBuffer->offset];
-  Vec4* tangents    = (Vec4*) &params->binaryData[tangentBuffer->offset];
-  Vec2* uvs         = (Vec2*) &params->binaryData[uvBuffer->offset];
   uint16_t* indices = (uint16_t*) &params->binaryData[indicesBuffer->offset];
+
+  GlbBufferView* normalBuffer = NULL;
+  Vec3* normals               = NULL;
+  if (params->primitive->normal >= 0)
+  {
+    GlbAccessor* normalAccessor =
+        auto_array_get(params->accessors, params->primitive->normal);
+    normalBuffer =
+        auto_array_get(params->bufferViews, normalAccessor->bufferView);
+    normals = (Vec3*) &params->binaryData[normalBuffer->offset];
+  }
+
+  GlbBufferView* tangentBuffer = NULL;
+  Vec4* tangents               = NULL;
+  if (params->primitive->tangent >= 0)
+  {
+    GlbAccessor* tangentAccessor =
+        auto_array_get(params->accessors, params->primitive->tangent);
+    tangentBuffer =
+        auto_array_get(params->bufferViews, tangentAccessor->bufferView);
+    tangents = (Vec4*) &params->binaryData[tangentBuffer->offset];
+  }
+
+  GlbBufferView* uvBuffer = NULL;
+  Vec2* uvs               = NULL;
+  if (params->primitive->uv >= 0)
+  {
+    GlbAccessor* uvAccessor =
+        auto_array_get(params->accessors, params->primitive->uv);
+    uvBuffer = auto_array_get(params->bufferViews, uvAccessor->bufferView);
+    uvs      = (Vec2*) &params->binaryData[uvBuffer->offset];
+  }
 
   GlbAssetMesh* assetMesh =
       auto_array_get(params->assetMeshes, params->assetMeshIndex);
-  assetMesh->vertices = malloc(sizeof(MeshVertex) * positionAccessor->count);
+  assetMesh->vertices = calloc(positionAccessor->count, sizeof(MeshVertex));
   assetMesh->numOfVertices = positionAccessor->count;
 
-  assetMesh->indices      = malloc(sizeof(uint16_t) * indexAccessor->count);
+  assetMesh->indices      = calloc(indexAccessor->count, sizeof(uint16_t));
   assetMesh->numOfIndices = indexAccessor->count;
 
   for (uint32_t attribute = 0; attribute < positionAccessor->count; attribute++)
   {
-    // TODO: Take into consideration the buffer index.
     assetMesh->vertices[attribute].position = positions[attribute];
     assetMesh->vertices[attribute].position.y *= -1.0f;
-    assetMesh->vertices[attribute].normal = normals[attribute];
-    assetMesh->vertices[attribute].normal.y *= -1.0f;
-    assetMesh->vertices[attribute].tangent = tangents[attribute];
-    assetMesh->vertices[attribute].tangent.y *= -1.0f;
-    assetMesh->vertices[attribute].uv = uvs[attribute];
+    if (normals != NULL)
+    {
+      assetMesh->vertices[attribute].normal = normals[attribute];
+      assetMesh->vertices[attribute].normal.y *= -1.0f;
+    }
+    if (tangents != NULL)
+    {
+      assetMesh->vertices[attribute].tangent = tangents[attribute];
+      assetMesh->vertices[attribute].tangent.y *= -1.0f;
+    }
+    if (uvs != NULL)
+    {
+      assetMesh->vertices[attribute].uv = uvs[attribute];
+    }
   }
 
   for (uint32_t index = 0; index < indexAccessor->count; index++)
@@ -308,3 +343,4 @@ OTTERRENDER_API bool glb_load_asset(
 
   return true;
 }
+

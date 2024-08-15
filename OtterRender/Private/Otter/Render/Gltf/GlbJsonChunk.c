@@ -1,5 +1,7 @@
 #include "Otter/Render/Gltf/GlbJsonChunk.h"
 
+#include <time.h>
+
 #include "Otter/Math/Mat.h"
 #include "Otter/Util/Json/Json.h"
 #include "Otter/Util/Log.h"
@@ -226,42 +228,82 @@ static void glb_json_chunk_parse_meshes(JsonValue* meshes, AutoArray* array)
       }
       JsonValue* attributes = hash_map_get_value(
           &primitive->object, "attributes", strlen("attributes"));
-      JsonValue* indices =
-          hash_map_get_value(&primitive->object, "indices", strlen("indices"));
-      if (attributes == NULL || attributes->type != JT_OBJECT || indices == NULL
-          || indices->type != JT_INTEGER)
+      if (attributes == NULL || attributes->type != JT_OBJECT)
       {
-        LOG_ERROR("Attributes or indices were not present.");
+        LOG_ERROR("Attributes were not present.");
         continue;
       }
 
-      JsonValue* position = hash_map_get_value(
-          &attributes->object, "POSITION", strlen("POSITION"));
-      JsonValue* normal =
-          hash_map_get_value(&attributes->object, "NORMAL", strlen("NORMAL"));
-      JsonValue* tangent =
-          hash_map_get_value(&attributes->object, "TANGENT", strlen("TANGENT"));
-      JsonValue* uv = hash_map_get_value(
-          &attributes->object, "TEXCOORD_0", strlen("TEXCOORD_0"));
-      JsonValue* material = hash_map_get_value(
-          &primitive->object, "material", strlen("material"));
-      if (position == NULL || position->type != JT_INTEGER || normal == NULL
-          || normal->type != JT_INTEGER || uv == NULL || uv->type != JT_INTEGER
-          || material == NULL || material->type != JT_INTEGER || tangent == NULL
-          || tangent->type != JT_INTEGER)
+      JsonValue* indices =
+          hash_map_get_value(&primitive->object, "indices", strlen("indices"));
+      if (indices == NULL || indices->type != JT_INTEGER)
       {
-        LOG_ERROR(
-            "position, normal, uv, or material were not in the right format.");
+        LOG_ERROR("Indices were not present.");
         continue;
       }
 
       GlbMeshPrimitive* meshPrimitives = auto_array_allocate(&mesh->primitives);
-      meshPrimitives->position         = position->integer;
-      meshPrimitives->normal           = normal->integer;
-      meshPrimitives->tangent          = tangent->integer;
-      meshPrimitives->uv               = uv->integer;
+      meshPrimitives->position         = -1;
+      meshPrimitives->normal           = -1;
+      meshPrimitives->tangent          = -1;
+      meshPrimitives->uv               = -1;
       meshPrimitives->indices          = indices->integer;
-      meshPrimitives->material         = material->integer;
+      meshPrimitives->material         = -1;
+
+      JsonValue* position = hash_map_get_value(
+          &attributes->object, "POSITION", strlen("POSITION"));
+      if (position != NULL && position->type == JT_INTEGER)
+      {
+        meshPrimitives->position = position->integer;
+      }
+      else
+      {
+        LOG_WARNING("Position was not in the right format.");
+      }
+
+      JsonValue* normal =
+          hash_map_get_value(&attributes->object, "NORMAL", strlen("NORMAL"));
+      if (normal != NULL && normal->type == JT_INTEGER)
+      {
+        meshPrimitives->normal = normal->integer;
+      }
+      else
+      {
+        LOG_WARNING("Normal was not in the right format.");
+      }
+
+      JsonValue* tangent =
+          hash_map_get_value(&attributes->object, "TANGENT", strlen("TANGENT"));
+      if (tangent != NULL && tangent->type == JT_INTEGER)
+      {
+        meshPrimitives->tangent = tangent->integer;
+      }
+      else
+      {
+        LOG_WARNING("Tangent was not in the right format.");
+      }
+
+      JsonValue* uv = hash_map_get_value(
+          &attributes->object, "TEXCOORD_0", strlen("TEXCOORD_0"));
+      if (uv != NULL && uv->type == JT_INTEGER)
+      {
+        meshPrimitives->uv = uv->integer;
+      }
+      else
+      {
+        LOG_WARNING("UV was not in the right format.");
+      }
+
+      JsonValue* material = hash_map_get_value(
+          &primitive->object, "material", strlen("material"));
+      if (material != NULL && material->type == JT_INTEGER)
+      {
+        meshPrimitives->material = material->integer;
+      }
+      else
+      {
+        LOG_WARNING("Material was not in the right format.");
+      }
     }
   }
 }
@@ -741,45 +783,98 @@ bool glb_json_chunk_parse(JsonValue* json, GlbJsonChunk* jsonChunk)
 
   JsonValue* nodes =
       hash_map_get_value(&json->object, "nodes", strlen("nodes"));
-  JsonValue* meshes =
-      hash_map_get_value(&json->object, "meshes", strlen("meshes"));
-  JsonValue* materials =
-      hash_map_get_value(&json->object, "materials", strlen("materials"));
-  JsonValue* textures =
-      hash_map_get_value(&json->object, "textures", strlen("textures"));
-  JsonValue* images =
-      hash_map_get_value(&json->object, "images", strlen("images"));
-  JsonValue* accessors =
-      hash_map_get_value(&json->object, "accessors", strlen("accessors"));
-  JsonValue* bufferViews =
-      hash_map_get_value(&json->object, "bufferViews", strlen("bufferViews"));
-  JsonValue* buffers =
-      hash_map_get_value(&json->object, "buffers", strlen("buffers"));
-  if (nodes == NULL || nodes->type != JT_ARRAY || meshes == NULL
-      || meshes->type != JT_ARRAY || materials == NULL
-      || materials->type != JT_ARRAY || textures == NULL
-      || textures->type != JT_ARRAY || images == NULL
-      || images->type != JT_ARRAY || accessors == NULL
-      || accessors->type != JT_ARRAY || bufferViews == NULL
-      || bufferViews->type != JT_ARRAY || buffers == NULL
-      || buffers->type != JT_ARRAY)
+  if (nodes != NULL)
   {
-    LOG_ERROR("Fields missing from GLTF.");
-    return false;
+    if (nodes->type != JT_ARRAY)
+    {
+      LOG_ERROR("Nodes were not an array.");
+      return false;
+    }
+    glb_json_chunk_parse_nodes(nodes, &jsonChunk->nodes);
   }
 
-  glb_json_chunk_parse_nodes(nodes, &jsonChunk->nodes);
-  glb_json_chunk_parse_meshes(meshes, &jsonChunk->meshes);
-  glb_json_chunk_parse_materials(materials, &jsonChunk->materials);
-  glb_json_chunk_parse_textures(textures, &jsonChunk->textures);
-  glb_json_chunk_parse_images(images, &jsonChunk->images);
-  if (!glb_json_chunk_parse_accessors(accessors, &jsonChunk->accessors)
-      || !glb_json_chunk_parse_buffer_views(
-          bufferViews, &jsonChunk->bufferViews)
-      || !glb_json_chunk_parse_buffers(buffers, &jsonChunk->buffers))
+  JsonValue* meshes =
+      hash_map_get_value(&json->object, "meshes", strlen("meshes"));
+  if (meshes != NULL)
   {
-    glb_json_chunk_destroy(jsonChunk);
-    return false;
+    if (meshes->type != JT_ARRAY)
+    {
+      LOG_ERROR("Meshes were not an array.");
+      return false;
+    }
+    glb_json_chunk_parse_meshes(meshes, &jsonChunk->meshes);
+  }
+
+  JsonValue* materials =
+      hash_map_get_value(&json->object, "materials", strlen("materials"));
+  if (materials != NULL)
+  {
+    if (materials->type != JT_ARRAY)
+    {
+      LOG_ERROR("Materials were not an array.");
+      return false;
+    }
+    glb_json_chunk_parse_materials(materials, &jsonChunk->materials);
+  }
+
+  JsonValue* textures =
+      hash_map_get_value(&json->object, "textures", strlen("textures"));
+  if (textures != NULL)
+  {
+    if (textures->type != JT_ARRAY)
+    {
+      LOG_ERROR("Textures were not an array.");
+      return false;
+    }
+    glb_json_chunk_parse_textures(textures, &jsonChunk->textures);
+  }
+
+  JsonValue* images =
+      hash_map_get_value(&json->object, "images", strlen("images"));
+  if (images != NULL)
+  {
+    if (images->type != JT_ARRAY)
+    {
+      LOG_ERROR("Images were not an array.");
+      return false;
+    }
+    glb_json_chunk_parse_images(images, &jsonChunk->images);
+  }
+
+  JsonValue* accessors =
+      hash_map_get_value(&json->object, "accessors", strlen("accessors"));
+  if (accessors != NULL)
+  {
+    if (accessors->type != JT_ARRAY)
+    {
+      LOG_ERROR("Accessors were not an array.");
+      return false;
+    }
+    glb_json_chunk_parse_accessors(accessors, &jsonChunk->accessors);
+  }
+
+  JsonValue* bufferViews =
+      hash_map_get_value(&json->object, "bufferViews", strlen("bufferViews"));
+  if (bufferViews != NULL)
+  {
+    if (bufferViews->type != JT_ARRAY)
+    {
+      LOG_ERROR("Buffer views were not an array.");
+      return false;
+    }
+    glb_json_chunk_parse_buffer_views(bufferViews, &jsonChunk->bufferViews);
+  }
+
+  JsonValue* buffers =
+      hash_map_get_value(&json->object, "buffers", strlen("buffers"));
+  if (buffers != NULL)
+  {
+    if (buffers->type != JT_ARRAY)
+    {
+      LOG_ERROR("Buffers were not an array.");
+      return false;
+    }
+    glb_json_chunk_parse_buffers(buffers, &jsonChunk->buffers);
   }
 
   return true;
