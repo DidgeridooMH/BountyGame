@@ -15,7 +15,6 @@ namespace BountyGame
     public void OnUpdate(Context context)
     {
       _value++;
-      Console.WriteLine("Delta time: " + context.deltaTime);
     }
   }
 }
