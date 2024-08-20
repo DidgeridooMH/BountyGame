@@ -1,5 +1,6 @@
 #include "Components/ComponentType.h"
 #include "Config/GameConfig.h"
+#include "FreeCameraControls.h"
 #include "Input/InputMap.h"
 #include "Otter/Async/Scheduler.h"
 #include "Otter/ECS/EntityComponentMap.h"
@@ -23,81 +24,15 @@ int main()
   wWinMain(GetModuleHandle(NULL), NULL, L"", 1);
 }
 
-static void update_camera_position(
-    InputMap* map, RenderInstance* renderInstance, float deltaTime)
-{
-  const float SPEED = 50.0f;
-
-  float moveForward  = input_map_get_action_value(map, "move_forward");
-  float moveBackward = input_map_get_action_value(map, "move_back");
-  if (!isnan(moveForward) && !isnan(moveBackward))
-  {
-    Vec4 translation = {0.0f, 0.0f, 1.0f, 1.0f};
-    Mat4 rotationMatrix;
-    mat4_identity(rotationMatrix);
-    mat4_rotate(rotationMatrix, renderInstance->cameraTransform.rotation.x,
-        renderInstance->cameraTransform.rotation.y,
-        renderInstance->cameraTransform.rotation.z);
-    vec4_multiply_mat4(&translation, rotationMatrix);
-
-    Vec3* translation3d = (Vec3*) &translation;
-    vec3_multiply(
-        translation3d, -(moveForward - moveBackward) * SPEED * deltaTime);
-    vec3_add(&renderInstance->cameraTransform.position, (Vec3*) &translation);
-  }
-
-  float moveRight = input_map_get_action_value(map, "move_right");
-  float moveLeft  = input_map_get_action_value(map, "move_left");
-  if (!isnan(moveRight) && !isnan(moveLeft))
-  {
-    Vec4 translation = {1.0f, 0.0f, 0.0f, 1.0f};
-    Mat4 rotationMatrix;
-    mat4_identity(rotationMatrix);
-    mat4_rotate(rotationMatrix, renderInstance->cameraTransform.rotation.x,
-        renderInstance->cameraTransform.rotation.y,
-        renderInstance->cameraTransform.rotation.z);
-    vec4_multiply_mat4(&translation, rotationMatrix);
-
-    Vec3* translation3d = (Vec3*) &translation;
-    vec3_multiply(translation3d, -(moveLeft - moveRight) * SPEED * deltaTime);
-    vec3_add(&renderInstance->cameraTransform.position, (Vec3*) &translation);
-  }
-
-  float turnLeft  = input_map_get_action_value(map, "turn_left");
-  float turnRight = input_map_get_action_value(map, "turn_right");
-  if (!isnan(turnLeft) && !isnan(turnRight))
-  {
-    renderInstance->cameraTransform.rotation.y +=
-        (turnLeft - turnRight) * deltaTime * 3.f;
-  }
-
-  float moveUp   = input_map_get_action_value(map, "move_up");
-  float moveDown = input_map_get_action_value(map, "move_down");
-  if (!isnan(moveUp) && !isnan(moveDown))
-  {
-    renderInstance->cameraTransform.position.y -=
-        (moveUp - moveDown) * deltaTime * 3.f;
-  }
-}
-
 static void update_position(
-    Context* context, uint64_t entity, void** components)
+    Context* context, uint64_t entityId, void** components)
 {
-  Mat4* position = (Mat4*) components[0];
-  Vec3* velocity = (Vec3*) components[1];
+  Entity* entity =
+      entity_component_map_get_entity(context->entityComponentMap, entityId);
 
-  if ((*position)[3][0] > 16.0f)
-  {
-    velocity->x = -1.0f;
-  }
-  else if ((*position)[3][0] < -16.0f)
-  {
-    velocity->x = 1.0f;
-  }
-
-  Vec3 v = *velocity;
-  vec3_multiply(&v, context->deltaTime * 10.0f);
-  mat4_translate(*position, v.x, v.y, v.z);
+  Vec3 velocity = *(Vec3*) components[0];
+  vec3_multiply(&velocity, context->deltaTime * 10.0f);
+  vec3_add(&entity->transform.position, &velocity);
 }
 
 int WINAPI wWinMain(
@@ -353,8 +288,6 @@ int WINAPI wWinMain(
   EntityComponentMap entityComponentMap;
   entity_component_map_create(&entityComponentMap);
   component_pool_register_component(
-      &entityComponentMap.componentPool, CT_TRANSFORM, sizeof(Mat4));
-  component_pool_register_component(
       &entityComponentMap.componentPool, CT_MESH, sizeof(Mesh*));
   component_pool_register_component(
       &entityComponentMap.componentPool, CT_MATERIAL, sizeof(Material*));
@@ -364,20 +297,16 @@ int WINAPI wWinMain(
   SystemRegistry systemRegistry;
   system_registry_create(&systemRegistry);
   system_registry_register_system(&systemRegistry,
-      (SystemCallback) render_mesh_system, 3, CT_TRANSFORM, CT_MESH,
-      CT_MATERIAL);
-  system_registry_register_system(&systemRegistry,
-      (SystemCallback) update_position, 2, CT_TRANSFORM, CT_VELOCITY);
+      (SystemCallback) render_mesh_system, 2, CT_MESH, CT_MATERIAL);
+  system_registry_register_system(
+      &systemRegistry, (SystemCallback) update_position, 1, CT_VELOCITY);
 
   // Create the light.
   // TODO: We probably want to make a parenting system for entities.
   uint64_t light = entity_component_map_create_entity(&entityComponentMap);
-
-  entity_component_map_add_component(&entityComponentMap, light, CT_TRANSFORM);
-  Mat4* transform = (Mat4*) entity_component_map_get_component(
-      &entityComponentMap, light, CT_TRANSFORM);
-  mat4_identity(*transform);
-  mat4_translate(*transform, 16.0f, -16.0f, 16.0f);
+  Entity* lightEntity =
+      entity_component_map_get_entity(&entityComponentMap, light);
+  lightEntity->transform.position = (Vec3){16.0f, -16.0f, 16.0f};
 
   entity_component_map_add_component(&entityComponentMap, light, CT_VELOCITY);
   Vec3* velocity = (Vec3*) entity_component_map_get_component(
@@ -394,11 +323,9 @@ int WINAPI wWinMain(
       &entityComponentMap, light, CT_MATERIAL);
   *material = &defaultMaterial;
 
-  Entity* lightEntity =
-      (Entity*) sparse_auto_array_get(&entityComponentMap.entities, light);
   uint64_t scriptId;
   if (!entity_add_script(
-          lightEntity, "AdderComponent", &scriptEngine, &scriptId))
+          lightEntity, "OscillatePositionComponent", &scriptEngine, &scriptId))
   {
     LOG_WARNING("Failed to add script to entity.");
   }
@@ -424,8 +351,10 @@ int WINAPI wWinMain(
   renderInstance->cameraTransform.position.y = -4.0f;
   renderInstance->cameraTransform.position.z = 100.0f;
 
-  Context context = {
-      .inputMap = &inputMap, .renderInstance = renderInstance, .deltaTime = 0};
+  Context context = {.inputMap = &inputMap,
+      .renderInstance          = renderInstance,
+      .entityComponentMap      = &entityComponentMap,
+      .deltaTime               = 0};
   while (!game_window_process_message(window))
   {
     profiler_clock_start("preframe");
@@ -525,3 +454,4 @@ int WINAPI wWinMain(
 
   return 0;
 }
+

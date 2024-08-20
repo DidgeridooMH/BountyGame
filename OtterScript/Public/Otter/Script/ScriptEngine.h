@@ -20,11 +20,12 @@ OTTERSCRIPT_API void script_engine_init(
 
 OTTERSCRIPT_API void script_engine_shutdown(ScriptEngine* engine);
 
-OTTERSCRIPT_API bool script_engine_create_component(
-    ScriptEngine* engine, const char* componentName, uint32_t* component);
+OTTERSCRIPT_API bool script_engine_create_component(ScriptEngine* engine,
+    const char* componentName, uint32_t* component, uint64_t entity);
 
 OTTERSCRIPT_API void script_engine_destroy_component(
     ScriptEngine* engine, uint32_t component);
 
-OTTERSCRIPT_API void script_engine_run_update(ScriptEngine* scriptEngine,
-    uint32_t scriptComponent, void* context, uint64_t entityId);
+OTTERSCRIPT_API void script_engine_run_update(
+    ScriptEngine* scriptEngine, uint32_t scriptComponent, void* context);
+

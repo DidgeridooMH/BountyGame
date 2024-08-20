@@ -3,6 +3,7 @@ set(SOURCE
   Source/Input/InputMap.c
   Source/Render/RenderSystem.c
   Source/Window/GameWindow.c
+  Source/FreeCameraControls.c
   Source/Main.c
 )
 
@@ -12,6 +13,7 @@ set(HEADERS
   Source/Input/InputMap.h
   Source/Render/RenderSystem.h
   Source/Window/GameWindow.h
+  Source/FreeCameraControls.h
   Source/Context.h
   Source/pch.h
 )

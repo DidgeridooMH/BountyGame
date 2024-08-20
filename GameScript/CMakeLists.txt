@@ -3,8 +3,14 @@ project(GameScript LANGUAGES CSharp)
 
 set(SOURCES
   Source/Engine/IComponent.cs
+  Source/Engine/BaseComponent.cs
   Source/Engine/Context.cs
-  Source/Game/AdderComponent.cs
+  Source/Engine/ECS/ComponentType.cs
+  Source/Engine/ECS/EntityComponentMap.cs
+  Source/Engine/ECS/Entity.cs
+  Source/Engine/Math/Transform.cs
+  Source/Engine/Math/Vec.cs
+  Source/Game/OscillatePositionComponent.cs
 )
 
 add_library(${PROJECT_NAME} SHARED ${SOURCES})

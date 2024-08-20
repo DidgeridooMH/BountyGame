@@ -8,12 +8,13 @@
 
 typedef struct Entity
 {
+  uint64_t id;
   HashMap componentIndices;
   SparseAutoArray scripts;
   Transform transform;
 } Entity;
 
-OTTERECS_API bool entity_create(Entity* entity);
+OTTERECS_API bool entity_create(Entity* entity, uint64_t id);
 
 OTTERECS_API void entity_destroy(Entity* entity, ScriptEngine* scriptEngine);
 
@@ -25,3 +26,5 @@ OTTERECS_API void entity_remove_script(
 
 OTTERECS_API void entity_run_update(Entity* entity, uint64_t entityId,
     ScriptEngine* scriptEngine, void* context);
+
+OTTERECS_API Transform* entity_get_transform(Entity* entity);

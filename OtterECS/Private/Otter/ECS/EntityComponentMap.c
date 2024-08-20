@@ -37,7 +37,7 @@ uint64_t entity_component_map_create_entity(EntityComponentMap* map)
 {
   uint64_t index = sparse_auto_array_allocate(&map->entities);
   Entity* entity = (Entity*) sparse_auto_array_get(&map->entities, index);
-  if (!entity_create(entity))
+  if (!entity_create(entity, index))
   {
     // TODO: Handle error.
     LOG_ERROR("Unable to create entity.");
@@ -113,7 +113,12 @@ void entity_component_map_delete_component(
 Entity* entity_component_map_get_entity(
     EntityComponentMap* map, uint64_t entityId)
 {
-  return (Entity*) sparse_auto_array_get(&map->entities, entityId);
+  Entity* entity = (Entity*) sparse_auto_array_get(&map->entities, entityId);
+  if (entity == NULL)
+  {
+    LOG_WARNING("Unable to find entity %llu", entityId);
+  }
+  return entity;
 }
 
 void* entity_component_map_get_component(
@@ -138,4 +143,3 @@ void entity_component_map_run_scripts(
     }
   }
 }
-

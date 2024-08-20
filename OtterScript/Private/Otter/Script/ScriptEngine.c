@@ -25,8 +25,8 @@ void script_engine_shutdown(ScriptEngine* engine)
   mono_jit_cleanup(engine->domain);
 }
 
-bool script_engine_create_component(
-    ScriptEngine* engine, const char* componentName, uint32_t* component)
+bool script_engine_create_component(ScriptEngine* engine,
+    const char* componentName, uint32_t* component, uint64_t entity)
 {
   MonoImage* image = mono_assembly_get_image(engine->assembly);
   MonoClass* componentClass =
@@ -42,6 +42,15 @@ bool script_engine_create_component(
   MonoObject* componentObject = mono_object_new(engine->domain, componentClass);
   mono_runtime_object_init(componentObject);
 
+  MonoClassField* entityField =
+      mono_class_get_field_from_name(componentClass, "entity");
+  if (!entityField)
+  {
+    LOG_ERROR("Unable to find field: entity");
+    return false;
+  }
+  mono_field_set_value(componentObject, entityField, &entity);
+
   *component = mono_gchandle_new(componentObject, false);
 
   return true;
@@ -52,12 +61,9 @@ void script_engine_destroy_component(ScriptEngine* engine, uint32_t component)
   mono_gchandle_free(component);
 }
 
-void script_engine_run_update(ScriptEngine* scriptEngine,
-    uint32_t scriptComponent, void* context, uint64_t entityId)
+void script_engine_run_update(
+    ScriptEngine* scriptEngine, uint32_t scriptComponent, void* context)
 {
-  (void) context;
-  (void) entityId;
-
   MonoObject* scriptObject = mono_gchandle_get_target(scriptComponent);
   if (!scriptObject)
   {
@@ -98,3 +104,4 @@ void script_engine_run_update(ScriptEngine* scriptEngine,
 
   mono_runtime_invoke(updateMethod, scriptObject, (void* [1]){context}, NULL);
 }
+
