@@ -79,6 +79,7 @@ int WINAPI wWinMain(
   if (renderInstance == NULL)
   {
     LOG_ERROR("Failed to initialize render instance.");
+    glb_free_asset(&asset);
     game_config_destroy(&config);
     game_window_destroy(window);
     profiler_destroy();
@@ -127,6 +128,7 @@ int WINAPI wWinMain(
           graphicsQueue))
   {
     LOG_ERROR("Failed to create cube mesh.");
+    glb_free_asset(&asset);
     game_config_destroy(&config);
     task_scheduler_destroy();
     render_instance_destroy(renderInstance);
@@ -142,6 +144,7 @@ int WINAPI wWinMain(
           renderInstance->commandPool, graphicsQueue))
   {
     LOG_ERROR("Failed to create default texture.");
+    glb_free_asset(&asset);
     game_config_destroy(&config);
     task_scheduler_destroy();
     mesh_destroy(&cubeMesh, renderInstance->logicalDevice);
@@ -182,6 +185,7 @@ int WINAPI wWinMain(
             renderInstance->commandPool, graphicsQueue))
     {
       LOG_ERROR("Failed to create texture.");
+      glb_free_asset(&asset);
       game_config_destroy(&config);
       task_scheduler_destroy();
       mesh_destroy(&cubeMesh, renderInstance->logicalDevice);
@@ -267,6 +271,7 @@ int WINAPI wWinMain(
             graphicsQueue))
     {
       LOG_ERROR("Failed to create mesh.");
+      glb_free_asset(&asset);
       game_config_destroy(&config);
       task_scheduler_destroy();
       mesh_destroy(&cubeMesh, renderInstance->logicalDevice);
@@ -334,6 +339,7 @@ int WINAPI wWinMain(
   if (!input_map_create(&inputMap))
   {
     LOG_ERROR("Failed to create input map.");
+    glb_free_asset(&asset);
     entity_component_map_destroy(&entityComponentMap, &scriptEngine);
     system_registry_destroy(&systemRegistry);
     script_engine_shutdown(&scriptEngine);
@@ -439,6 +445,7 @@ int WINAPI wWinMain(
   }
   auto_array_destroy(&textureImages);
 
+  glb_free_asset(&asset);
   script_engine_shutdown(&scriptEngine);
   system_registry_destroy(&systemRegistry);
   entity_component_map_destroy(&entityComponentMap, &scriptEngine);
