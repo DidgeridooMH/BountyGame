@@ -3,7 +3,7 @@
 #include <vulkan/vulkan_core.h>
 
 #include "Otter/Math/MatDef.h"
-#include "Otter/Render/Mesh.h"
+#include "Otter/Render/MeshVertex.h"
 #include "Otter/Render/Pipeline/Pipeline.h"
 #include "Otter/Render/RenderPass/GBufferPass.h"
 #include "Otter/Render/Texture/ImageSampler.h"

@@ -345,14 +345,6 @@ static void glb_json_chunk_parse_materials(
 
     JsonValue* name =
         hash_map_get_value(&materialElement->object, "name", strlen("name"));
-    if (name != NULL && name->type == JT_STRING)
-    {
-      LOG_DEBUG("==== Material %d: %s ====", i, name->string);
-    }
-    else
-    {
-      LOG_DEBUG("==== Material %d ====", i);
-    }
 
     JsonValue* pbr = hash_map_get_value(&materialElement->object,
         "pbrMetallicRoughness", strlen("pbrMetallicRoughness"));
@@ -367,10 +359,6 @@ static void glb_json_chunk_parse_materials(
         {
           LOG_ERROR("Base color factor was not in the right format.");
         }
-
-        LOG_DEBUG("Base color factor: %f %f %f %f", material->baseColorFactor.x,
-            material->baseColorFactor.y, material->baseColorFactor.z,
-            material->baseColorFactor.w);
       }
 
       JsonValue* baseColorTexture = hash_map_get_value(
@@ -383,7 +371,6 @@ static void glb_json_chunk_parse_materials(
             && baseColorTextureSource->type == JT_INTEGER)
         {
           material->baseColorTexture = baseColorTextureSource->integer;
-          LOG_DEBUG("Base color texture: %d", material->baseColorTexture);
         }
         else
         {
@@ -396,7 +383,6 @@ static void glb_json_chunk_parse_materials(
       if (metallicFactor != NULL && metallicFactor->type == JT_FLOAT)
       {
         material->metallicFactor = metallicFactor->floatingPoint;
-        LOG_DEBUG("Metallic factor: %f", material->metallicFactor);
       }
 
       JsonValue* roughnessFactor = hash_map_get_value(
@@ -404,7 +390,6 @@ static void glb_json_chunk_parse_materials(
       if (roughnessFactor != NULL && roughnessFactor->type == JT_FLOAT)
       {
         material->roughnessFactor = roughnessFactor->floatingPoint;
-        LOG_DEBUG("Roughness factor: %f", material->roughnessFactor);
       }
 
       JsonValue* metallicRoughnessTexture = hash_map_get_value(&pbr->object,
@@ -419,8 +404,6 @@ static void glb_json_chunk_parse_materials(
         {
           material->metallicRoughnessTexture =
               metallicRoughnessTextureSource->integer;
-          LOG_DEBUG("Metallic roughness texture: %d",
-              material->metallicRoughnessTexture);
         }
         else
         {
@@ -747,7 +730,6 @@ bool glb_json_chunk_parse_buffers(JsonValue* buffers, AutoArray* array)
 {
   auto_array_create(array, sizeof(GlbBuffer));
 
-  LOG_DEBUG("Buffers size: %d", buffers->array.size);
   for (uint32_t i = 0; i < buffers->array.size; i++)
   {
     JsonValue* bufferElement =
@@ -903,4 +885,3 @@ void glb_json_chunk_destroy(GlbJsonChunk* jsonChunk)
   }
   auto_array_destroy(&jsonChunk->meshes);
 }
-

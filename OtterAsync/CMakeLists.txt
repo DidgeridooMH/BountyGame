@@ -20,3 +20,12 @@ endif()
 target_compile_definitions(OtterAsync PRIVATE OTTERASYNC_EXPORTS)
 target_precompile_headers(OtterAsync PRIVATE Private/pch.h)
 target_include_directories(OtterAsync PUBLIC Public)
+
+add_custom_command(
+  TARGET OtterAsync
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy
+  $<TARGET_FILE:OtterAsync>
+  ${CMAKE_SOURCE_DIR}/bin/tools/${CMAKE_BUILD_TYPE}/OtterAsync.dll
+)
+

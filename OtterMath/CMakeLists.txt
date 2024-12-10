@@ -36,3 +36,11 @@ if (BUILD_TESTS)
   )
 endif()
 
+add_custom_command(
+  TARGET OtterMath
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy
+  $<TARGET_FILE:OtterMath>
+  ${CMAKE_SOURCE_DIR}/bin/tools/${CMAKE_BUILD_TYPE}/OtterMath.dll
+)
+

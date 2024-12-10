@@ -54,12 +54,25 @@ static void glb_json_chunk_load_texture(TextureLoadParams* params, int threadId)
 {
   (void) threadId;
 
-  params->assetImage->data = stbi_load_from_memory(
-      (uint8_t*) &params->binaryChunk->data[params->bufferView->offset],
-      params->bufferView->length, &params->assetImage->width,
-      &params->assetImage->height, &params->assetImage->channels,
-      STBI_rgb_alpha);
-  params->assetImage->channels = 4;
+  // params->assetImage->data = stbi_load_from_memory(
+  //     (uint8_t*) &params->binaryChunk->data[params->bufferView->offset],
+  //     params->bufferView->length, &params->assetImage->width,
+  //     &params->assetImage->height, &params->assetImage->channels,
+  //     STBI_rgb_alpha);
+  // params->assetImage->channels = 4;
+
+  params->assetImage->data = malloc(params->bufferView->length);
+  if (params->assetImage->data == NULL)
+  {
+    LOG_ERROR("Unable to allocate memory for image.");
+    return;
+  }
+  memcpy(params->assetImage->data,
+      &params->binaryChunk->data[params->bufferView->offset],
+      params->bufferView->length);
+  params->assetImage->width    = params->bufferView->length;
+  params->assetImage->height   = 0;
+  params->assetImage->channels = 0;
 
   if (params->assetImage->data == NULL)
   {
@@ -344,3 +357,24 @@ OTTERRENDER_API bool glb_load_asset(
   return true;
 }
 
+OTTERRENDER_API void glb_free_asset(GlbAsset* asset)
+{
+  for (size_t i = 0; i < asset->meshes.size; i++)
+  {
+    GlbAssetMesh* mesh = auto_array_get(&asset->meshes, i);
+    free(mesh->vertices);
+    free(mesh->indices);
+  }
+
+  for (size_t i = 0; i < asset->images.size; i++)
+  {
+    GlbAssetImage* image = auto_array_get(&asset->images, i);
+    // stbi_image_free(image->data);
+    free(image->data);
+  }
+
+  auto_array_destroy(&asset->meshes);
+  auto_array_destroy(&asset->materials);
+  auto_array_destroy(&asset->textures);
+  auto_array_destroy(&asset->images);
+}

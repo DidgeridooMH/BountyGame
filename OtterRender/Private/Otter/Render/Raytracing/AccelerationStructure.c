@@ -3,6 +3,7 @@
 #include <stdlib.h>
 
 #include "Otter/Render/Memory/GpuBuffer.h"
+#include "Otter/Render/MeshVertex.h"
 #include "Otter/Render/RayTracing/RayTracingFunctions.h"
 #include "Otter/Render/RenderQueue.h"
 #include "Otter/Util/Log.h"

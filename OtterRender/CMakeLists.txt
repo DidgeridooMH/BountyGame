@@ -47,6 +47,7 @@ set(PUBLIC_HEADERS
   Public/Otter/Render/Uniform/ViewProjection.h
   Public/Otter/Render/export.h
   Public/Otter/Render/Mesh.h
+  Public/Otter/Render/MeshVertex.h
   Public/Otter/Render/RenderFrame.h
   Public/Otter/Render/RenderInstance.h
   Public/Otter/Render/RenderQueue.h
@@ -96,5 +97,13 @@ add_custom_command(
   TARGET Shaders POST_BUILD
   COMMAND ${CMAKE_COMMAND} -E make_directory ${CMAKE_BINARY_DIR}/bin/Shaders
   COMMAND ${CMAKE_COMMAND} -E copy ${SPIRV_BINARY_FILES} ${CMAKE_BINARY_DIR}/bin/Shaders
+)
+
+add_custom_command(
+  TARGET OtterRender
+  POST_BUILD
+  COMMAND ${CMAKE_COMMAND} -E copy
+  $<TARGET_FILE:OtterRender>
+  ${CMAKE_SOURCE_DIR}/bin/tools/${CMAKE_BUILD_TYPE}/OtterRender.dll
 )
 
